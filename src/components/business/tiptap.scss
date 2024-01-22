@@ -1,0 +1,14 @@
+.tiptap {
+  > * + * {
+    margin-top: 0.75em;
+  }
+}
+
+.editor-card-item {
+  position: relative;
+
+  .editable-content {
+    line-height: 1.2;
+  }
+
+}

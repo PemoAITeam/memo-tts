@@ -1,0 +1,11 @@
+.tts-service-panel {
+    min-width: 250px;
+}
+
+.ProseMirror .is-empty::before {
+    content: 'Start writing';
+    float: left;
+    color: #ced4da;
+    pointer-events: none;
+    height: 0;
+}
