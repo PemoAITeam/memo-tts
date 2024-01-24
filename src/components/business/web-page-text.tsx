@@ -1,40 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import cheerio from 'cheerio';
 
-const WebPageTextFetcher = ({ url }) => {
-    const [textContent, setTextContent] = useState<string>('');
+interface WebContentProps {
+    url: string
+}
+const WebContentFetcher = ({url}: WebContentProps) => {
+  const [content, setContent] = useState('');
 
-    useEffect(() => {
-        const fetchWebPageText = async () => {
-            try {
-                const response = await axios.get(url);
-                const html = response.data;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(url); // 替换为您的网页链接
+        setContent(response.data);
+      } catch (error) {
+        console.error('Error fetching web content:', error);
+      }
+    };
 
-                // 使用cheerio解析HTML
-                const $ = cheerio.load(html);
+    fetchData();
+  }, []);
 
-                // 提取文本内容
-                const extractedTextContent = $('body').text();
-
-                setTextContent(extractedTextContent);
-            } catch (error) {
-                console.error('Error fetching web page:', error.message);
-                setTextContent(null);
-            }
-        };
-
-        fetchWebPageText();
-    }, [url]);
-
-    return (
-        <div>
-            <h2>Web Page Text Content:</h2>
-            {textContent !== null ? (
-                <p>{textContent}</p>
-            ) : (
-                <p>Loading or Error occurred while fetching content.</p>
-            )}
-        </div>
-    );
+  return (
+    <div>
+      <h2>Web Content:</h2>
+      <pre>{content}</pre>
+    </div>
+  );
 };
+
+export default WebContentFetcher;
