@@ -65,7 +65,7 @@ const EdgeConfig = () => {
             </Select>
             <div className="mb-1 mt-3 text-sm">角色</div>
             <Separator className="my-2" />
-            <div>
+            <div className="voice-type-content">
                 {voiceList.map((k: any) => (
                     <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.properties.DisplayName === k.properties.DisplayName ? 'text-purple-500' : ''}`} key={k.properties.DisplayName} onClick={() => setVoice(k)}>
                         <TbVolume className=" mr-3 cursor-pointer" size={18} />

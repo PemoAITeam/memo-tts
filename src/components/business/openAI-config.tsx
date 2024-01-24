@@ -47,7 +47,7 @@ const OpenAIConfig = () => {
             </Select>
             <div className="mb-1 mt-3 text-sm">角色</div>
             <Separator className="my-2" />
-            <div>
+            <div className="voice-type-content">
                 {OpenAISpeaker.map((v: {value: string, label: string}) => (
                     <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? 'text-purple-500' : ''}`} key={v.value} onClick={() => {setVoice(v)}}>
                         <TbVolume className=" cursor-pointer mr-3" size={18} />

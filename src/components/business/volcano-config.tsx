@@ -47,7 +47,7 @@ const VolcanoConfig = () => {
             </>}
             <div className="mb-1 mt-3 text-sm">角色</div>
             <Separator className="my-2" />
-            <ScrollArea className="h-[300px]">
+            <div className="valcano-voice-content">
                 {VolcanoVoiceType[scenes].map((v: any) => (
                     <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? ' text-purple-500' : ''}`} key={v.value} onClick={() => setVoice(v)}>
                         <TbVolume className=" cursor-pointer mr-3" size={18} />
@@ -56,7 +56,7 @@ const VolcanoConfig = () => {
                         {v.gender == 'male' && <IoIosMale className=" ml-1" size={15} />}
                     </div>
                 ))}
-            </ScrollArea>
+            </div>
         </>
     )
 }

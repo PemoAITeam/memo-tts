@@ -14,3 +14,13 @@
     max-height: calc(100% - 3rem);
     overflow: hidden;
 }
+
+.voice-type-content {
+    max-height: 26vh;
+    overflow-y: scroll;
+}
+
+.valcano-voice-content {
+    max-height: 34vh;
+    overflow-y: scroll;
+}
