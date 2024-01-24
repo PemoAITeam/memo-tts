@@ -25,7 +25,7 @@ const OpenAISpeaker = [{
 }]
 const OpenAIConfig = () => {
     const [model, setModel] = useState<'tts-1-hd' | 'tts-1'>('tts-1-hd')
-    const [, setVoice] = useState<any>({value: "alloy", label: "alloy"})
+    const [voice, setVoice] = useState<any>({value: "alloy", label: "alloy"})
 
     return (
         <>
@@ -49,7 +49,7 @@ const OpenAIConfig = () => {
             <Separator className="my-2" />
             <div>
                 {OpenAISpeaker.map((v: {value: string, label: string}) => (
-                    <div className="flex items-center mr-4 mb-1" key={v.value} onClick={() => {setVoice(v)}}>
+                    <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? 'text-purple-500' : ''}`} key={v.value} onClick={() => {setVoice(v)}}>
                         <TbVolume className=" cursor-pointer mr-3" size={18} />
                         <span>{v.label}</span>
                     </div>

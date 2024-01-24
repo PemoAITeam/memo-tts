@@ -9,3 +9,8 @@
     pointer-events: none;
     height: 0;
 }
+
+.temo-content {
+    max-height: calc(100% - 3rem);
+    overflow: hidden;
+}

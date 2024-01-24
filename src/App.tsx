@@ -2,7 +2,7 @@ import './App.scss'
 import { Button } from './components/ui/button';
 import Tiptap from './components/business/tiptap';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { ChangeEvent, useEffect, useState } from 'react';
+import { ChangeEvent, useRef, useState } from 'react';
 import EdgeConfig from './components/business/edge-config';
 import OpenAIConfig from './components/business/openAI-config';
 import VolcanoConfig from './components/business/volcano-config';
@@ -14,6 +14,13 @@ import cheerio from 'cheerio';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
 import { Input } from './components/ui/input';
 import { isWebURL } from './lib/utils';
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { Slider } from './components/ui/slider';
+import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
+import { RiEditLine } from "react-icons/ri";
+import mammoth from "mammoth";
+import { Editor } from '@tiptap/react';
+import { ScrollArea } from '@radix-ui/react-scroll-area';
 
 declare const window: any;
 
@@ -22,9 +29,16 @@ function App() {
   const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
   const [url, setUrl] = useState('');
   const [valid, setValid] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [speed, setSpeed] = useState<number>(0)
+  const [playVol, setPlayVol] = useState<'mute' | 'auto'>('mute')
+  const [jenerating, setJenerating] = useState(false)
+  const [list, setList] = useState([])
+  const [editorRef, setEditorRef] = useState<Editor>();
 
   const fetchWebPageText = async () => {
     try {
+      setParsing(true)
       const response = await axios.get(url);
       const html = response.data;
 
@@ -35,8 +49,10 @@ function App() {
       const extractedTextContent = $('body').text();
 
       console.log(extractedTextContent);
+      setParsing(false)
     } catch (error) {
       console.error('Error fetching web page:', error);
+      setParsing(false)
     }
   };
 
@@ -46,8 +62,28 @@ function App() {
   }
 
   const handleFileSelect = async (event: { target: { files: any; }; }) => {
-    const pdfFile = event.target.files[0];
-    console.log(pdfFile)
+    const file = event.target.files[0];
+    console.log(file)
+    const reader = new FileReader();
+    if (file.type === 'text/plain') {
+      reader.readAsText(file);
+      reader.onload = e => { // 读取完毕从中取值
+        const text = e.target?.result as string;
+        editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
+        console.log('pointsTxt', text) // 获取到的TXT文件
+      };
+    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
+      reader.onloadend = function () {
+        const arrayBuffer = reader.result as ArrayBuffer;
+        if (arrayBuffer) {
+          mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
+            editorRef?.chain().insertContentAt(editorRef.state.selection.head, resultObject.value).focus().run()
+          })
+        }
+
+      };
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   const closeWin = () => {
@@ -59,6 +95,10 @@ function App() {
     setUrl(e.target.value)
   }
 
+  const generateAudio = () => {
+    console.log('1')
+  }
+
   return (
     <>
       <div className="flex justify-between items-center h-12 p-4">
@@ -66,8 +106,8 @@ function App() {
           <Button variant='ghost' className='memo-no-draggable hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={closeWin} size='icon'><TbX size={16} /></Button>
         </div>
         <div className='flex items-center memo-no-draggable'>
-          <Button className="flex items-center relative p-0 bg-transparent shadow-none h-auto hover:bg-transparent mr-4">
-            <input type="file" onChange={handleFileSelect} className=" absolute w-full h-full opacity-0" accept=".pdf" />
+          <Button className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent mr-4">
+            <input type="file" onChange={handleFileSelect} className=" absolute w-full h-full opacity-0" accept="application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
             <LuFilePlus size={18} />
             <span className=" text-sm ml-1">Add File</span>
           </Button>
@@ -86,7 +126,10 @@ function App() {
                 <Input onChange={handleUrlChange} value={url} placeholder='请输入链接地址' className="col-span-3" />
               </div>
               <DialogFooter>
-                <Button disabled={!valid} onClick={fetchWebPageText}>解析</Button>
+                <Button disabled={!valid || parsing} onClick={fetchWebPageText}>
+                  {parsing && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
+                  <span>解析</span>
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -97,13 +140,14 @@ function App() {
           </Button> */}
         </div>
       </div>
-      <div className='flex p-4 flex-1 memo-no-draggable'>
-        <div className='w-1/3 border h-full p-3 rounded-md'>
-          <Tiptap />
+      <div className='flex p-4 flex-1 memo-no-draggable temo-content'>
+        <div className='w-1/3 border h-full p-3 rounded-md overflow-y-scroll'>
+          <Tiptap setEditor={setEditorRef} />
         </div>
         <div className='flex-1 flex'>
           <div className='px-4 flex-1'>
-            <div className=" flex items-center space-x-4 rounded-md border p-4">
+
+            {list.length ? <div className=" flex items-center space-x-4 rounded-md border p-4">
               <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium leading-none">
                   Push Notifications
@@ -112,7 +156,11 @@ function App() {
                   Send notifications to device.
                 </p>
               </div>
-            </div>
+            </div> : <div className='flex items-center h-full justify-center'>
+              <RiEditLine className=' mr-2' size={20} />
+              <span>请在左边开始编辑内容...</span>
+            </div>}
+
           </div>
           <div className='px-4 flex-shrink-0 tts-service-panel'>
             <div className="mb-1 text-sm">服务</div>
@@ -135,6 +183,37 @@ function App() {
             {service === 'Edge' && <EdgeConfig />}
             {service === 'OpenAI' && <OpenAIConfig />}
             {service === 'Volcano' && <VolcanoConfig />}
+            <div className="relative mt-8 mb-2">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  其他设置
+                </span>
+              </div>
+            </div>
+            {
+              service !== 'Volcano' &&
+              <>
+                <div className="mb-4 mt-4 flex justify-between">
+                  <span>语速</span>
+                  <span>{speed}</span>
+                </div>
+                <Slider className=' cursor-pointer' value={[speed]} onValueChange={(value: number[]) => setSpeed(value[0])} max={100} step={1} />
+              </>
+            }
+            <div className="mb-2 mt-4">音量</div>
+            <Tabs value={playVol}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="mute" onClick={() => setPlayVol('mute')}>静音</TabsTrigger>
+                <TabsTrigger value="auto" onClick={() => setPlayVol('auto')}>自动调整</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button className=' mt-6 w-full' size="lg" disabled={jenerating} onClick={generateAudio}>
+              {jenerating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
+              <span>合成</span>
+            </Button>
           </div>
         </div>
       </div >

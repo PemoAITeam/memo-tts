@@ -8,6 +8,8 @@
   }
 
   :root {
+    --color-brand-color: #575bc7;
+    --color-bg-content: hsl(206, 37%, 96%);
     --background: 0 0% 100%;
     --foreground: 0 1% 30%;
 
@@ -42,6 +44,8 @@
 
   @media (prefers-color-scheme: dark) {
     :root {
+      --color-bg-content: hsl(233, 16%, 11%);
+      --color-bg-element: hsl(235, 14%, 18%);
       --background: 233 16% 11%;
       --foreground: 210 40% 98%;
 
@@ -104,8 +108,24 @@
 }
 
 .bg-background-memo {
-  border: 1px solid  var(--border);
+  border: 1px solid var(--border);
   background: rgba($color: var(--background), $alpha: 0.98);
   backdrop-filter: blur(250px);
-  -webkit-backdrop-filter: blur(250px); /* 兼容 WebKit 浏览器 */
+  -webkit-backdrop-filter: blur(250px);
+  /* 兼容 WebKit 浏览器 */
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background-color: var(--color-bg-content);
+  opacity: 0.5;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--color-bg-element);
+  border-radius: 8px;
 }

@@ -28,33 +28,35 @@ const VolcanoConfig = () => {
                     </ScrollArea>
                 </SelectContent>
             </Select>
-            <div className="mb-1 mt-3 text-sm">选择感情</div>
-            <Select>
-                <SelectTrigger className=" w-auto min-w-36 mr-4">
-                    <SelectValue placeholder={emotion.label} />
-                </SelectTrigger>
-                <SelectContent>
-                    <ScrollArea className="h-[300px]">
-                        {VolcanoMeotion[voice.value].map((v: { value: string, label: string }) => (
-                            <SelectItem value={v.value} key={v.value} onSelect={() => { setEmotion({ ...v }) }}>
-                                {v.label}
-                            </SelectItem>
-                        ))}
-                    </ScrollArea>
-                </SelectContent>
-            </Select>
+            {VolcanoMeotion[voice.value]?.length && <>
+                <div className="mb-1 mt-3 text-sm">选择感情</div>
+                <Select>
+                    <SelectTrigger className=" w-auto min-w-36 mr-4">
+                        <SelectValue placeholder={emotion.label} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <ScrollArea className="h-[300px]">
+                            {VolcanoMeotion[voice.value].map((v: { value: string, label: string }) => (
+                                <SelectItem value={v.value} key={v.value} onSelect={() => { setEmotion({ ...v }) }}>
+                                    {v.label}
+                                </SelectItem>
+                            ))}
+                        </ScrollArea>
+                    </SelectContent>
+                </Select>
+            </>}
             <div className="mb-1 mt-3 text-sm">角色</div>
             <Separator className="my-2" />
-            <div>
+            <ScrollArea className="h-[300px]">
                 {VolcanoVoiceType[scenes].map((v: any) => (
-                    <div className="flex items-center mr-4 mb-1" key={v.value} onClick={() => setVoice(v)}>
+                    <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? ' text-purple-500' : ''}`} key={v.value} onClick={() => setVoice(v)}>
                         <TbVolume className=" cursor-pointer mr-3" size={18} />
                         <span>{v.label}</span>
                         {v.gender == 'female' && <IoIosFemale className=" ml-1" size={15} />}
                         {v.gender == 'male' && <IoIosMale className=" ml-1" size={15} />}
                     </div>
                 ))}
-            </div>
+            </ScrollArea>
         </>
     )
 }
