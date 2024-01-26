@@ -1,22 +1,33 @@
 import { AllLanguage, lang, voices } from "@/lib/tts"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ScrollArea } from "../ui/scroll-area";
 import { TbVolume } from "react-icons/tb";
 import { IoIosFemale, IoIosMale } from "react-icons/io";
 import { Separator } from "../ui/separator";
 
-const EdgeConfig = () => {
+interface ConfigProps {
+    setOptions?: (options: { lang: AllLanguage, voice: any }) => void
+}
+
+const EdgeConfig = ({ setOptions }: ConfigProps) => {
     const [currentLanguage, setCurrentLanguage] = useState<AllLanguage>('ZH_CN')
     const [voiceList, setVoiceList] = useState<any>(voices.filter(v => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()))
     const [voice, setVoice] = useState<any>(voiceList[0])
     const [voiceSex, setVoiceSex] = useState<{ value: 'Male' | 'Female' | 'All', text: '全部' | '男' | '女' }>({ value: 'All', text: '全部' })
+
+    useEffect(() => {
+        if (setOptions) {
+            setOptions({lang: currentLanguage, voice})
+        }
+    }, [currentLanguage, voice, setOptions])
 
     const handleSelectCurrentLanguage = (k: AllLanguage) => {
         setCurrentLanguage(k)
         const filterVoices = voiceSex.value == 'All' ? voices.filter(v => v.locale.toLowerCase() === k.replace(/_/g, '-').toLowerCase()) :
             voices.filter((v: any) => v.locale.toLowerCase() === k.replace(/_/g, '-').toLowerCase()).filter((v: any) => v.properties.Gender == voiceSex.value)
         setVoiceList(filterVoices)
+        setVoice(filterVoices[0])
     }
 
     const handelVoiceSex = (value: 'Male' | 'Female' | 'All') => {

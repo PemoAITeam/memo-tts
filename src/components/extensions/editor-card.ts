@@ -29,6 +29,19 @@ export const EditorCard = Node.create({
             'Enter': () => {
                 return this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name }).focus().run()
             },
+            'Control-V': () => {
+                navigator.clipboard.readText().then(text => {
+                    this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, content: [{type: 'text', text}] }).focus().run()
+                })
+                return true
+            },
+            // 'Control-Shift-V': () => {
+            //     navigator.clipboard.readText().then(text => {
+            //         console.log(text + '11')
+            //         this.editor.chain().insertContentAt(this.editor.state.selection.head, text).focus().run()
+            //     })
+            //     return true
+            // }
         }
     },
 

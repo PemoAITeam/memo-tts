@@ -2,7 +2,7 @@ import './App.scss'
 import { Button } from './components/ui/button';
 import Tiptap from './components/business/tiptap';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { ChangeEvent, useRef, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import EdgeConfig from './components/business/edge-config';
 import OpenAIConfig from './components/business/openAI-config';
 import VolcanoConfig from './components/business/volcano-config';
@@ -13,14 +13,15 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
 import { Input } from './components/ui/input';
-import { isWebURL } from './lib/utils';
+import { generateUUID, isWebURL } from './lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Slider } from './components/ui/slider';
 import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
 import { RiEditLine } from "react-icons/ri";
 import mammoth from "mammoth";
 import { Editor } from '@tiptap/react';
-import { ScrollArea } from '@radix-ui/react-scroll-area';
+import { AllLanguage } from './lib/tts';
+import md5 from 'md5'
 
 declare const window: any;
 
@@ -31,10 +32,11 @@ function App() {
   const [valid, setValid] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [speed, setSpeed] = useState<number>(0)
-  const [playVol, setPlayVol] = useState<'mute' | 'auto'>('mute')
+  const [playVol, setPlayVol] = useState<'mute' | 'auto'>('auto')
   const [jenerating, setJenerating] = useState(false)
-  const [list, setList] = useState([])
+  const [list, setList] = useState<any[]>([])
   const [editorRef, setEditorRef] = useState<Editor>();
+  const [options, setOptions] = useState<{ lang?: AllLanguage, voice?: any }>()
 
   const fetchWebPageText = async () => {
     try {
@@ -57,7 +59,6 @@ function App() {
   };
 
   const handleService = (e: 'Edge' | 'OpenAI' | 'Volcano') => {
-    console.log(e)
     setService(e)
   }
 
@@ -95,8 +96,49 @@ function App() {
     setUrl(e.target.value)
   }
 
-  const generateAudio = () => {
-    console.log('1')
+  const generateAudio = async () => {
+    try {
+      if(!editorRef?.getText().length) {
+        
+        return
+      }
+      setJenerating(true)
+      const jsonData = editorRef?.getJSON().content?.filter(item => !!item.content?.length)
+      // console.log(jsonData)
+      // return;
+      let params;
+      if (service === 'Edge') {
+        params = {
+          type: 'Edge',
+          lang: options?.lang,
+          rate: speed,
+          pitch: 0,
+          voiceName: options?.voice?.shortName,
+          temo: true,
+          data: jsonData?.map((item) => {
+            const textData = item.content?.find((info) => info.type === 'text')
+            const data: any = { text: '', md5: '' }
+            if (textData) {
+              data.text = textData.text;
+              data.md5 = md5(speed + 0 + options?.voice?.shortName + textData.text)
+            }
+            return data
+          })
+        }
+      }
+      console.log(params)
+      const result = await window.AIM.textToSpeech(params, generateUUID());
+      if(result) {
+        result.voice = options?.voice;
+        result.lang = options?.lang
+        console.log(result)
+        setList((old: any) => [...old,...result])
+      }
+      setJenerating(false);
+    } catch (error) {
+      setJenerating(false);
+      console.log(error)
+    }
   }
 
   return (
@@ -147,16 +189,17 @@ function App() {
         <div className='flex-1 flex'>
           <div className='px-4 flex-1'>
 
-            {list.length ? <div className=" flex items-center space-x-4 rounded-md border p-4">
+            {list.length ? list.map(item => (<div className=" flex items-center space-x-4 rounded-md border p-4">
               <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  Push Notifications
+                  {item.voice.properties.LocalName}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Send notifications to device.
                 </p>
               </div>
-            </div> : <div className='flex items-center h-full justify-center'>
+            </div>))
+             : <div className='flex items-center h-full justify-center'>
               <RiEditLine className=' mr-2' size={20} />
               <span>请在左边开始编辑内容...</span>
             </div>}
@@ -180,7 +223,7 @@ function App() {
                 </SelectItem>
               </SelectContent>
             </Select>
-            {service === 'Edge' && <EdgeConfig />}
+            {service === 'Edge' && <EdgeConfig setOptions={setOptions} />}
             {service === 'OpenAI' && <OpenAIConfig />}
             {service === 'Volcano' && <VolcanoConfig />}
             <div className="relative mt-8 mb-2">
