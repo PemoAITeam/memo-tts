@@ -2,7 +2,7 @@ import './App.scss'
 import { Button } from './components/ui/button';
 import Tiptap from './components/business/tiptap';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useState } from 'react';
 import EdgeConfig from './components/business/edge-config';
 import OpenAIConfig from './components/business/openAI-config';
 import VolcanoConfig from './components/business/volcano-config';
@@ -13,15 +13,19 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
 import { Input } from './components/ui/input';
-import { generateUUID, isWebURL } from './lib/utils';
+import { secondsToHMS, generateUUID, isWebURL, getLocalFileUrl } from './lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Slider } from './components/ui/slider';
 import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
 import { RiEditLine } from "react-icons/ri";
+import { PiVinylRecord } from "react-icons/pi";
 import mammoth from "mammoth";
 import { Editor } from '@tiptap/react';
-import { AllLanguage } from './lib/tts';
+import { TTSOptions } from './lib/tts';
 import md5 from 'md5'
+import { useToast } from "./components/ui/use-toast"
+import { Toaster } from './components/ui/toaster';
+// import cdImg from './assets/cd.png'
 
 declare const window: any;
 
@@ -31,12 +35,23 @@ function App() {
   const [url, setUrl] = useState('');
   const [valid, setValid] = useState(false);
   const [parsing, setParsing] = useState(false);
-  const [speed, setSpeed] = useState<number>(0)
+  const [speed, setSpeed] = useState<number>(1)
   const [playVol, setPlayVol] = useState<'mute' | 'auto'>('auto')
   const [jenerating, setJenerating] = useState(false)
   const [list, setList] = useState<any[]>([])
   const [editorRef, setEditorRef] = useState<Editor>();
-  const [options, setOptions] = useState<{ lang?: AllLanguage, voice?: any }>()
+  const [options, setOptions] = useState<TTSOptions>()
+  const [curPlay, setCurPlay] = useState<any>();
+
+  useEffect(() => {
+    window.AIM.getTemoData().then((data: any) => {
+      if (data?.length) {
+        setList(data.map((item: any) => ({ ...item, duration: secondsToHMS(item.metadata?.duration) })))
+      }
+    })
+  }, []);
+
+  const { toast } = useToast()
 
   const fetchWebPageText = async () => {
     try {
@@ -98,12 +113,15 @@ function App() {
 
   const generateAudio = async () => {
     try {
-      if(!editorRef?.getText().length) {
-        
+      if (!editorRef?.getText().length) {
+        toast({
+          variant: "destructive",
+          description: `请先在左侧输入框编辑文字...`
+        })
         return
       }
       setJenerating(true)
-      const jsonData = editorRef?.getJSON().content?.filter(item => !!item.content?.length)
+      const jsonData = editorRef?.getJSON().content?.filter(item => !!item.content?.length && item.type === 'editorCard')
       // console.log(jsonData)
       // return;
       let params;
@@ -114,7 +132,7 @@ function App() {
           rate: speed,
           pitch: 0,
           voiceName: options?.voice?.shortName,
-          temo: true,
+          voiceLocalName: options?.voice?.properties.LocalName,
           data: jsonData?.map((item) => {
             const textData = item.content?.find((info) => info.type === 'text')
             const data: any = { text: '', md5: '' }
@@ -125,19 +143,90 @@ function App() {
             return data
           })
         }
+      } else if (service === 'OpenAI') {
+        params = {
+          type: 'OpenAI',
+          model: options?.model,
+          speed: speed,
+          voice: options?.voice?.value,
+          voiceLocalName: options?.voice?.label,
+          data: jsonData?.map((item) => {
+            const textData = item.content?.find((info) => info.type === 'text')
+            const data: any = { text: '', md5: '' }
+            if (textData) {
+              data.text = textData.text;
+              data.md5 = md5(speed + 0 + options?.voice?.value + textData.text)
+            }
+            return data
+          })
+        }
+      } else if(service === 'Volcano') {
+        params = {
+          type: 'Volc',
+          emotion: options?.emotion,
+          voice_type: options?.voice?.value,
+          voiceLocalName: options?.voice?.label,
+          scene: options?.scenes,
+          data: jsonData?.map((item) => {
+            const textData = item.content?.find((info) => info.type === 'text')
+            const data: any = { text: '', md5: '' }
+            if (textData) {
+              data.text = textData.text;
+              data.md5 = md5(speed + 0 + options?.voice?.value + textData.text)
+            }
+            return data
+          })
+        }
       }
       console.log(params)
-      const result = await window.AIM.textToSpeech(params, generateUUID());
-      if(result) {
-        result.voice = options?.voice;
-        result.lang = options?.lang
-        console.log(result)
-        setList((old: any) => [...old,...result])
+      const result = await window.AIM.mergeTemo(params, generateUUID());
+      if (result) {
+        result.duration = secondsToHMS(result.metadata?.duration)
+        setList((old: any) => [...old, result])
       }
+      console.log(result)
       setJenerating(false);
     } catch (error) {
       setJenerating(false);
       console.log(error)
+    }
+  }
+
+  let audioPlayer: HTMLAudioElement | null;
+  const playAudio = (item: any, isAudition?: boolean) => {
+    if (curPlay?.fileUrl === item.fileUrl && !isAudition) {
+      handleEnded()
+    } else {
+      if (audioPlayer) {
+        audioPlayer.pause()
+        audioPlayer?.removeEventListener('ended', handleEnded);
+      }
+      setCurPlay(item);
+      setTimeout(() => {
+        audioPlayer = document.getElementById('audioPlayer') as HTMLAudioElement;
+        audioPlayer.load();
+        audioPlayer.play();
+        if (!isAudition) {
+          audioPlayer.addEventListener('ended', handleEnded);
+        }
+      })
+    }
+  }
+
+  const handleEnded = () => {
+    console.log('Audio playback stopped');
+    // 在这里执行播放结束后的逻辑
+    // 移除事件监听器
+    audioPlayer?.removeEventListener('ended', handleEnded);
+    setCurPlay(null)
+    audioPlayer = null;
+  };
+
+  const audition = async (params: any, uuid: string) => {
+    console.log(params)
+    const fileUrl = await window.AIM.getTemoAudition(params, uuid);
+    if (fileUrl) {
+      playAudio({ fileUrl }, true)
     }
   }
 
@@ -175,11 +264,6 @@ function App() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-
-          {/* <Button variant="secondary">Share</Button>
-          <Button className=' ml-2' variant="secondary">
-            <MdMoreHoriz />
-          </Button> */}
         </div>
       </div>
       <div className='flex p-4 flex-1 memo-no-draggable temo-content'>
@@ -189,20 +273,29 @@ function App() {
         <div className='flex-1 flex'>
           <div className='px-4 flex-1'>
 
-            {list.length ? list.map(item => (<div className=" flex items-center space-x-4 rounded-md border p-4">
+            {list.length ? list.map(item => (<div key={item.fileUrl} className={`flex items-center space-x-3 rounded-md border p-3 mb-3 ${item.fileUrl === curPlay?.fileUrl ? 'is-playing-audio' : ''}`}>
+              <span className={`flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
+                <PiVinylRecord size={36} />
+              </span>
               <div className="flex-1 space-y-1">
-                <p className="text-sm font-medium leading-none">
-                  {item.voice.properties.LocalName}
+                <p className="font-medium leading-none">
+                  {item.title}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Send notifications to device.
+                  <span className=' mr-2'>{item.voiceLocalName}</span>
+                  <span>{item.duration}</span>
                 </p>
               </div>
+              <span className='flex-shrink-0 cursor-pointer text-sm'>下载</span>
+              <span className='flex-shrink-0 cursor-pointer text-sm mr-1' onClick={() => playAudio(item)}>{item.fileUrl === curPlay?.fileUrl ? '取消' : '播放'}</span>
             </div>))
-             : <div className='flex items-center h-full justify-center'>
-              <RiEditLine className=' mr-2' size={20} />
-              <span>请在左边开始编辑内容...</span>
-            </div>}
+              : <div className='flex flex-col items-center justify-center h-full '>
+                <p className='flex items-center'>
+                  <RiEditLine className=' mr-2' size={20} />
+                  <span>请在左边开始编辑内容...</span>
+                </p>
+                <p className=' text-sm mt-2 text-gray-500'>推荐使用对应的文本语言模型</p>
+              </div>}
 
           </div>
           <div className='px-4 flex-shrink-0 tts-service-panel'>
@@ -223,9 +316,9 @@ function App() {
                 </SelectItem>
               </SelectContent>
             </Select>
-            {service === 'Edge' && <EdgeConfig setOptions={setOptions} />}
-            {service === 'OpenAI' && <OpenAIConfig />}
-            {service === 'Volcano' && <VolcanoConfig />}
+            {service === 'Edge' && <EdgeConfig setOptions={setOptions} getAudition={audition} />}
+            {service === 'OpenAI' && <OpenAIConfig setOptions={setOptions} getAudition={audition} />}
+            {service === 'Volcano' && <VolcanoConfig setOptions={setOptions} getAudition={audition} />}
             <div className="relative mt-8 mb-2">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -259,7 +352,11 @@ function App() {
             </Button>
           </div>
         </div>
-      </div >
+      </div>
+      {curPlay?.fileUrl && <audio id="audioPlayer" controls>
+        <source src={getLocalFileUrl(curPlay?.fileUrl)} type="audio/wav" />
+      </audio>}
+      <Toaster />
     </>
   )
 }

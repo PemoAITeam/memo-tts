@@ -80,3 +80,42 @@ export function generateUUID(): string {
 
   return uuid;
 }
+
+export function getAudioDuration(filePath: string) {
+  const audio = new Audio(filePath);
+
+  return new Promise((resolve) => {
+    audio.addEventListener('loadedmetadata', () => {
+      resolve(audio.duration);
+    });
+  });
+}
+
+export function secondsToHMS(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+
+  const formattedHours = hours > 0 ? `${hours}时` : '';
+  const formattedMinutes = minutes > 0 ? `${minutes}分` : '';
+  const formattedSeconds = `${remainingSeconds}秒`;
+
+  return `${formattedHours}${formattedMinutes}${formattedSeconds}`;
+}
+
+export function getLocalFileUrl(filePath: string) {
+  return /^https?:\/\//g.test(filePath) ? filePath : 'aim:///' + filePath.replace(/%/g, '__@5@__');
+}
+
+export function getData(voice: any, emotion: any) {
+  let list: any = []
+  voice.forEach((item: any) => {
+    if(emotion[item.value]) {
+      list = list.concat(emotion[item.value])
+    }
+  });
+  const lists = Array.from(
+    new Map(list.map((item: any) => [item.value, item])).values()
+  );
+  console.log(lists)
+}

@@ -1,3 +1,5 @@
+import { ScenesType } from "./volcano.config";
+
 export const lang = {
     // AF_ZA: "南非荷兰语(南非)",
     // AM_ET: "阿姆哈拉语(埃塞俄比亚)",
@@ -21133,3 +21135,15 @@ export const voices = [
         id: "565cd495-ea37-420e-99e3-fed6df8836bb",
     },
 ];
+
+export interface TTSOptions { 
+    lang?: AllLanguage, 
+    voice?: any, model?: 'tts-1-hd' | 'tts-1', 
+    emotion?: string, 
+    scenes?: ScenesType
+}
+
+export interface ConfigProps {
+    setOptions?: (options: TTSOptions) => void
+    getAudition?: (params: any, uuid: string) => void
+}

@@ -1,16 +1,13 @@
-import { AllLanguage, lang, voices } from "@/lib/tts"
+import { AllLanguage, ConfigProps, lang, voices } from "@/lib/tts"
 import { useEffect, useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ScrollArea } from "../ui/scroll-area";
 import { TbVolume } from "react-icons/tb";
 import { IoIosFemale, IoIosMale } from "react-icons/io";
 import { Separator } from "../ui/separator";
+import md5 from "md5";
 
-interface ConfigProps {
-    setOptions?: (options: { lang: AllLanguage, voice: any }) => void
-}
-
-const EdgeConfig = ({ setOptions }: ConfigProps) => {
+const EdgeConfig = ({ setOptions, getAudition }: ConfigProps) => {
     const [currentLanguage, setCurrentLanguage] = useState<AllLanguage>('ZH_CN')
     const [voiceList, setVoiceList] = useState<any>(voices.filter(v => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()))
     const [voice, setVoice] = useState<any>(voiceList[0])
@@ -18,7 +15,7 @@ const EdgeConfig = ({ setOptions }: ConfigProps) => {
 
     useEffect(() => {
         if (setOptions) {
-            setOptions({lang: currentLanguage, voice})
+            setOptions({ lang: currentLanguage, voice })
         }
     }, [currentLanguage, voice, setOptions])
 
@@ -37,7 +34,20 @@ const EdgeConfig = ({ setOptions }: ConfigProps) => {
             voices.filter((v: any) => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()).filter((v: any) => v.properties.Gender == sex.value)
         setVoiceList(filterVoices)
         setVoice(filterVoices[0])
-        console.log(voice)
+    }
+
+    const audition = async (e: any, voice: any) => {
+        e.stopPropagation()
+        const uuid = md5(`Edge${currentLanguage}${voice?.shortName}Welcome to temo`)
+        const params = {
+            type: 'Edge',
+            lang: currentLanguage,
+            rate: 1,
+            pitch: 0,
+            voiceName: voice?.shortName,
+            data: [{ text: 'Welcome to temo', md5: uuid }]
+        }
+        getAudition && getAudition(params, uuid)
     }
 
     return (
@@ -79,7 +89,7 @@ const EdgeConfig = ({ setOptions }: ConfigProps) => {
             <div className="voice-type-content">
                 {voiceList.map((k: any) => (
                     <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.properties.DisplayName === k.properties.DisplayName ? 'text-purple-500' : ''}`} key={k.properties.DisplayName} onClick={() => setVoice(k)}>
-                        <TbVolume className=" mr-3 cursor-pointer" size={18} />
+                        <TbVolume className=" mr-3 cursor-pointer" size={18} onClick={(e) => audition(e, k)} />
                         <span>{k.properties.LocalName}</span>
                         {k.properties.Gender == 'Female' && <IoIosFemale className=" ml-1" size={15} />}
                         {k.properties.Gender == 'Male' && <IoIosMale className=" ml-1" size={15} />}

@@ -134,7 +134,7 @@ export const VolcanoVoiceType = {
     ]
 }
 
-export const VolcanoMeotion: any = {
+export const VolcanoEmotion: any = {
     BV700_V2_streaming: [{ "label": "愉悦", "value": "pleased" }, { "label": "抱歉 ", "value": "sorry" }, { "label": "嗔怪 ", "value": "annoyed" }, { "label": "客服", "value": "customer_service" }, { "label": "专业", "value": "professional" }, { "label": "严肃", "value": "serious" }, { "label": "开心", "value": "happy" }, { "label": "悲伤", "value": "sad" }, { "label": "愤怒", "value": "angry" }, { "label": "害怕", "value": "scare" }, { "label": "厌恶", "value": "hate" }, { "label": "惊讶", "value": "surprise" }, { "label": "哭腔", "value": "tear" }, { "label": "绿茶", "value": "conniving" }, { "label": "安慰鼓励", "value": "comfort" }, { "label": "情感电台", "value": "radio" }, { "label": "撒娇", "value": "lovey-dovey" }, { "label": "傲娇", "value": "tsundere" }, { "label": "娇媚", "value": "charming" }, { "label": "瑜伽", "value": "yoga" }, { "label": "讲故事", "value": "storytelling" }],
     BV701_V2_streaming: [{ "label": "开心", "value": "happy" }, { "label": "悲伤", "value": "sad" }, { "label": "愤怒", "value": "angry" }, { "label": "害怕", "value": "scare" }, { "label": "厌恶", "value": "hate" }, { "label": "惊讶", "value": "surprise" }, { "label": "哭腔", "value": "tear" }, { "label": "平和", "value": "novel_dialog" }, { "label": "旁白-舒缓", "value": "narrator" }, { "label": "旁白-沉浸", "value": "narrator_immersive" }],
     BV700_streaming: [{ "label": "愉悦", "value": "pleased" }, { "label": "抱歉 ", "value": "sorry" }, { "label": "嗔怪 ", "value": "annoyed" }, { "label": "客服", "value": "customer_service" }, { "label": "专业", "value": "professional" }, { "label": "严肃", "value": "serious" }, { "label": "开心", "value": "happy" }, { "label": "悲伤", "value": "sad" }, { "label": "愤怒", "value": "angry" }, { "label": "害怕", "value": "scare" }, { "label": "厌恶", "value": "hate" }, { "label": "惊讶", "value": "surprise" }, { "label": "哭腔", "value": "tear" }, { "label": "绿茶", "value": "conniving" }, { "label": "安慰鼓励", "value": "comfort" }, { "label": "情感电台", "value": "radio" }, { "label": "撒娇", "value": "lovey-dovey" }, { "label": "傲娇", "value": "tsundere" }, { "label": "娇媚", "value": "charming" }, { "label": "瑜伽", "value": "yoga" }, { "label": "讲故事", "value": "storytelling" }],
@@ -159,4 +159,66 @@ export const VolcanoMeotion: any = {
     BV511_streaming: [{ "label": "开心", "value": "happy" }, { "label": "悲伤", "value": "sad" }, { "label": "愤怒", "value": "angry" }, { "label": "害怕", "value": "scare" }, { "label": "厌恶", "value": "hate" }, { "label": "惊讶", "value": "surprise" }],
     BV040_streaming: [{ "label": "开心", "value": "happy" }, { "label": "悲伤", "value": "sad" }, { "label": "愤怒", "value": "angry" }, { "label": "害怕", "value": "scare" }, { "label": "厌恶", "value": "hate" }, { "label": "惊讶", "value": "surprise" }],
     BV138_streaming: [{ "label": "开心", "value": "happy" }, { "label": "悲伤", "value": "sad" }, { "label": "愤怒", "value": "angry" }, { "label": "害怕", "value": "scare" }, { "label": "厌恶", "value": "hate" }, { "label": "惊讶", "value": "surprise" }, { "label": "平和", "value": "novel_dialog" }, { "label": "旁白-舒缓", "value": "narrator" }]
+}
+
+export const VolcanoSceneEmotion: any = {
+    common: [
+        { label: '无', value: 'none' },
+        { label: '客服', value: 'customer_service' },
+        { label: '开心', value: 'happy' },
+        { label: '悲伤', value: 'sad' },
+        { label: '愤怒', value: 'angry' },
+        { label: '害怕', value: 'scare' },
+        { label: '厌恶', value: 'hate' },
+        { label: '惊讶', value: 'surprise' },
+        { label: '安慰鼓励', value: 'comfort' },
+        { label: '讲故事', value: 'storytelling' },
+        { label: '广告', value: 'advertising' },
+        { label: '助手', value: 'assistant' },
+        { label: '哭腔', value: 'tear' },
+        { label: '平和', value: 'novel_dialog' },
+        { label: '旁白-舒缓', value: 'narrator' },
+        { label: '旁白-沉浸', value: 'narrator_immersive' },
+        { label: '愉悦', value: 'pleased' },
+        { label: '抱歉 ', value: 'sorry' },
+        { label: '嗔怪 ', value: 'annoyed' },
+        { label: '专业', value: 'professional' },
+        { label: '严肃', value: 'serious' },
+        { label: '绿茶', value: 'conniving' },
+        { label: '情感电台', value: 'radio' },
+        { label: '撒娇', value: 'lovey-dovey' },
+        { label: '傲娇', value: 'tsundere' },
+        { label: '娇媚', value: 'charming' },
+        { label: '瑜伽', value: 'yoga' }
+    ],
+    reading: [
+        { label: '无', value: 'none' },
+        { label: '开心', value: 'happy' },
+        { label: '悲伤', value: 'sad' },
+        { label: '愤怒', value: 'angry' },
+        { label: '害怕', value: 'scare' },
+        { label: '厌恶', value: 'hate' },
+        { label: '惊讶', value: 'surprise' },
+        { label: '哭腔', value: 'tear' },
+        { label: '平和', value: 'novel_dialog' },
+        { label: '旁白-舒缓', value: 'narrator' },
+        { label: '旁白-沉浸', value: 'narrator_immersive' }
+    ],
+    assistant: [
+        { label: '无', value: 'none' },
+        { label: '愉悦', value: 'pleased' },
+        { label: '抱歉 ', value: 'sorry' },
+        { label: '专业', value: 'professional' },
+        { label: '严肃', value: 'serious' }
+    ],
+    video: [
+        { label: '无', value: 'none' },
+        { label: '开心', value: 'happy' },
+        { label: '悲伤', value: 'sad' },
+        { label: '愤怒', value: 'angry' },
+        { label: '害怕', value: 'scare' },
+        { label: '厌恶', value: 'hate' },
+        { label: '惊讶', value: 'surprise' },
+        { label: '平和', value: 'novel_dialog' }
+    ],
 }

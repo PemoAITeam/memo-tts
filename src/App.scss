@@ -24,3 +24,12 @@
     max-height: 34vh;
     overflow-y: scroll;
 }
+
+.is-playing-audio {
+    border-color: blueviolet;
+}
+
+#audioPlayer {
+    position: absolute;
+    top: -9999px;
+}

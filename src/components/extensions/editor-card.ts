@@ -35,13 +35,6 @@ export const EditorCard = Node.create({
                 })
                 return true
             },
-            // 'Control-Shift-V': () => {
-            //     navigator.clipboard.readText().then(text => {
-            //         console.log(text + '11')
-            //         this.editor.chain().insertContentAt(this.editor.state.selection.head, text).focus().run()
-            //     })
-            //     return true
-            // }
         }
     },
 
