@@ -162,6 +162,11 @@ function App() {
       if (result) {
         result.duration = secondsToHMS(result.metadata?.duration)
         setList((old: any) => [...old, result])
+      } else {
+        toast({
+          variant: "destructive",
+          description: `合成语音失败，请重试`
+        })
       }
       console.log(result)
       setJenerating(false);
@@ -261,6 +266,11 @@ function App() {
       if (result === 'Successful') {
         toast({
           description: `保存成功`
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          description: `保存失败，请重试`
         })
       }
       return result;
