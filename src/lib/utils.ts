@@ -110,7 +110,7 @@ export function getLocalFileUrl(filePath: string) {
 export function getData(voice: any, emotion: any) {
   let list: any = []
   voice.forEach((item: any) => {
-    if(emotion[item.value]) {
+    if (emotion[item.value]) {
       list = list.concat(emotion[item.value])
     }
   });
@@ -118,4 +118,98 @@ export function getData(voice: any, emotion: any) {
     new Map(list.map((item: any) => [item.value, item])).values()
   );
   console.log(lists)
+}
+
+export function jsonToSrt(data: { start?: string, end?: string, text?: string }[]) {
+  let srt_data = "";
+  data.forEach((item, index) => {
+    const start = (item.start as string).length > 5 ? `${item.start}` : `00:${item.start}`;
+    const end = (item.end as string).length > 5 ? `${item.end}` : `00:${item.end}`;
+    const text = `${index + 1}\n${start} --> ${end}\n${item.text}\n\n`
+    srt_data += text;
+  })
+  return srt_data;
+}
+
+function pad(number: string | number, length: number) {
+  // 在数字前面补零，确保有指定的位数
+  let str = '' + number;
+  while (str.length < length) {
+    str = '0' + str;
+  }
+  return str;
+}
+
+export function secondsToSRT(timeInSeconds: number) {
+  const hours = Math.floor(timeInSeconds / 3600);
+  const minutes = Math.floor((timeInSeconds % 3600) / 60);
+  const seconds = Math.floor(timeInSeconds % 60);
+  const milliseconds = Math.round((timeInSeconds % 1) * 1000);
+
+  // 格式化输出，确保小时、分钟、秒和毫秒都有两位数
+  const formattedTime =
+    pad(hours, 2) +
+    ':' +
+    pad(minutes, 2) +
+    ':' +
+    pad(seconds, 2) +
+    ',' +
+    pad(milliseconds, 3);
+
+  return formattedTime;
+}
+
+export function getTranscriptionData(data: { start: string, text: string, end: string }[]) {
+  const items = data.map(item => {
+    return {
+      start: secondsToSRT(parseFloat(item.start)),
+      text: item.text,
+      end: secondsToSRT(parseFloat(item.end))
+    }
+  })
+  return items
+}
+
+export function getTextFragment(infoData: any) {
+  const textInfo: any = [];
+  let startTime = 0;
+  infoData.order.forEach((uuid: string) => {
+    const item = infoData[uuid];
+    textInfo.push({
+      start: startTime,
+      end: item.metadata.duration + startTime,
+      text: item.text
+    })
+    startTime += item.metadata.duration
+  })
+  const items = getTranscriptionData(textInfo);
+  return jsonToSrt(items)
+}
+
+export function getSpeed(speed: string) {
+  let rate: number = 0;
+  switch (speed) {
+    case '0.5':
+      rate = -30;
+      break;
+    case '0.75':
+      rate = -15;
+      break;
+    case '1':
+      rate = 0;
+      break;
+    case '1.5':
+      rate = 15;
+      break;
+    case '2':
+      rate = 30;
+      break;
+    case '3':
+      rate = 60;
+      break;
+    case '4':
+      rate = 100;
+      break;
+  }
+  return rate
 }
