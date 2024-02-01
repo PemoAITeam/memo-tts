@@ -26,7 +26,8 @@ import md5 from 'md5'
 import { useToast } from "./components/ui/use-toast"
 import { Toaster } from './components/ui/toaster';
 import { ScrollArea } from './components/ui/scroll-area';
-// import cdImg from './assets/cd.png'
+import { remark } from 'remark';
+import strip from 'strip-markdown'
 
 declare const window: any;
 
@@ -294,6 +295,7 @@ function App() {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
     const reader = new FileReader();
+    console.log(file)
     if (file.type === 'text/plain') {
       reader.readAsText(file);
       reader.onload = e => { // 读取完毕从中取值
@@ -313,10 +315,31 @@ function App() {
       };
       reader.readAsArrayBuffer(file);
     } else {
-      toast({
-        variant: "destructive",
-        description: `当前只支持解析TXT、DOCX文档`
-      })
+      const type = file.name.split('.').pop();
+      if (type === 'md') {
+        reader.onload = e => {
+          const markdownText = e.target?.result as string;
+          // 使用 remark 解析 Markdown
+          remark()
+            .use(strip) // 使用 strip 插件去除 Markdown 格式
+            .process(markdownText, (err, file) => {
+              if (err) throw err;
+
+              // 提取的纯文本
+              const text = file?.toString();
+              if (text) {
+                editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
+              }
+              console.log(text);
+            });
+        };
+        reader.readAsText(file); // 以文本格式读取文件
+      } else {
+        toast({
+          variant: "destructive",
+          description: `当前只支持解析txt、docx、md文档`
+        })
+      }
     }
   };
 

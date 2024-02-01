@@ -39,6 +39,8 @@
     "react-i18next": "^14.0.0",
     "react-icons": "^4.12.0",
     "react-resizable-panels": "^1.0.9",
+    "remark": "^15.0.1",
+    "strip-markdown": "^6.0.0",
     "tailwind-merge": "^2.2.0",
     "tailwindcss-animate": "^1.0.7"
   },
