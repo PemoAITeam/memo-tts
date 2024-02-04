@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
 import { PiVinylRecord } from "react-icons/pi";
 import { TbFileDownload } from "react-icons/tb";
 import { GrCheckboxSelected } from "react-icons/gr";
+// import { AiOutlineClear } from "react-icons/ai";
 import mammoth from "mammoth";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from './lib/tts';
@@ -343,7 +344,6 @@ function App() {
     }
   };
 
-
   return (
     <>
       <div className="flex justify-between items-center h-12 p-4">
@@ -355,6 +355,7 @@ function App() {
             <TbFileDownload size={18} />
             <span className=" text-sm ml-1">批量下载</span>
           </Button>}
+          
           {/* <Dialog>
             <DialogTrigger asChild>
               <Button className="flex items-center p-0 bg-transparent shadow-none h-auto hover:bg-transparent">
