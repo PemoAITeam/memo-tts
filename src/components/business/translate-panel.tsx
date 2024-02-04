@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { ScrollArea } from "../ui/scroll-area";
 import { Button } from "../ui/button";
@@ -99,6 +99,32 @@ const TranslatePanel = ({ getContent, getTranslateData }: TranslatePanelProps) =
     const [langs, setLangs] = useState<{ label: string, value: string }[]>(langLists)
     const [lang, setLang] = useState<{ label: string, value: string }>(langLists[0])
 
+    const handler = useCallback((event: any, messageData: TranslateProgress | TranslateComplete | TranslateStart | TranslateMessage) => {
+        switch (messageData.type) {
+            case 'translate:start': 
+                console.log(messageData.data.type + '翻译开始', messageData.data);
+                break;
+            case 'translate:progress': 
+                console.log('进度：', (messageData.data[0].index + 1) / getContent().length * 100 + '%', messageData.data[0].text);
+                break;
+            case 'translate:message': 
+                console.log('翻译消息', messageData.data[0].text);
+                break;
+            case 'translate:complete': 
+                console.log(messageData.data.type + '翻译完成', messageData.data);
+                break;
+        }
+    }, [getContent]) // getContent变更时更新 handler
+    
+    useEffect(() => {
+        window.AIM?.handleMessage(handler, 'MemoTTSTranslateContent') // MemoTTSTranslateContent是唯一标识，可以用于区分不同的消息监听
+
+        return () => {
+            // 组件销毁时移除事件监听
+            window.AIM.removeHandler('translateContent')
+        }
+    }, [handler]) // handler更新时重新注册事件
+
     const addTranslate = async () => {
         const targetLang = lang;
         const options = {
@@ -107,9 +133,7 @@ const TranslatePanel = ({ getContent, getTranslateData }: TranslatePanelProps) =
         }
         console.log(options, provider.value)
         const res = await window.AIM.translateContent(options, provider.value)
-        // window.AIM?.handleMessage((event: any, data: any) => {
-        //     console.log(data)
-        // })
+
         const translateData = res.content[0] || ''
         getTranslateData(translateData)
         // const jsonData = editor.getJSON();
