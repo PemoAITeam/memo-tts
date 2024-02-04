@@ -106,12 +106,12 @@ const TranslatePanel = ({ getContent, getTranslateData }: TranslatePanelProps) =
             targetLang
         }
         console.log(options, provider.value)
-        window.AIM.translateContent(options, provider.value)
-        window.AIM?.handleMessage((event: any, data: any) => {
-            console.log(data)
-        })
-        // const translateData = res.content[0] || ''
-        // getTranslateData(translateData)
+        const res = await window.AIM.translateContent(options, provider.value)
+        // window.AIM?.handleMessage((event: any, data: any) => {
+        //     console.log(data)
+        // })
+        const translateData = res.content[0] || ''
+        getTranslateData(translateData)
         // const jsonData = editor.getJSON();
         // if (jsonData.content) {
         //     const index = jsonData.content?.findIndex(item => item.attrs?.id == node.attrs.id)
