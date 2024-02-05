@@ -1,5 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { cloneDeep } from 'lodash-es';
+import { WhisperSegments } from "@/interface";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -213,3 +215,41 @@ export function getSpeed(speed: string) {
   }
   return rate
 }
+
+export function resultItemString(
+  strArray: string[],
+  convertResult: WhisperSegments[],
+  translateResult?: WhisperSegments[]
+) {
+  const result = translateResult && translateResult.length ? cloneDeep(translateResult) : cloneDeep(convertResult)
+  strArray.forEach((str) => {
+    if (str) {
+      const regex = /^\[(\d+)\]([\s\S]*)/
+      const matches = regex.exec(str.trim())
+      if (matches) {
+        const number = matches[1]
+        const text = matches[2]
+        const index = Number(number)
+        if (index >= 0 && index < convertResult.length) {
+          result[index] = result[index] || {}
+          result[index].text = text
+          result[index].st = convertResult[index].st
+          result[index].et = convertResult[index].et
+        }
+      }
+    }
+  })
+
+  return result
+}
+
+export function mergeTranslate(array1: Record<string, any>[], array2: Record<string, any>[]) {
+  return array1.flatMap((item: any, index: number) => {
+    const matchingObject = array2.find(obj => obj.index === index);
+    if (matchingObject) {
+      return [item, { type: 'translateCard', content: [{ type: 'text', text: matchingObject.text }] }];
+    }
+
+    return item;
+  });
+} 

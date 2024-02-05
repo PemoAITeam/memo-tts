@@ -5,17 +5,24 @@ import { TbArrowsDownUp } from "react-icons/tb";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { generateUUID } from "@/lib/utils";
 import TranslatePanel from "./translate-panel";
+import { cloneDeep } from 'lodash-es';
+import { WhisperSegments } from "@/interface";
 
 const EditorCardItem = ({ node, editor }: NodeViewProps) => {
     
-    const addTranslate = (translateData: string) => {
+    const addTranslate = (translateData: WhisperSegments[]) => {
         const jsonData = editor.getJSON();
         if (jsonData.content) {
             const index = jsonData.content?.findIndex(item => item.attrs?.id == node.attrs.id)
             if (index > -1) {
-                const list = [...jsonData.content.slice(0, index + 1), { type: 'translateCard', attrs: { id: generateUUID() }, content: [{ type: 'text', text: translateData }] }, ...jsonData.content.slice(index + 1)];
-                console.log(list)
-                editor.chain().setContent({ type: 'doc', content: list }).focus().run()
+                if(jsonData.content[index + 1].type === 'translateCard') {
+                    jsonData.content[index + 1].content = [{ type: 'text', text: translateData[0].text }];
+                    editor.chain().setContent({ type: 'doc', content: cloneDeep(jsonData.content) }).focus().run()
+                } else {
+                    const list = [...jsonData.content.slice(0, index + 1), { type: 'translateCard', attrs: { id: generateUUID() }, content: [{ type: 'text', text: translateData[0].text }] }, ...jsonData.content.slice(index + 1)];
+                    console.log(list)
+                    editor.chain().setContent({ type: 'doc', content: list }).focus().run()
+                }
             }
         }
     }
@@ -27,27 +34,6 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
     return (
         <NodeViewWrapper className="editor-card-item">
             <div className="flex items-start">
-                {/* <Menubar className="border-none shadow-none h-auto p-0">
-                    <MenubarMenu>
-                        <MenubarTrigger className="flex-shrink-0 p-0 border-none">
-                            <GoPlus size={20} />
-                        </MenubarTrigger>
-                        <MenubarContent className=" min-w-0">
-                            <MenubarItem className="flex items-center">
-                                <Button className="p-0 bg-transparent shadow-none h-auto hover:bg-transparent mr-1">
-                                    <MdOutlineKeyboardVoice size={18} />
-                                </Button>
-                                <span className=" text-sm">Add Voice</span>
-                            </MenubarItem>
-                            <MenubarItem className="flex items-center" onClick={addTranslate}>
-                                <Button className="p-0 bg-transparent shadow-none h-auto hover:bg-transparent mr-1">
-                                    <TbArrowsDownUp size={16} />
-                                </Button>
-                                <span className=" text-sm">Translate</span>
-                            </MenubarItem>
-                        </MenubarContent>
-                    </MenubarMenu>
-                </Menubar> */}
                 <DropdownMenu>
                     <DropdownMenuTrigger title='选项' className='flex-shrink-0 p-0 border-none'>
                         <GoPlus size='20' />
@@ -64,41 +50,6 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent className=" p-3">
-                                    {/* <div className="flex items-center mb-3">
-                                        <div className=" mr-3">服务</div>
-                                        <Select onValueChange={switchProvider}>
-                                            <SelectTrigger className=" w-auto min-w-36 mr-4">
-                                                <SelectValue placeholder={provider.label} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <ScrollArea className="h-[200px]">
-                                                    {providerList.map(provider => (
-                                                        <SelectItem key={provider.value} value={provider.value}>
-                                                            {provider.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </ScrollArea>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="flex items-center mb-3">
-                                        <div className=" mr-3">语言</div>
-                                        <Select onValueChange={switchLang}>
-                                            <SelectTrigger className=" w-auto min-w-36 mr-4">
-                                                <SelectValue placeholder={lang.label} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <ScrollArea className="h-[300px]">
-                                                    {langs && langs.map(lang => (
-                                                        <SelectItem key={lang.value} value={lang.value}>
-                                                            {lang.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </ScrollArea>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <Button className="w-full" onClick={addTranslate}>翻译</Button> */}
                                     <TranslatePanel getTranslateData={addTranslate} getContent={getContent}></TranslatePanel>
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>

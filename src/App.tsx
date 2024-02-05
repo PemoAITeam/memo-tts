@@ -6,20 +6,14 @@ import { useEffect, useState } from 'react';
 import EdgeConfig from './components/business/edge-config';
 import OpenAIConfig from './components/business/openAI-config';
 import VolcanoConfig from './components/business/volcano-config';
-// import { FiLink } from "react-icons/fi";
 import { TbX } from "react-icons/tb";
-// import axios from 'axios';
-// import cheerio from 'cheerio';
-// import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
-// import { Input } from './components/ui/input';
+
 import { secondsToHMS, generateUUID, getLocalFileUrl, getTextFragment, getSpeed } from './lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
-// import { RiEditLine } from "react-icons/ri";
 import { PiVinylRecord } from "react-icons/pi";
 import { TbFileDownload } from "react-icons/tb";
 import { GrCheckboxSelected } from "react-icons/gr";
-// import { AiOutlineClear } from "react-icons/ai";
 import mammoth from "mammoth";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from './lib/tts';
@@ -29,10 +23,18 @@ import { Toaster } from './components/ui/toaster';
 import { ScrollArea } from './components/ui/scroll-area';
 import { remark } from 'remark';
 import strip from 'strip-markdown'
+import { inject, observer } from 'mobx-react';
+import SettingStore from './stores/settingStore';
+import DataStore from './stores/dataStore';
 
 declare const window: any;
 
-function App() {
+interface AppProps {
+  settingStore: SettingStore
+  dataStore: DataStore
+}
+
+const App = inject('settingStore', 'dataStore')(observer(({ settingStore, dataStore }: AppProps) => {
 
   const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
   // const [url, setUrl] = useState('');
@@ -48,13 +50,12 @@ function App() {
   // const [curVoice, setCurVoice] = useState<any>()
   let downloadList = [];
   useEffect(() => {
-    window.AIM.getTemoData().then((data: any) => {
-      if (data?.length) {
-        console.log(data)
-        setList(data.map((item: any) => ({ ...item, duration: secondsToHMS(item.metadata?.duration) })))
-      }
+    dataStore.initData().then(() => {
+      setList(dataStore.temoData)
     })
-  }, []);
+    settingStore.initSetting()
+
+  }, [dataStore, settingStore]);
 
   const { toast } = useToast()
 
@@ -488,6 +489,6 @@ function App() {
       <Toaster />
     </>
   )
-}
+}))
 
 export default App

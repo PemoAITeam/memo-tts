@@ -2,15 +2,17 @@ import './tiptap.scss'
 import { useEditor, EditorContent, Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorCard } from '../extensions/editor-card'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { EventHandler } from '../extensions/paste-plugin'
 import { TranslateCard } from '../extensions/translate-card'
-import { generateUUID } from '@/lib/utils'
+import { generateUUID, mergeTranslate } from '@/lib/utils'
 import { Button } from '../ui/button'
-import { AiOutlineClear } from 'react-icons/ai'
+import { AiOutlineClear, AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import TranslatePanel from './translate-panel'
 import { TbArrowsDownUp } from 'react-icons/tb'
+import { WhisperSegments } from '@/interface'
+import { cloneDeep } from 'lodash-es'
 
 interface TiptapProps {
     setEditor?: (editor: Editor) => void,
@@ -18,6 +20,9 @@ interface TiptapProps {
 }
 
 const Tiptap = ({ setEditor, content }: TiptapProps) => {
+    const [openTranslate, setOpenTranslate] = useState(false)
+    const [translating, setTranslating] = useState<boolean>(false);
+    
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -59,26 +64,34 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
     const getContent = () => {
         const jsonData = editor?.getJSON();
         const originalData = jsonData?.content?.filter(item => item.type === 'editorCard')
-        const data = originalData?.map((item, index) => ({text: item.content![0].text || '', index}))
-        return data || [{text: ''}]
+        const data = originalData?.map((item, index) => ({text: item.content ? item.content[0].text : '', index})).filter(item => !!item.text?.length)
+        return data || []
     }
 
-    const addTranslate = (translateData: string) => { 
+    const addTranslate = (translateData: WhisperSegments[]) => { 
         console.log(translateData)
+        const jsonData = editor?.getJSON();
+        const editorContent = cloneDeep(jsonData?.content);
+        if(editorContent?.length) {
+            const list = mergeTranslate(editorContent.filter(item => item.type === 'editorCard'), translateData).map(item => item.content && !item.content[0].text.length ? {type: item.type, attrs: item.attrs} : item)
+            console.log(list)
+            setTranslating(false)
+            editor?.chain().setContent({ type: 'doc', content: list }).focus().run()
+        }
     }
 
     return (
         <>
-            <div className='flex items-center justify-end'>
-                <Popover>
+            <div className='flex items-center justify-end mb-2'>
+                <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
                     <PopoverTrigger asChild>
-                        <Button className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
-                            <TbArrowsDownUp size={18} />
+                        <Button className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4"> 
+                            {translating ? <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} /> : <TbArrowsDownUp size={18} />}
                             <span className=" text-sm ml-1">翻译</span>
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto">
-                        <TranslatePanel getTranslateData={addTranslate} getContent={getContent}  ></TranslatePanel>
+                        <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
                     </PopoverContent>
                 </Popover>
                 <Button className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" onClick={() => clear()}>

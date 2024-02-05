@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { ScrollArea } from "../ui/scroll-area";
 import { Button } from "../ui/button";
+import { resultItemString } from "@/lib/utils";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { useToast } from "../ui/use-toast";
+import { TranslateComplete, TranslateMessage, TranslateProgress, TranslateStart, WhisperSegments } from "@/interface";
+import { observer, inject } from "mobx-react";
+import SettingStore from "@/stores/settingStore";
 
 export type SupportProviders =
     | "none"
@@ -47,12 +53,12 @@ const langLists = [
 enum ServiceProvider {
     Google = 'Google',
     Microsoft = 'Microsoft',
-    OpenAI = 'OpenAI',
-    Volctrans = 'Volctrans',
+    OpenAI = 'openAI',
+    Volctrans = 'volctrans',
     DeepL = 'DeepL',
-    Ernie = 'Ernie',
-    Baidu = 'Baidu',
-    ZhipuAI = 'ZhipuAI',
+    Ernie = 'ernie',
+    Baidu = 'baidu',
+    ZhipuAI = 'zhipuAI',
 }
 
 const providerList = [
@@ -88,54 +94,96 @@ const providerList = [
 ]
 
 interface TranslatePanelProps {
-    getTranslateData: (data: string) => void,
-    getContent: () => {text: string}[],
+    getTranslateData: (data: WhisperSegments[]) => void
+    getContent: () => { text?: string }[]
+    closePanel?: () => void
+    startTranslate?: (value: boolean) => void
+    settingStore?: SettingStore
 }
 declare const window: any;
 
-const TranslatePanel = ({ getContent, getTranslateData }: TranslatePanelProps) => {
+const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePanel, startTranslate, getContent, getTranslateData }: TranslatePanelProps) => {
 
     const [provider, setProvider] = useState<{ label: string, value: ServiceProvider }>(providerList[0])
-    const [langs, setLangs] = useState<{ label: string, value: string }[]>(langLists)
+    const [langs] = useState<{ label: string, value: string }[]>(langLists)
     const [lang, setLang] = useState<{ label: string, value: string }>(langLists[0])
+    const [translating, setTranslating] = useState<boolean>(false);
+    const { toast } = useToast()
 
     const handler = useCallback((event: any, messageData: TranslateProgress | TranslateComplete | TranslateStart | TranslateMessage) => {
         switch (messageData.type) {
-            case 'translate:start': 
+            case 'translate:start':
                 console.log(messageData.data.type + '翻译开始', messageData.data);
                 break;
-            case 'translate:progress': 
+            case 'translate:progress':
                 console.log('进度：', (messageData.data[0].index + 1) / getContent().length * 100 + '%', messageData.data[0].text);
                 break;
-            case 'translate:message': 
+            case 'translate:message':
                 console.log('翻译消息', messageData.data[0].text);
                 break;
-            case 'translate:complete': 
+            case 'translate:complete':
                 console.log(messageData.data.type + '翻译完成', messageData.data);
                 break;
         }
     }, [getContent]) // getContent变更时更新 handler
-    
+
     useEffect(() => {
         window.AIM?.handleMessage(handler, 'MemoTTSTranslateContent') // MemoTTSTranslateContent是唯一标识，可以用于区分不同的消息监听
-
+        
         return () => {
             // 组件销毁时移除事件监听
-            window.AIM.removeHandler('translateContent')
+            window.AIM.removeHandler('MemoTTSTranslateContent')
         }
     }, [handler]) // handler更新时重新注册事件
 
     const addTranslate = async () => {
+        const content = getContent();
+        if(!content.length) {
+            toast({
+                variant: "destructive",
+                description: `请先输入内容...`
+            })
+            return
+        }
+        if(provider.value !== ServiceProvider.Google && provider.value !== ServiceProvider.Microsoft && !settingStore?.settings[provider.value]) {
+            toast({
+                variant: "destructive",
+                description: `未配置服务，请先在设置面板配置服务...`
+            })
+            return
+        }
+        setTranslating(true)
+        startTranslate && startTranslate(true)
         const targetLang = lang;
         const options = {
             content: getContent(),
             targetLang
         }
-        console.log(options, provider.value)
-        const res = await window.AIM.translateContent(options, provider.value)
+        try {
+            closePanel && closePanel()
+            const res = await window.AIM.translateContent(options, provider.value)
+            if (res.status) {
+                console.log(res.content);
+                let arr
+                if (typeof res.content === 'object') {
+                    arr = res.content.map((item: any, i: number) => `[${i}]${item.trim()}`)
+                } else {
+                    arr = res.content.trim().split(/\[\d+\]/).filter(Boolean).map((item: any, i: number) => `[${i}]${item.trim()}`)
+                }
+                const result = resultItemString(arr, options.content as WhisperSegments[])
+                getTranslateData(result)
+            }
+            setTranslating(false)
+            startTranslate && startTranslate(false)
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                description: `翻译失败，请检查网络代理再重试...`
+            })
+            setTranslating(false)
+            startTranslate && startTranslate(false)
+        }
 
-        const translateData = res.content[0] || ''
-        getTranslateData(translateData)
         // const jsonData = editor.getJSON();
         // if (jsonData.content) {
         //     const index = jsonData.content?.findIndex(item => item.attrs?.id == node.attrs.id)
@@ -188,7 +236,7 @@ const TranslatePanel = ({ getContent, getTranslateData }: TranslatePanelProps) =
                     <SelectContent>
                         <ScrollArea className="h-[300px]">
                             {langs && langs.map(lang => (
-                                <SelectItem key={lang.value} value={lang.value}>
+                                <SelectItem disabled={lang.value == 'yue' && provider.value === ServiceProvider.Google} key={lang.value} value={lang.value}>
                                     {lang.label}
                                 </SelectItem>
                             ))}
@@ -196,9 +244,12 @@ const TranslatePanel = ({ getContent, getTranslateData }: TranslatePanelProps) =
                     </SelectContent>
                 </Select>
             </div>
-            <Button className="w-full" onClick={addTranslate}>翻译</Button>
+            <Button className="w-full" onClick={addTranslate}>
+                {translating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
+                <span>翻译</span>
+            </Button>
         </>
     )
-}
+}))
 
 export default TranslatePanel
