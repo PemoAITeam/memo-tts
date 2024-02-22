@@ -124,7 +124,7 @@ const VolcanoConfig = ({ setOptions, getAudition }: ConfigProps) => {
             {voiceList.length ?
                 <div className="valcano-voice-content">
                     {voiceList.map((v: any) => (
-                        <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? ' text-purple-500' : ''}`} key={v.value} onClick={() => handleVoice(v)}>
+                        <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? ' text-accent-foreground' : ''}`} key={v.value} onClick={() => handleVoice(v)}>
                             <TbVolume className=" cursor-pointer mr-3" size={18} onClick={(e) => audition(e, v)} />
                             <span>{v.label}</span>
                             {v.gender == 'female' && <IoIosFemale className=" ml-1" size={15} />}

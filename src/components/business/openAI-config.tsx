@@ -74,7 +74,7 @@ const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
             <Separator className="my-2" />
             <div className="voice-type-content">
                 {OpenAISpeaker.map((v: {value: string, label: string}) => (
-                    <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? 'text-purple-500' : ''}`} key={v.value} onClick={() => {setVoice(v)}}>
+                    <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? ' text-accent-foreground' : ''}`} key={v.value} onClick={() => {setVoice(v)}}>
                         <TbVolume className=" cursor-pointer mr-3" size={18}  onClick={(e) => audition(e, v)} />
                         <span>{v.label}</span>
                     </div>
