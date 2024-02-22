@@ -111,7 +111,7 @@ const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePan
     const [translating, setTranslating] = useState<boolean>(false);
     const { toast } = useToast()
 
-    const handler = useCallback((event: any, messageData: TranslateProgress | TranslateComplete | TranslateStart | TranslateMessage) => {
+    const handler = useCallback((_event: any, messageData: TranslateProgress | TranslateComplete | TranslateStart | TranslateMessage) => {
         switch (messageData.type) {
             case 'translate:start':
                 console.log(messageData.data.type + '翻译开始', messageData.data);
