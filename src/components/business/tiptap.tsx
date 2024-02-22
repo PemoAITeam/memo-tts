@@ -57,8 +57,11 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
     useEffect(() => {
         // this is just an example. do whatever you want to do here
         // to retrieve your editors content from somewhere
-        editor?.commands.setContent(content || `<editor-card></editor-card>`)
-      }, [editor, content])
+        Promise.resolve().then(() => {
+            // 在微任务中执行
+            editor?.commands.setContent(content || `<editor-card></editor-card>`)
+        });
+    }, [editor, content])
 
     const clear = () => {
         editor?.commands.clearContent();
