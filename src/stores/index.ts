@@ -1,3 +1,4 @@
+import AppStore from "./appStore";
 import DataStore from "./dataStore";
 import SettingStore from "./settingStore";
 import { configurePersistable } from "mobx-persist-store";
@@ -16,8 +17,10 @@ configurePersistable(
 
 export const settingStore = new SettingStore();
 export const dataStore = new DataStore();
+const appStore = new AppStore();
 
 export default {
     settingStore,
-    dataStore
+    dataStore,
+    appStore
 }

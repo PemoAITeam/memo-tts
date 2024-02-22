@@ -144,17 +144,20 @@ export interface AppSettings {
 
 export interface TemoData {
   dest?: string;//存储文件夹
-  editorData?: {
-    content?: {type: "text", text: string}[],
-    attrs?: Record<string, any>,
-    type: "editorCard" | "translateCard"
-  }[];
   fileUrl?: string;//文件地址
   infoData?: Record<string, {fileDest: string, metadata: Record<string, any>, text: string} | string[]>;
   lang?: AllLanguage;
   metadata?: Record<string, any>;
-  title?: string;
-  uuid?: string;
+  title: string;
+  uuid: string;
   voiceLocalName?: string;
-  voiceName?: string
+  voiceName?: string;
+  date?: number;
+  editorData?: EditorData[];
+}
+
+export interface EditorData {
+  content?: { type: "text", text: string }[],
+  attrs?: Record<string, any>,
+  type: "editorCard" | "translateCard"
 }

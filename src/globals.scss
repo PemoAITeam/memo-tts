@@ -103,7 +103,7 @@
   -webkit-app-region: drag;
 }
 
-.memo-no-draggable {
+.temo-no-draggable {
   -webkit-app-region: no-drag;
 }
 
@@ -113,6 +113,11 @@
   backdrop-filter: blur(250px);
   -webkit-backdrop-filter: blur(250px);
   /* 兼容 WebKit 浏览器 */
+}
+
+#audioPlayer, #auditionPlayer {
+  position: absolute;
+  top: -9999px;
 }
 
 ::-webkit-scrollbar {

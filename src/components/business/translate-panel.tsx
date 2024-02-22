@@ -8,6 +8,7 @@ import { useToast } from "../ui/use-toast";
 import { TranslateComplete, TranslateMessage, TranslateProgress, TranslateStart, WhisperSegments } from "@/interface";
 import { observer, inject } from "mobx-react";
 import SettingStore from "@/stores/settingStore";
+import { cloneDeep } from "lodash-es";
 
 export type SupportProviders =
     | "none"
@@ -161,7 +162,7 @@ const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePan
         }
         try {
             closePanel && closePanel()
-            const res = await window.AIM.translateContent(options, provider.value)
+            const res = await window.AIM.translateContent(cloneDeep(options), cloneDeep(provider.value))
             if (res.status) {
                 console.log(res.content);
                 let arr
@@ -183,16 +184,6 @@ const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePan
             setTranslating(false)
             startTranslate && startTranslate(false)
         }
-
-        // const jsonData = editor.getJSON();
-        // if (jsonData.content) {
-        //     const index = jsonData.content?.findIndex(item => item.attrs?.id == node.attrs.id)
-        //     if (index > -1) {
-        //         const list = [...jsonData.content.slice(0, index + 1), { type: 'translateCard', attrs: { id: generateUUID() }, content: [{ type: 'text', text: translateData }] }, ...jsonData.content.slice(index + 1)];
-        //         console.log(list)
-        //         editor.chain().setContent({ type: 'doc', content: list }).focus().run()
-        //     }
-        // }
     }
 
     const switchProvider = (value: string) => {

@@ -23,6 +23,10 @@ export const EditorCard = Node.create({
                 default: generateUUID(),
                 rendered: false,
             },
+            voice: {
+                default: null,
+                rendered: false
+            }
         }
     },
 
@@ -37,8 +41,16 @@ export const EditorCard = Node.create({
     addKeyboardShortcuts() {
         return {
             'Enter': () => {
-                console.log(this.editor.state.toJSON())
-                return this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, attrs: {id: generateUUID()} }).focus().run()
+                const data = this.editor.state.toJSON().doc.content;
+                this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, attrs: {id: generateUUID()} }).focus().run()
+                const jsonData = this.editor.getJSON();
+                console.log(jsonData)
+                const splitItem = jsonData.content?.find(item => data.findIndex((info: any) => info.attrs.id === item.attrs?.id) > -1)
+                if(splitItem && splitItem.attrs) {
+                    splitItem.attrs.id = generateUUID()
+                    this.editor.commands.setContent(jsonData)
+                }
+                return true
             },
             'Control-V': () => {
                 navigator.clipboard.readText().then(text => {

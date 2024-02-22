@@ -2,20 +2,30 @@ import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { GoPlus } from "react-icons/go";
 import { MdOutlineKeyboardVoice } from "react-icons/md";
 import { TbArrowsDownUp } from "react-icons/tb";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { generateUUID } from "@/lib/utils";
 import TranslatePanel from "./translate-panel";
 import { cloneDeep } from 'lodash-es';
 import { WhisperSegments } from "@/interface";
+import { Button } from "../ui/button";
+import TTSPanel from "./tts-panel";
+import { useState } from "react";
+import { TTSOptions } from "@/lib/tts";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 const EditorCardItem = ({ node, editor }: NodeViewProps) => {
-    
+
+    const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
+    const [options, setOptions] = useState<TTSOptions>()
+    const [voice, setVoice] = useState<string>(node.attrs?.voice?.voiceLocalName)
+    const [openTTS, setOpenTTS] = useState(false)
+
     const addTranslate = (translateData: WhisperSegments[]) => {
         const jsonData = editor.getJSON();
         if (jsonData.content) {
             const index = jsonData.content?.findIndex(item => item.attrs?.id == node.attrs.id)
             if (index > -1) {
-                if(jsonData.content[index + 1].type === 'translateCard') {
+                if (jsonData.content[index + 1].type === 'translateCard') {
                     jsonData.content[index + 1].content = [{ type: 'text', text: translateData[0].text }];
                     editor.chain().setContent({ type: 'doc', content: cloneDeep(jsonData.content) }).focus().run()
                 } else {
@@ -28,25 +38,90 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
     }
 
     const getContent = () => {
-        return [{text: node.content.toJSON()[0].text}]
+        return [{ text: node.content.toJSON()[0].text }]
+    }
+
+    const addVoice = () => {
+        console.log(options, service)
+        const jsonData = editor.getJSON();
+        if (jsonData.content) {
+            const curItem = jsonData.content?.find(item => item.attrs?.id == node.attrs.id && item.type === "editorCard")
+            if (curItem && curItem.attrs) {
+                console.log(curItem)
+                if (service === 'Edge') {
+                    curItem.attrs.voice = {
+                        type: 'Edge',
+                        lang: options?.lang,
+                        pitch: 0,
+                        voiceName: options?.voice?.shortName,
+                        voiceLocalName: options?.voice?.properties.LocalName,
+                    }
+                } else if (service === 'OpenAI') {
+                    curItem.attrs.voice = {
+                        type: 'OpenAI',
+                        model: options?.model,
+                        voice: options?.voice?.value,
+                        voiceLocalName: options?.voice?.label,
+                    }
+                } else if (service === 'Volcano') {
+                    curItem.attrs.voice = {
+                        type: 'Volc',
+                        emotion: options?.emotion,
+                        voice_type: options?.voice?.value,
+                        voiceLocalName: options?.voice?.label,
+                        scene: options?.scenes,
+                    }
+                }
+
+                setVoice(curItem.attrs.voice.voiceLocalName)
+                editor.chain().setContent(jsonData).focus().run()
+            }
+        }
     }
 
     return (
         <NodeViewWrapper className="editor-card-item">
+            {voice && <div className=" pl-7 mt-4">
+                <Popover open={openTTS} onOpenChange={(open: boolean) => setOpenTTS(open)}>
+                    <PopoverTrigger asChild>
+                        <Button variant={'ghost'} className="editor-voice p-0 pr-2 h-5 mb-1  bg-accent text-accent-foreground">
+                            <MdOutlineKeyboardVoice size={18} />
+                            <span style={{ fontSize: '12px' }}>{voice}</span>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto">
+                        <TTSPanel setOptions={setOptions} getService={setService}></TTSPanel>
+                        <Button className="w-full" onClick={addVoice}>
+                            <span>确定</span>
+                        </Button>
+                    </PopoverContent>
+                </Popover>
+            </div>}
+
             <div className="flex items-start">
                 <DropdownMenu>
                     <DropdownMenuTrigger title='选项' className='flex-shrink-0 p-0 border-none'>
                         <GoPlus size='20' />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem>
-                            <MdOutlineKeyboardVoice className="mr-2" size={18} />
-                            <span className=" text-sm">Add Voice</span>
-                        </DropdownMenuItem>
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                                <MdOutlineKeyboardVoice className="mr-2" size={16} />
+                                <span className=" text-sm">添加声音</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                                <DropdownMenuSubContent className=" p-3">
+                                    <TTSPanel setOptions={setOptions} getService={setService}></TTSPanel>
+                                    <Button className="w-full" onClick={addVoice}>
+                                        <span>确定</span>
+                                    </Button>
+                                </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                        </DropdownMenuSub>
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger disabled={node.content.size == 0} className={`${node.content.size == 0 ? 'text-gray-500' : ''}`}>
                                 <TbArrowsDownUp className="mr-2" size={16} />
-                                <span className=" text-sm">Translate</span>
+                                <span className=" text-sm">翻译</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent className=" p-3">

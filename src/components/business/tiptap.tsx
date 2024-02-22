@@ -22,7 +22,7 @@ interface TiptapProps {
 const Tiptap = ({ setEditor, content }: TiptapProps) => {
     const [openTranslate, setOpenTranslate] = useState(false)
     const [translating, setTranslating] = useState<boolean>(false);
-    
+
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -30,7 +30,6 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
             TranslateCard,
             EventHandler,
         ],
-        content: content || `<editor-card></editor-card>`,
         autofocus: true,
         enablePasteRules: false,
         onUpdate: (props) => {
@@ -48,13 +47,18 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
             console.log(editor)
             setEditor(editor as Editor)
         }
+        return () => {
+            if (editor) {
+                editor.destroy()
+            }
+        }
     }, [editor, setEditor])
 
     useEffect(() => {
-        if (content && editor) {
-            editor?.commands.setContent({ type: 'doc', content: content })
-        }
-    }, [content, editor])
+        // this is just an example. do whatever you want to do here
+        // to retrieve your editors content from somewhere
+        editor?.commands.setContent(content || `<editor-card></editor-card>`)
+      }, [editor, content])
 
     const clear = () => {
         editor?.commands.clearContent();
@@ -64,16 +68,16 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
     const getContent = () => {
         const jsonData = editor?.getJSON();
         const originalData = jsonData?.content?.filter(item => item.type === 'editorCard')
-        const data = originalData?.map((item, index) => ({text: item.content ? item.content[0].text : '', index})).filter(item => !!item.text?.length)
+        const data = originalData?.map((item, index) => ({ text: item.content ? item.content[0].text : '', index })).filter(item => !!item.text?.length)
         return data || []
     }
 
-    const addTranslate = (translateData: WhisperSegments[]) => { 
+    const addTranslate = (translateData: WhisperSegments[]) => {
         console.log(translateData)
         const jsonData = editor?.getJSON();
         const editorContent = cloneDeep(jsonData?.content);
-        if(editorContent?.length) {
-            const list = mergeTranslate(editorContent.filter(item => item.type === 'editorCard'), translateData).map(item => item.content && !item.content[0].text.length ? {type: item.type, attrs: item.attrs} : item)
+        if (editorContent?.length) {
+            const list = mergeTranslate(editorContent.filter(item => item.type === 'editorCard'), translateData).map(item => item.content && !item.content[0].text.length ? { type: item.type, attrs: item.attrs } : item)
             console.log(list)
             setTranslating(false)
             editor?.chain().setContent({ type: 'doc', content: list }).focus().run()
@@ -85,7 +89,7 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
             <div className='flex items-center justify-end mb-2'>
                 <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
                     <PopoverTrigger asChild>
-                        <Button className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4"> 
+                        <Button variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
                             {translating ? <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} /> : <TbArrowsDownUp size={18} />}
                             <span className=" text-sm ml-1">翻译</span>
                         </Button>
@@ -94,7 +98,7 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
                         <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
                     </PopoverContent>
                 </Popover>
-                <Button className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" onClick={() => clear()}>
+                <Button variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" onClick={() => clear()}>
                     <AiOutlineClear size={18} />
                     <span className=" text-sm ml-1">清空</span>
                 </Button>
