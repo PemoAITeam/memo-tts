@@ -1,11 +1,7 @@
 import './home.scss'
 import { Button } from '@/components/ui/button';
 import Tiptap from '@/components/business/tiptap';
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect, useState } from 'react';
-// import EdgeConfig from '@/components/business/edge-config';
-// import OpenAIConfig from '@/components/business/openAI-config';
-// import VolcanoConfig from '@/components/business/volcano-config';
 
 import { secondsToHMS, generateUUID } from '@/lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";

@@ -153,6 +153,7 @@ export interface TemoData {
   voiceLocalName?: string;
   voiceName?: string;
   date?: number;
+  duration?: string;
   editorData?: EditorData[];
 }
 

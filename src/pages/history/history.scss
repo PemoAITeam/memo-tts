@@ -1,15 +1,3 @@
-.tts-service-panel {
-    min-width: 250px;
-}
-
-.ProseMirror .is-empty::before {
-    content: 'Start writing';
-    float: left;
-    color: #ced4da;
-    pointer-events: none;
-    height: 0;
-}
-
 .temo-content {
     max-height: 100%;
     overflow: hidden;
@@ -17,16 +5,6 @@
     .list-scroll-area {
         height: calc(100% - 3.5rem);
     }
-}
-
-.voice-type-content {
-    max-height: 26vh;
-    overflow-y: scroll;
-}
-
-.valcano-voice-content {
-    max-height: 34vh;
-    overflow-y: scroll;
 }
 
 .is-playing-audio {

@@ -1,11 +1,7 @@
 import './history.scss'
 import { Button } from '@/components/ui/button';
 import Tiptap from '@/components/business/tiptap';
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect, useState } from 'react';
-// import EdgeConfig from '@/components/business/edge-config';
-// import OpenAIConfig from '@/components/business/openAI-config';
-// import VolcanoConfig from '@/components/business/volcano-config';
 
 import { secondsToHMS, getLocalFileUrl, getTextFragment } from '@/lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
@@ -27,6 +23,9 @@ import { useParams } from 'react-router-dom';
 import AppStore from '@/stores/appStore';
 import TTSPanel from '@/components/business/tts-panel';
 import { cloneDeep } from 'lodash-es';
+import { TbDownload } from "react-icons/tb";
+import { HiOutlineTrash } from "react-icons/hi2";
+import { TemoData } from '@/interface';
 
 declare const window: any;
 
@@ -58,11 +57,10 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     let downloadList = [];
     console.log(id)
     useEffect(() => {
+        setList(dataStore?.temoData || [])
+        if(curTemoId) return
         if (dataStore?.temoData.length) {
-            setList(dataStore.temoData)
-            if (!id) {
-                setCurTemoId(dataStore.temoData[0].uuid)
-            }
+            setCurTemoId(id || dataStore.temoData[0].uuid)
             const curData = dataStore.temoData.find(item => item.uuid === id || item.uuid === dataStore.temoData[0].uuid)
             console.log(dataStore.temoData)
             if (curData) {
@@ -75,7 +73,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             setCurEditorData("")
         }
 
-    }, [dataStore?.temoData, settingStore, id]);
+    }, [dataStore?.temoData, settingStore, id, curTemoId]);
 
     useEffect(() => {
         if (id) {
@@ -294,7 +292,18 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                 })
             }
         }
-    };
+    }
+
+    const deleteItem = async (event: any, data: TemoData) => {
+        if (event) {
+            event.stopPropagation();
+        }
+        if(data.uuid === curTemoId) {
+            setCurTemoId("")
+            setCurEditorData("")
+        }
+        dataStore?.setTrashData([data])
+    }
 
     return (
         <>
@@ -318,9 +327,9 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                     {batchDownload && !item.selected && <span className='absolute w-3 h-3 border right-2 top-1'></span>}
                                     {batchDownload && item.selected && <span className='absolute w-3 h-3 right-2 top-1'><GrCheckboxSelected size={12} /></span>}
                                     <div className={`flex flex-1 items-center space-x-3 rounded-md border p-3 mb-3 ${curTemoId == item.uuid ? 'is-selected' : ''} ${item.fileUrl === curPlay?.fileUrl ? 'is-playing-audio' : ''}`}>
-                                        <span className={`flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
+                                        <Button title='播放' variant={'ghost'} onClick={(e) => playAudio(item, false, e)} className={`p-0 cursor-pointer hover:bg-transparent flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
                                             <PiVinylRecord size={36} />
-                                        </span>
+                                        </Button>
                                         <div className="flex-1 space-y-1">
                                             <p className="font-medium cursor-default">
                                                 {item.title}
@@ -330,8 +339,13 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                                 <span>{item.duration}</span>
                                             </p>
                                         </div>
-                                        <Button variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>下载</Button>
-                                        <Button variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm mr-1' onClick={(e) => playAudio(item, false, e)}>{item.fileUrl === curPlay?.fileUrl ? '取消' : '播放'}</Button>
+                                        <Button title='下载' variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>
+                                            <TbDownload size={18} />
+                                        </Button>
+                                        <Button title='删除' variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => deleteItem(e, item)}>
+                                            <HiOutlineTrash size={18} />
+                                        </Button>
+                                        {/* <Button variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm mr-1' onClick={(e) => playAudio(item, false, e)}>{item.fileUrl === curPlay?.fileUrl ? <AiOutlinePauseCircle size={18} /> : <GoPlay size={18} />}</Button> */}
                                     </div>
                                 </div>
                             )

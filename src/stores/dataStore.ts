@@ -14,6 +14,7 @@ class DataStore {
             properties: [
                 'temoData',
                 'editorData',
+                'trashData'
             ],
         });
     }
@@ -22,18 +23,55 @@ class DataStore {
 
     editorData: { type: 'doc', content: EditorData } | string = ''
 
+    trashData: TemoData[] = []
+
     setTemoData = (data: TemoData) => {
-        // const index = this.temoData.findIndex(item => item.uuid === data.uuid)
-        // if (index > -1) {
-        //     this.temoData[index].editorData = editorData
-        //     this.temoData[index].data.unshift(data)
-        // }
         this.temoData.unshift(data)
     }
 
     setEditorData = (data: any) => {
         this.editorData = data;
         localStorage.setItem('temo-editor', JSON.stringify(data))
+    }
+
+    setTrashData = (data: TemoData[]) => {
+        this.trashData = data.concat(this.trashData)
+        window.AIM.saveTemoTrash(cloneDeep(this.trashData))
+        data.forEach(info => {
+            const index = this.temoData.findIndex(item => item.uuid === info.uuid)
+            if (index > -1) {
+                const newData = cloneDeep(this.temoData)
+                newData.splice(index, 1)
+                this.temoData = newData
+            }
+        })
+        window.AIM.updateTemoData(cloneDeep(this.temoData))
+    }
+
+    deleteTrashData = (data: TemoData[], isDelete?: boolean) => {
+        if (this.trashData.length) {
+            data.forEach(info => {
+                const index = this.trashData.findIndex(item => item.uuid === info.uuid)
+                if (index > -1) {
+                    const newData = cloneDeep(this.trashData)
+                    newData.splice(index, 1)
+                    this.trashData = newData
+                }
+            })
+            if(!isDelete) {
+                this.temoData = data.concat(this.temoData)
+                window.AIM.updateTemoData(cloneDeep(this.temoData))
+            }
+            window.AIM.saveTemoTrash(cloneDeep(this.trashData), isDelete ? data.map(item => item.uuid) : null)
+        }
+    }
+
+    getTrashData = async () => {
+        const trashData = await window.AIM.getTemoTrash() || []
+        runInAction(() => {
+            this.trashData = trashData
+        })
+        return trashData
     }
 
     initData = async () => {
@@ -49,7 +87,7 @@ class DataStore {
         })
     }
 
-    mergeTemo = async (data: {service: 'Edge' | 'OpenAI' | 'Volcano', speed: string, jsonData: any, uuid: string, editorData:any}, options: any) => {
+    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano', speed: string, jsonData: any, uuid: string, editorData: any }, options: any) => {
         let params;
         if (data.service === 'Edge') {
             const rate = getSpeed(data.speed);
