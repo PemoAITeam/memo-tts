@@ -4,6 +4,8 @@ import { cloneDeep } from 'lodash-es';
 import md5 from 'md5';
 import { makeAutoObservable, runInAction } from 'mobx'
 import { makePersistable } from 'mobx-persist-store'
+import { settingStore } from '.';
+import { toast } from '@/components/ui/use-toast';
 
 
 class DataStore {
@@ -49,7 +51,7 @@ class DataStore {
         })
     }
 
-    mergeTemo = async (data: {service: 'Edge' | 'OpenAI' | 'Volcano', speed: string, jsonData: any, uuid: string, editorData:any}, options: any) => {
+    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano', speed: string, jsonData: any, uuid: string, editorData: any }, options: any) => {
         let params;
         if (data.service === 'Edge') {
             const rate = getSpeed(data.speed);
@@ -74,6 +76,13 @@ class DataStore {
                 })
             }
         } else if (data.service === 'OpenAI') {
+            if (!settingStore.settings.openAI?.apiKey) {
+                toast({
+                    variant: "destructive",
+                    description: `请前往设置页配置ApiKey`
+                })
+                return
+            }
             params = {
                 type: 'OpenAI',
                 model: options?.model,
@@ -94,6 +103,13 @@ class DataStore {
                 })
             }
         } else if (data.service === 'Volcano') {
+            if (!settingStore.settings.tts?.volctrans?.accessToken) {
+                toast({
+                    variant: "destructive",
+                    description: `请前往设置页配置AccessToken`
+                })
+                return
+            }
             params = {
                 type: 'Volc',
                 emotion: options?.emotion,
@@ -116,6 +132,12 @@ class DataStore {
         }
         console.log(params)
         const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, cloneDeep(data.editorData));
+        if (!result) {
+            toast({
+                variant: "destructive",
+                description: `合成语音失败，请重试`
+            })
+        }
         return result
     }
 

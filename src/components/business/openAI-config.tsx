@@ -26,7 +26,7 @@ const OpenAISpeaker = [{
     label: "shimmer"
 }]
 const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
-    const [model, setModel] = useState<'tts-1-hd' | 'tts-1'>('tts-1-hd')
+    const [model, setModel] = useState<'tts-1-hd' | 'tts-1'>('tts-1')
     const [voice, setVoice] = useState<any>({value: "alloy", label: "alloy"})
 
     useEffect(() => {
@@ -61,11 +61,11 @@ const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
                 </SelectTrigger>
                 <SelectContent>
                     <ScrollArea className="h-[300px]">
-                        <SelectItem value="tts-1-hd">
-                            tts-1-hd
-                        </SelectItem>
                         <SelectItem value="tts-1">
                             tts-1
+                        </SelectItem>
+                        <SelectItem disabled={true} value="tts-1-hd">
+                            tts-1-hd
                         </SelectItem>
                     </ScrollArea>
                 </SelectContent>
@@ -74,7 +74,7 @@ const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
             <Separator className="my-2" />
             <div className="voice-type-content">
                 {OpenAISpeaker.map((v: {value: string, label: string}) => (
-                    <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? ' text-accent-foreground' : ''}`} key={v.value} onClick={() => {setVoice(v)}}>
+                    <div className={`flex items-center mr-4 mb-1 cursor-pointer ${voice.value === v.value ? ' text-primary' : ''}`} key={v.value} onClick={() => {setVoice(v)}}>
                         <TbVolume className=" cursor-pointer mr-3" size={18}  onClick={(e) => audition(e, v)} />
                         <span>{v.label}</span>
                     </div>

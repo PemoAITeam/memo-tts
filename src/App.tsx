@@ -1,3 +1,4 @@
+import "./App.scss"
 import { inject, observer } from "mobx-react";
 import { useEffect, useState } from "react";
 import { HashRouter } from "react-router-dom";

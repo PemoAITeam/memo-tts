@@ -13,6 +13,10 @@ import TranslatePanel from './translate-panel'
 import { TbArrowsDownUp } from 'react-icons/tb'
 import { WhisperSegments } from '@/interface'
 import { cloneDeep } from 'lodash-es'
+import mammoth from 'mammoth'
+import { toast } from '../ui/use-toast'
+import { remark } from 'remark'
+import strip from 'strip-markdown'
 
 interface TiptapProps {
     setEditor?: (editor: Editor) => void,
@@ -87,9 +91,61 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
         }
     }
 
+    const handleDrop = (event: any) => {
+        event.preventDefault();
+        const file = event.dataTransfer.files[0];
+        const reader = new FileReader();
+        console.log(file)
+        if (file.type === 'text/plain') {
+            reader.readAsText(file);
+            reader.onload = e => { // 读取完毕从中取值
+                const text = e.target?.result as string;
+                editor?.chain().insertContentAt(editor.state.selection.head, text).focus().run()
+                console.log('pointsTxt', text) // 获取到的TXT文件
+            };
+        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
+            reader.onloadend = function () {
+                const arrayBuffer = reader.result as ArrayBuffer;
+                if (arrayBuffer) {
+                    mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
+                        editor?.chain().insertContentAt(editor.state.selection.head, resultObject.value).focus().run()
+                    })
+                }
+
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            const type = file.name.split('.').pop();
+            if (type === 'md') {
+                reader.onload = e => {
+                    const markdownText = e.target?.result as string;
+                    // 使用 remark 解析 Markdown
+                    remark()
+                        .use(strip) // 使用 strip 插件去除 Markdown 格式
+                        .process(markdownText, (err, file) => {
+                            if (err) throw err;
+
+                            // 提取的纯文本
+                            const text = file?.toString();
+                            if (text) {
+                                editor?.chain().insertContentAt(editor.state.selection.head, text).focus().run()
+                            }
+                            console.log(text);
+                        });
+                };
+                reader.readAsText(file); // 以文本格式读取文件
+            } else {
+                toast({
+                    variant: "destructive",
+                    description: `当前只支持解析txt、docx、md文档`
+                })
+            }
+        }
+    };
+
     return (
         <>
-            <div className='flex items-center justify-end mb-2'>
+            <div className='flex items-center flex-shrink-0 justify-end mb-2 pr-3'>
                 <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
                     <PopoverTrigger asChild>
                         <Button variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
@@ -106,7 +162,12 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
                     <span className=" text-sm ml-1">清空</span>
                 </Button>
             </div>
-            <EditorContent editor={editor} />
+            <div id="drop-area" className='flex-1 overflow-y-auto pr-3'
+                onDrop={handleDrop}
+                onDragOver={(event) => event.preventDefault()}
+                onDragEnter={(event) => event.preventDefault()}>
+                <EditorContent editor={editor} />
+            </div>
         </>
     )
 }

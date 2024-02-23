@@ -13,13 +13,10 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PiVinylRecord } from "react-icons/pi";
 import { TbFileDownload } from "react-icons/tb";
 import { GrCheckboxSelected } from "react-icons/gr";
-import mammoth from "mammoth";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from '@/lib/tts';
 import { useToast } from "@/components/ui/use-toast"
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { remark } from 'remark';
-import strip from 'strip-markdown'
 import { inject, observer } from 'mobx-react';
 import SettingStore from '@/stores/settingStore';
 import DataStore from '@/stores/dataStore';
@@ -92,10 +89,10 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     const generateAudio = async () => {
         try {
             const editorData = editorRef?.getJSON().content;
-            if(editorData?.length) {
+            if (editorData?.length) {
                 editorData.forEach((item, index) => {
-                    if(item.type == 'editorCard' && editorData[index + 1]?.type == 'translateCard' ) {
-                        if(item.attrs?.voice) {
+                    if (item.type == 'editorCard' && editorData[index + 1]?.type == 'translateCard') {
+                        if (item.attrs?.voice) {
                             editorData[index + 1].attrs!.voice = item.attrs.voice
                         } else {
                             delete editorData[index + 1].attrs!.voice
@@ -115,20 +112,15 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                 return
             }
             setJenerating(true)
-            const result = await dataStore?.mergeTemo({service,speed, jsonData, uuid:curTemoId, editorData: editorRef?.getJSON()}, options)
+            const result = await dataStore?.mergeTemo({ service, speed, jsonData, uuid: curTemoId, editorData: editorRef?.getJSON() }, options)
             if (result) {
                 result.duration = secondsToHMS(result.metadata?.duration)
                 const index = list.findIndex(item => item.uuid === result.uuid)
-                if(index > -1) {
-                    list.splice(index,1)
+                if (index > -1) {
+                    list.splice(index, 1)
                     list.unshift(result)
                 }
                 setList(cloneDeep(list))
-            } else {
-                toast({
-                    variant: "destructive",
-                    description: `合成语音失败，请重试`
-                })
             }
             console.log(result)
             setJenerating(false);
@@ -244,57 +236,57 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         setList(updatedData)
     }
 
-    const handleDrop = (event: any) => {
-        event.preventDefault();
-        const file = event.dataTransfer.files[0];
-        const reader = new FileReader();
-        console.log(file)
-        if (file.type === 'text/plain') {
-            reader.readAsText(file);
-            reader.onload = e => { // 读取完毕从中取值
-                const text = e.target?.result as string;
-                editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
-                console.log('pointsTxt', text) // 获取到的TXT文件
-            };
-        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
-            reader.onloadend = function () {
-                const arrayBuffer = reader.result as ArrayBuffer;
-                if (arrayBuffer) {
-                    mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
-                        editorRef?.chain().insertContentAt(editorRef.state.selection.head, resultObject.value).focus().run()
-                    })
-                }
+    // const handleDrop = (event: any) => {
+    //     event.preventDefault();
+    //     const file = event.dataTransfer.files[0];
+    //     const reader = new FileReader();
+    //     console.log(file)
+    //     if (file.type === 'text/plain') {
+    //         reader.readAsText(file);
+    //         reader.onload = e => { // 读取完毕从中取值
+    //             const text = e.target?.result as string;
+    //             editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
+    //             console.log('pointsTxt', text) // 获取到的TXT文件
+    //         };
+    //     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
+    //         reader.onloadend = function () {
+    //             const arrayBuffer = reader.result as ArrayBuffer;
+    //             if (arrayBuffer) {
+    //                 mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
+    //                     editorRef?.chain().insertContentAt(editorRef.state.selection.head, resultObject.value).focus().run()
+    //                 })
+    //             }
 
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            const type = file.name.split('.').pop();
-            if (type === 'md') {
-                reader.onload = e => {
-                    const markdownText = e.target?.result as string;
-                    // 使用 remark 解析 Markdown
-                    remark()
-                        .use(strip) // 使用 strip 插件去除 Markdown 格式
-                        .process(markdownText, (err, file) => {
-                            if (err) throw err;
+    //         };
+    //         reader.readAsArrayBuffer(file);
+    //     } else {
+    //         const type = file.name.split('.').pop();
+    //         if (type === 'md') {
+    //             reader.onload = e => {
+    //                 const markdownText = e.target?.result as string;
+    //                 // 使用 remark 解析 Markdown
+    //                 remark()
+    //                     .use(strip) // 使用 strip 插件去除 Markdown 格式
+    //                     .process(markdownText, (err, file) => {
+    //                         if (err) throw err;
 
-                            // 提取的纯文本
-                            const text = file?.toString();
-                            if (text) {
-                                editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
-                            }
-                            console.log(text);
-                        });
-                };
-                reader.readAsText(file); // 以文本格式读取文件
-            } else {
-                toast({
-                    variant: "destructive",
-                    description: `当前只支持解析txt、docx、md文档`
-                })
-            }
-        }
-    };
+    //                         // 提取的纯文本
+    //                         const text = file?.toString();
+    //                         if (text) {
+    //                             editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
+    //                         }
+    //                         console.log(text);
+    //                     });
+    //             };
+    //             reader.readAsText(file); // 以文本格式读取文件
+    //         } else {
+    //             toast({
+    //                 variant: "destructive",
+    //                 description: `当前只支持解析txt、docx、md文档`
+    //             })
+    //         }
+    //     }
+    // };
 
     return (
         <>
@@ -339,10 +331,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                         </div>
 
                         <div className='flex-1 pl-4 pb-4 flex mt-12'>
-                            <div id="drop-area" className='temo-no-draggable flex-1 border h-full p-3 rounded-md overflow-y-scroll'
-                                onDrop={handleDrop}
-                                onDragOver={(event) => event.preventDefault()}
-                                onDragEnter={(event) => event.preventDefault()}>
+                            <div className='flex temo-no-draggable  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
                                 <Tiptap content={curEditorData} setEditor={setEditorRef} />
                             </div>
                             <div className='temo-no-draggable px-4 flex-shrink-0 tts-service-panel'>
