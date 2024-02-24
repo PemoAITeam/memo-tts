@@ -12,6 +12,7 @@ import TTSPanel from "./tts-panel";
 import { useState } from "react";
 import { TTSOptions } from "@/lib/tts";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { IoIosClose } from "react-icons/io";
 
 const EditorCardItem = ({ node, editor }: NodeViewProps) => {
 
@@ -79,14 +80,28 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
         }
     }
 
+    const deleteVoice = (event: any) => {
+        if (event) {
+            event.stopPropagation();
+        }
+        const jsonData = editor.getJSON();
+        const curItem = jsonData.content?.find(item => item.attrs?.id == node.attrs.id && item.type === "editorCard")
+        if(curItem?.attrs) {
+            curItem.attrs.voice = null;
+            setVoice("")
+            editor.chain().setContent(jsonData).focus().run()
+        }
+    }
+
     return (
         <NodeViewWrapper className="editor-card-item">
             {voice && <div className=" pl-7 mt-4">
                 <Popover open={openTTS} onOpenChange={(open: boolean) => setOpenTTS(open)}>
                     <PopoverTrigger asChild>
-                        <Button variant={'ghost'} className="editor-voice p-0 pr-2 h-5 mb-1  bg-accent text-accent-foreground">
+                        <Button variant={'ghost'} className=" relative editor-voice p-0 pr-2 h-5 mb-1  bg-accent text-accent-foreground">
                             <MdOutlineKeyboardVoice size={18} />
                             <span style={{ fontSize: '12px' }}>{voice}</span>
+                            <IoIosClose size={16} className=" absolute -top-1 -right-1" onClick={deleteVoice} />
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto">
