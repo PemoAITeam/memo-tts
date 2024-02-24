@@ -42,13 +42,23 @@ export const EditorCard = Node.create({
         return {
             'Enter': () => {
                 const data = this.editor.state.toJSON().doc.content;
-                this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, attrs: {id: generateUUID()} }).focus().run()
+                const uuid = generateUUID()
+                this.editor.commands.insertContentAt(this.editor.state.selection.head, { type: this.type.name, attrs: {id: uuid} })
                 const jsonData = this.editor.getJSON();
-                console.log(jsonData)
-                const splitItem = jsonData.content?.find(item => data.findIndex((info: any) => info.attrs.id === item.attrs?.id) > -1)
+                let splitItem: any;
+                jsonData.content?.forEach((item: any) => {
+                    if(data.findIndex((info: any) => info.attrs.id === item.attrs?.id && item.content && info.content[0].text !== item.content![0].text) > -1) {
+                        item.content[0].text = item.content[0].text.trim()
+                        splitItem = item
+                    }
+                });
                 if(splitItem && splitItem.attrs) {
                     splitItem.attrs.id = generateUUID()
-                    this.editor.commands.setContent(jsonData)
+                    const addIndex = jsonData.content?.findIndex(item => item.attrs?.id === uuid)
+                    if(addIndex && addIndex > -1) {
+                        jsonData.content?.splice(addIndex, 1)
+                    }
+                    this.editor.chain().setContent(jsonData).focus().run()
                 }
                 return true
             },
