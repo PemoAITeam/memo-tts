@@ -60,7 +60,7 @@ class DataStore {
                     this.trashData = newData
                 }
             })
-            if(!isDelete) {
+            if (!isDelete) {
                 this.temoData = data.concat(this.temoData)
                 window.AIM.updateTemoData(cloneDeep(this.temoData))
             }
@@ -89,7 +89,31 @@ class DataStore {
         })
     }
 
-    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano', speed: string, jsonData: any, uuid: string, editorData: any }, options: any) => {
+    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano',target:string, speed: string, uuid: string, editorData: any, setJenerating: (params: boolean) => void }, options: any) => {
+        const editorContent = data.editorData.content;
+        if (editorContent?.length) {
+            editorContent.forEach((item: { type: string; attrs: { voice: any; }; }, index: number) => {
+                if (item.type == 'editorCard' && editorContent[index + 1]?.type == 'translateCard') {
+                    if (item.attrs?.voice) {
+                        editorContent[index + 1].attrs!.voice = item.attrs.voice
+                    } else {
+                        delete editorContent[index + 1].attrs!.voice
+                    }
+                }
+            })
+        }
+        console.log(editorContent)
+        const jsonData = data.target === 'original' ? editorContent?.filter((item: { content: string | any[]; type: string; }) => !!item.content?.length && item.content[0].text && item.type === 'editorCard')
+            : editorContent?.filter((item: { content: string | any[]; type: string; }) => !!item.content?.length && item.content[0].text && item.type === 'translateCard')
+        console.log(jsonData)
+        if (!jsonData?.length) {
+            toast({
+                variant: "destructive",
+                description: `请先在左侧输入框编辑文字...`
+            })
+            return
+        }
+        data.setJenerating(true)
         let params;
         if (data.service === 'Edge') {
             const rate = getSpeed(data.speed);
@@ -100,7 +124,7 @@ class DataStore {
                 pitch: 0,
                 voiceName: options?.voice?.shortName,
                 voiceLocalName: options?.voice?.properties.LocalName,
-                data: data.jsonData?.map((item: any) => {
+                data: jsonData?.map((item: any) => {
                     const textData = item.content?.find((info: any) => info.type === 'text')
                     const data: any = { text: '', md5: '' }
                     if (textData) {
@@ -127,7 +151,7 @@ class DataStore {
                 speed: data.speed,
                 voice: options?.voice?.value,
                 voiceLocalName: options?.voice?.label,
-                data: data.jsonData?.map((item: any) => {
+                data: jsonData?.map((item: any) => {
                     const textData = item.content?.find((info: any) => info.type === 'text')
                     const data: any = { text: '', md5: '' }
                     if (textData) {
@@ -154,7 +178,7 @@ class DataStore {
                 voice_type: options?.voice?.value,
                 voiceLocalName: options?.voice?.label,
                 scene: options?.scenes,
-                data: data.jsonData?.map((item: any) => {
+                data: jsonData?.map((item: any) => {
                     const textData = item.content?.find((info: any) => info.type === 'text')
                     const data: any = { text: '', md5: '' }
                     if (textData) {
@@ -176,6 +200,7 @@ class DataStore {
                 description: `合成语音失败，请重试`
             })
         }
+        data.setJenerating(false)
         return result
     }
 

@@ -6,12 +6,8 @@ import { useEffect, useState } from 'react';
 import { secondsToHMS, generateUUID } from '@/lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-// import mammoth from "mammoth";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from '@/lib/tts';
-import { useToast } from "@/components/ui/use-toast"
-// import { remark } from 'remark';
-// import strip from 'strip-markdown'
 import { inject, observer } from 'mobx-react';
 import SettingStore from '@/stores/settingStore';
 import DataStore from '@/stores/dataStore';
@@ -61,35 +57,9 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
         }
     }, [editorRef, dataStore])
 
-    const { toast } = useToast()
-
     const generateAudio = async () => {
         try {
-            const editorData = editorRef?.getJSON().content;
-            if(editorData?.length) {
-                editorData.forEach((item, index) => {
-                    if(item.type == 'editorCard' && editorData[index + 1]?.type == 'translateCard' ) {
-                        if(item.attrs?.voice) {
-                            editorData[index + 1].attrs!.voice = item.attrs.voice
-                        } else {
-                            delete editorData[index + 1].attrs!.voice
-                        }
-                    }
-                })
-            }
-            console.log(editorData)
-            const jsonData = target === 'original' ? editorData?.filter(item => !!item.content?.length && item.content[0].text && item.type === 'editorCard')
-                : editorData?.filter(item => !!item.content?.length && item.content[0].text && item.type === 'translateCard')
-            console.log(jsonData)
-            if (!jsonData?.length) {
-                toast({
-                    variant: "destructive",
-                    description: `请先在左侧输入框编辑文字...`
-                })
-                return
-            }
-            setJenerating(true)
-            const result = await dataStore?.mergeTemo({service,speed, jsonData, uuid:generateUUID(), editorData: editorRef?.getJSON()}, options)
+            const result = await dataStore?.mergeTemo({ setJenerating, target, service,speed, uuid:generateUUID(), editorData: editorRef?.getJSON()}, options)
             if (result) {
                 result.duration = secondsToHMS(result.metadata?.duration)
                 dataStore?.setTemoData(result)
@@ -99,65 +69,11 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                 dataStore?.setEditorData("")
                 navigate(`/history/${result.uuid}`)
             }
-            console.log(result)
-            setJenerating(false);
         } catch (error) {
             setJenerating(false);
             console.log(error)
         }
     }
-
-    // const handleDrop = (event: any) => {
-    //     event.preventDefault();
-    //     const file = event.dataTransfer.files[0];
-    //     const reader = new FileReader();
-    //     console.log(file)
-    //     if (file.type === 'text/plain') {
-    //         reader.readAsText(file);
-    //         reader.onload = e => { // 读取完毕从中取值
-    //             const text = e.target?.result as string;
-    //             editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
-    //             console.log('pointsTxt', text) // 获取到的TXT文件
-    //         };
-    //     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
-    //         reader.onloadend = function () {
-    //             const arrayBuffer = reader.result as ArrayBuffer;
-    //             if (arrayBuffer) {
-    //                 mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
-    //                     editorRef?.chain().insertContentAt(editorRef.state.selection.head, resultObject.value).focus().run()
-    //                 })
-    //             }
-
-    //         };
-    //         reader.readAsArrayBuffer(file);
-    //     } else {
-    //         const type = file.name.split('.').pop();
-    //         if (type === 'md') {
-    //             reader.onload = e => {
-    //                 const markdownText = e.target?.result as string;
-    //                 // 使用 remark 解析 Markdown
-    //                 remark()
-    //                     .use(strip) // 使用 strip 插件去除 Markdown 格式
-    //                     .process(markdownText, (err, file) => {
-    //                         if (err) throw err;
-
-    //                         // 提取的纯文本
-    //                         const text = file?.toString();
-    //                         if (text) {
-    //                             editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
-    //                         }
-    //                         console.log(text);
-    //                     });
-    //             };
-    //             reader.readAsText(file); // 以文本格式读取文件
-    //         } else {
-    //             toast({
-    //                 variant: "destructive",
-    //                 description: `当前只支持解析txt、docx、md文档`
-    //             })
-    //         }
-    //     }
-    // };
 
     return (
         <>

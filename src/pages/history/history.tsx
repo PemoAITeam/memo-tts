@@ -7,7 +7,6 @@ import { secondsToHMS, getLocalFileUrl, getTextFragment } from '@/lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PiVinylRecord } from "react-icons/pi";
-import { TbFileDownload } from "react-icons/tb";
 import { GrCheckboxSelected } from "react-icons/gr";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from '@/lib/tts';
@@ -23,6 +22,7 @@ import { cloneDeep } from 'lodash-es';
 import { TbDownload } from "react-icons/tb";
 import { HiOutlineTrash } from "react-icons/hi2";
 import { TemoData } from '@/interface';
+import { RiFileList3Line } from "react-icons/ri";
 
 declare const window: any;
 
@@ -32,16 +32,12 @@ interface HomePageProps {
     appStore?: AppStore
 }
 
-const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ settingStore, dataStore, appStore }: HomePageProps) => {
+const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ settingStore, dataStore }: HomePageProps) => {
 
-    const { hideBar } = appStore!
     const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
     const { id } = useParams()
     const [curTemoId, setCurTemoId] = useState<string>('');
     const [curEditorData, setCurEditorData] = useState<any>()
-    // const [url, setUrl] = useState('');
-    // const [valid, setValid] = useState(false);
-    // const [parsing, setParsing] = useState(false);
     const [speed, setSpeed] = useState<string>('1')
     const [target, setTarget] = useState<'original' | 'translate'>('original')
     const [jenerating, setJenerating] = useState(false)
@@ -50,12 +46,10 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     const [options, setOptions] = useState<TTSOptions>()
     const [curPlay, setCurPlay] = useState<any>();
     const [batchDownload, setBatchDownload] = useState<boolean>(false);
-    // const [curVoice, setCurVoice] = useState<any>()
     let downloadList = [];
-    console.log(id)
     useEffect(() => {
         setList(dataStore?.temoData || [])
-        if(curTemoId) return
+        if (curTemoId) return
         if (dataStore?.temoData.length) {
             setCurTemoId(id || dataStore.temoData[0].uuid)
             const curData = dataStore.temoData.find(item => item.uuid === id || item.uuid === dataStore.temoData[0].uuid)
@@ -64,10 +58,6 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                 setCurEditorData(curData.editorData)
                 console.log(curData.editorData)
             }
-        }
-        return () => {
-            setList([])
-            setCurEditorData("")
         }
 
     }, [dataStore?.temoData, settingStore, id, curTemoId]);
@@ -79,6 +69,8 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
 
         return () => {
             setCurTemoId("")
+            setList([])
+            setCurEditorData("")
         }
     }, [id])
 
@@ -86,31 +78,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
 
     const generateAudio = async () => {
         try {
-            const editorData = editorRef?.getJSON().content;
-            if (editorData?.length) {
-                editorData.forEach((item, index) => {
-                    if (item.type == 'editorCard' && editorData[index + 1]?.type == 'translateCard') {
-                        if (item.attrs?.voice) {
-                            editorData[index + 1].attrs!.voice = item.attrs.voice
-                        } else {
-                            delete editorData[index + 1].attrs!.voice
-                        }
-                    }
-                })
-            }
-            console.log(editorData)
-            const jsonData = target === 'original' ? editorData?.filter(item => !!item.content?.length && item.content[0].text && item.type === 'editorCard')
-                : editorData?.filter(item => !!item.content?.length && item.content[0].text && item.type === 'translateCard')
-            console.log(jsonData)
-            if (!jsonData?.length) {
-                toast({
-                    variant: "destructive",
-                    description: `请先在左侧输入框编辑文字...`
-                })
-                return
-            }
-            setJenerating(true)
-            const result = await dataStore?.mergeTemo({ service, speed, jsonData, uuid: curTemoId, editorData: editorRef?.getJSON() }, options)
+            const result = await dataStore?.mergeTemo({ setJenerating, target, service, speed, uuid: curTemoId, editorData: editorRef?.getJSON() }, options)
             if (result) {
                 result.duration = secondsToHMS(result.metadata?.duration)
                 const index = list.findIndex(item => item.uuid === result.uuid)
@@ -120,8 +88,6 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                 }
                 setList(cloneDeep(list))
             }
-            console.log(result)
-            setJenerating(false);
         } catch (error) {
             setJenerating(false);
             console.log(error)
@@ -228,73 +194,43 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         }
     }
 
+    const selectBatch = () => {
+        if (batchDownload) {
+            cancelDownloadBatch()
+        } else {
+            setBatchDownload(true)
+        }
+    }
+
     const cancelDownloadBatch = () => {
         const updatedData = list.map(item => ({ ...item, selected: false }));
         setBatchDownload(false)
         setList(updatedData)
     }
 
-    // const handleDrop = (event: any) => {
-    //     event.preventDefault();
-    //     const file = event.dataTransfer.files[0];
-    //     const reader = new FileReader();
-    //     console.log(file)
-    //     if (file.type === 'text/plain') {
-    //         reader.readAsText(file);
-    //         reader.onload = e => { // 读取完毕从中取值
-    //             const text = e.target?.result as string;
-    //             editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
-    //             console.log('pointsTxt', text) // 获取到的TXT文件
-    //         };
-    //     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
-    //         reader.onloadend = function () {
-    //             const arrayBuffer = reader.result as ArrayBuffer;
-    //             if (arrayBuffer) {
-    //                 mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
-    //                     editorRef?.chain().insertContentAt(editorRef.state.selection.head, resultObject.value).focus().run()
-    //                 })
-    //             }
-
-    //         };
-    //         reader.readAsArrayBuffer(file);
-    //     } else {
-    //         const type = file.name.split('.').pop();
-    //         if (type === 'md') {
-    //             reader.onload = e => {
-    //                 const markdownText = e.target?.result as string;
-    //                 // 使用 remark 解析 Markdown
-    //                 remark()
-    //                     .use(strip) // 使用 strip 插件去除 Markdown 格式
-    //                     .process(markdownText, (err, file) => {
-    //                         if (err) throw err;
-
-    //                         // 提取的纯文本
-    //                         const text = file?.toString();
-    //                         if (text) {
-    //                             editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
-    //                         }
-    //                         console.log(text);
-    //                     });
-    //             };
-    //             reader.readAsText(file); // 以文本格式读取文件
-    //         } else {
-    //             toast({
-    //                 variant: "destructive",
-    //                 description: `当前只支持解析txt、docx、md文档`
-    //             })
-    //         }
-    //     }
-    // };
-
-    const deleteItem = async (event: any, data: TemoData) => {
+    const deleteItem = async (event: any, data?: TemoData) => {
         if (event) {
             event.stopPropagation();
         }
-        if(data.uuid === curTemoId) {
-            setCurTemoId("")
-            setCurEditorData("")
+        let items: any = [];
+        if (data) {
+            if (data.uuid === curTemoId) {
+                setCurTemoId("")
+                setCurEditorData("")
+            }
+            items.push(data)
+        } else {
+            items = list.filter(item => item.selected);
+            if (!items.length) {
+                toast({
+                    variant: "destructive",
+                    description: `请先选择要删除的文件`
+                })
+                return;
+            }
         }
-        dataStore?.setTrashData([data])
+        console.log(items)
+        dataStore?.setTrashData(items)
     }
 
     return (
@@ -302,23 +238,13 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             {!!list.length &&
                 <div className="flex flex-col h-full">
 
-                    <div className='flex flex-1 temo-draggable temo-content'>
+                    <div className='flex flex-1 temo-draggable temo-content pt-12'>
                         <div className='pl-4'>
-                            <div className={`flex items-center justify-between h-12 p-4  ${hideBar && window.AIM.isMac ? ' ml-12' : ''}`}>
-                                {list.length > 1 && <Button variant={'ghost'} className=" temo-no-draggable flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent mr-4" onClick={() => setBatchDownload(true)}>
-                                    <TbFileDownload size={18} />
-                                    <span className=" text-sm ml-1">批量下载</span>
-                                </Button>}
-                                {batchDownload && <div className='mb-1 temo-no-draggable'>
-                                    <Button variant='ghost' className='text-sm mr-2 hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={cancelDownloadBatch}>取消</Button>
-                                    <Button variant='ghost' className='text-sm hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={downloadBatch}>完成</Button>
-                                </div>}
-                            </div>
                             <ScrollArea className='list-scroll-area pr-3 temo-no-draggable'> {list.map(item => (
                                 <div key={item.fileUrl} className='relative' onClick={() => selectDownload(item)}>
                                     {batchDownload && !item.selected && <span className='absolute w-3 h-3 border right-2 top-1'></span>}
                                     {batchDownload && item.selected && <span className='absolute w-3 h-3 right-2 top-1'><GrCheckboxSelected size={12} /></span>}
-                                    <div className={`flex flex-1 items-center space-x-3 rounded-md border p-3 mb-3 ${curTemoId == item.uuid ? 'is-selected' : ''} ${item.fileUrl === curPlay?.fileUrl ? 'is-playing-audio' : ''}`}>
+                                    <div className={`flex flex-1 items-center space-x-3 rounded-md border flex-shrink-0 p-3 mb-3 ${curTemoId == item.uuid ? 'is-selected' : ''} ${item.fileUrl === curPlay?.fileUrl ? 'is-playing-audio' : ''}`}>
                                         <Button title='播放' variant={'ghost'} onClick={(e) => playAudio(item, false, e)} className={`p-0 cursor-pointer hover:bg-transparent flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
                                             <PiVinylRecord size={36} />
                                         </Button>
@@ -342,9 +268,23 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                 </div>
                             )
                             )}</ScrollArea>
+                            <div className={`flex items-center justify-between h-12 p-4`}>
+                                {list.length > 1 && <Button variant={'ghost'} className=" temo-no-draggable flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent mr-4" onClick={() => selectBatch()}>
+                                    <RiFileList3Line size={18} />
+                                    <span className=" text-sm ml-1">批量操作</span>
+                                </Button>}
+                                {batchDownload && <div className='mb-1 temo-no-draggable'>
+                                    <Button variant='ghost' className='text-sm mr-2 hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={downloadBatch}>
+                                        下载
+                                    </Button>
+                                    <Button variant='ghost' className='text-sm hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={(e) => deleteItem(e)}>
+                                        删除
+                                    </Button>
+                                </div>}
+                            </div>
                         </div>
 
-                        <div className='flex-1 pl-4 pb-4 flex mt-12'>
+                        <div className='flex-1 pl-4 pb-4 flex '>
                             <div className='flex temo-no-draggable  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
                                 <Tiptap content={curEditorData} setEditor={setEditorRef} />
                             </div>
