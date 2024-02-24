@@ -253,3 +253,14 @@ export function mergeTranslate(array1: Record<string, any>[], array2: Record<str
     return item;
   });
 } 
+
+export function hasDuplicateId(arr: any[]) {
+  const idSet = new Set();
+  for (const item of arr) {
+    if (idSet.has(item.attrs.id)) {
+      return item.attrs.id; // 发现重复的 id
+    }
+    idSet.add(item.attrs.id);
+  }
+  return false; // 没有重复的 id
+}
