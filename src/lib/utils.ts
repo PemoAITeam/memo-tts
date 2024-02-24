@@ -251,7 +251,8 @@ export function mergeTranslate(array1: Record<string, any>[], array2: Record<str
     }
 
     return item;
-  });}
+  });
+}
 
 
 export function hasDuplicateId(arr: any[]) {
