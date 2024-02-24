@@ -4,16 +4,19 @@ import EdgeConfig from "./edge-config"
 import OpenAIConfig from "./openAI-config"
 import VolcanoConfig from "./volcano-config"
 import { getLocalFileUrl } from "@/lib/utils"
+import { inject, observer } from "mobx-react"
+import SettingStore from "@/stores/settingStore"
 
 interface TTSPanelProps {
+    settingStore?: SettingStore,
     speed?: string,
     setOptions: (data: any) => void
     getService: (service: "Edge" | "OpenAI" | "Volcano") => void;
 }
 
-const TTSPanel = ({ speed, setOptions, getService }: TTSPanelProps) => {
+const TTSPanel = inject('settingStore')(observer(({ settingStore, speed, setOptions, getService }: TTSPanelProps) => {
 
-    // const [options, setOptions] = useState<TTSOptions>()
+    const { settings } = settingStore!
     const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
     const [curPlay, setCurPlay] = useState<any>();
     const handleService = (e: 'Edge' | 'OpenAI' | 'Volcano') => {
@@ -75,13 +78,13 @@ const TTSPanel = ({ speed, setOptions, getService }: TTSPanelProps) => {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value='OpenAI'>
-                        Open AI
+                        Open AI {!settings.openAI?.apiKey && '(未配置)'}
                     </SelectItem>
                     <SelectItem value='Edge'>
                         Edge
                     </SelectItem>
                     <SelectItem value='Volcano'>
-                        Volcano
+                        Volcano {!settings.tts?.volctrans?.accessToken && '(未配置)'}
                     </SelectItem>
                 </SelectContent>
             </Select>
@@ -93,6 +96,6 @@ const TTSPanel = ({ speed, setOptions, getService }: TTSPanelProps) => {
             </audio>}
         </>
     )
-}
+}))
 
 export default TTSPanel

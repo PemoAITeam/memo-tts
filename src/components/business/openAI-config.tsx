@@ -26,7 +26,7 @@ const OpenAISpeaker = [{
     label: "shimmer"
 }]
 const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
-    const [model, setModel] = useState<'tts-1-hd' | 'tts-1'>('tts-1-hd')
+    const [model, setModel] = useState<'tts-1-hd' | 'tts-1'>('tts-1')
     const [voice, setVoice] = useState<any>({value: "alloy", label: "alloy"})
 
     useEffect(() => {
@@ -61,11 +61,11 @@ const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
                 </SelectTrigger>
                 <SelectContent>
                     <ScrollArea className="h-[300px]">
-                        <SelectItem value="tts-1-hd">
-                            tts-1-hd
-                        </SelectItem>
                         <SelectItem value="tts-1">
                             tts-1
+                        </SelectItem>
+                        <SelectItem disabled={true} value="tts-1-hd">
+                            tts-1-hd
                         </SelectItem>
                     </ScrollArea>
                 </SelectContent>

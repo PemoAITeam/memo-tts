@@ -6,12 +6,12 @@ import { useEffect, useState } from 'react';
 import { secondsToHMS, generateUUID } from '@/lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import mammoth from "mammoth";
+// import mammoth from "mammoth";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from '@/lib/tts';
 import { useToast } from "@/components/ui/use-toast"
-import { remark } from 'remark';
-import strip from 'strip-markdown'
+// import { remark } from 'remark';
+// import strip from 'strip-markdown'
 import { inject, observer } from 'mobx-react';
 import SettingStore from '@/stores/settingStore';
 import DataStore from '@/stores/dataStore';
@@ -98,11 +98,6 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                 editorRef?.chain().insertContentAt(editorRef.state.selection.head, { type: 'editorCard' }).focus().run()
                 dataStore?.setEditorData("")
                 navigate(`/history/${result.uuid}`)
-            } else {
-                toast({
-                    variant: "destructive",
-                    description: `合成语音失败，请重试`
-                })
             }
             console.log(result)
             setJenerating(false);
@@ -112,67 +107,64 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
         }
     }
 
-    const handleDrop = (event: any) => {
-        event.preventDefault();
-        const file = event.dataTransfer.files[0];
-        const reader = new FileReader();
-        console.log(file)
-        if (file.type === 'text/plain') {
-            reader.readAsText(file);
-            reader.onload = e => { // 读取完毕从中取值
-                const text = e.target?.result as string;
-                editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
-                console.log('pointsTxt', text) // 获取到的TXT文件
-            };
-        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
-            reader.onloadend = function () {
-                const arrayBuffer = reader.result as ArrayBuffer;
-                if (arrayBuffer) {
-                    mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
-                        editorRef?.chain().insertContentAt(editorRef.state.selection.head, resultObject.value).focus().run()
-                    })
-                }
+    // const handleDrop = (event: any) => {
+    //     event.preventDefault();
+    //     const file = event.dataTransfer.files[0];
+    //     const reader = new FileReader();
+    //     console.log(file)
+    //     if (file.type === 'text/plain') {
+    //         reader.readAsText(file);
+    //         reader.onload = e => { // 读取完毕从中取值
+    //             const text = e.target?.result as string;
+    //             editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
+    //             console.log('pointsTxt', text) // 获取到的TXT文件
+    //         };
+    //     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
+    //         reader.onloadend = function () {
+    //             const arrayBuffer = reader.result as ArrayBuffer;
+    //             if (arrayBuffer) {
+    //                 mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
+    //                     editorRef?.chain().insertContentAt(editorRef.state.selection.head, resultObject.value).focus().run()
+    //                 })
+    //             }
 
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            const type = file.name.split('.').pop();
-            if (type === 'md') {
-                reader.onload = e => {
-                    const markdownText = e.target?.result as string;
-                    // 使用 remark 解析 Markdown
-                    remark()
-                        .use(strip) // 使用 strip 插件去除 Markdown 格式
-                        .process(markdownText, (err, file) => {
-                            if (err) throw err;
+    //         };
+    //         reader.readAsArrayBuffer(file);
+    //     } else {
+    //         const type = file.name.split('.').pop();
+    //         if (type === 'md') {
+    //             reader.onload = e => {
+    //                 const markdownText = e.target?.result as string;
+    //                 // 使用 remark 解析 Markdown
+    //                 remark()
+    //                     .use(strip) // 使用 strip 插件去除 Markdown 格式
+    //                     .process(markdownText, (err, file) => {
+    //                         if (err) throw err;
 
-                            // 提取的纯文本
-                            const text = file?.toString();
-                            if (text) {
-                                editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
-                            }
-                            console.log(text);
-                        });
-                };
-                reader.readAsText(file); // 以文本格式读取文件
-            } else {
-                toast({
-                    variant: "destructive",
-                    description: `当前只支持解析txt、docx、md文档`
-                })
-            }
-        }
-    };
+    //                         // 提取的纯文本
+    //                         const text = file?.toString();
+    //                         if (text) {
+    //                             editorRef?.chain().insertContentAt(editorRef.state.selection.head, text).focus().run()
+    //                         }
+    //                         console.log(text);
+    //                     });
+    //             };
+    //             reader.readAsText(file); // 以文本格式读取文件
+    //         } else {
+    //             toast({
+    //                 variant: "destructive",
+    //                 description: `当前只支持解析txt、docx、md文档`
+    //             })
+    //         }
+    //     }
+    // };
 
     return (
         <>
             <div className="flex flex-col h-full">
-                <div className='flex flex-1 temo-draggable pt-12'>
+                <div className='flex flex-1 temo-draggable pt-12 overflow-hidden'>
                     <div className='flex-1 pl-4 pb-4 flex temo-no-draggable'>
-                        <div id="drop-area" className='flex-1 border h-full p-3 rounded-md overflow-y-scroll'
-                            onDrop={handleDrop}
-                            onDragOver={(event) => event.preventDefault()}
-                            onDragEnter={(event) => event.preventDefault()}>
+                        <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
                             <Tiptap content={curEditorData} setEditor={setEditorRef} />
                         </div>
                         <div className='px-4 flex-shrink-0 tts-service-panel'>

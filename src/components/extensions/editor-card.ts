@@ -1,14 +1,6 @@
 import { ReactNodeViewRenderer, Node, mergeAttributes } from '@tiptap/react';
 import EditorCardItem from '../business/editor-item';
-import { generateUUID } from '@/lib/utils';
-
-// declare module '@tiptap/react' {
-//     interface Commands<ReturnType> {
-//         editorCard: {
-//             insertEditorCard: () => ReturnType;
-//         };
-//     }
-// }
+import { generateUUID, hasDuplicateId } from '@/lib/utils';
 
 export const EditorCard = Node.create({
     name: 'editorCard',
@@ -41,20 +33,48 @@ export const EditorCard = Node.create({
     addKeyboardShortcuts() {
         return {
             'Enter': () => {
-                const data = this.editor.state.toJSON().doc.content;
-                this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, attrs: {id: generateUUID()} }).focus().run()
+                const uuid = generateUUID()
+                this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, attrs: { id: uuid } }).focus().run()
                 const jsonData = this.editor.getJSON();
-                console.log(jsonData)
-                const splitItem = jsonData.content?.find(item => data.findIndex((info: any) => info.attrs.id === item.attrs?.id) > -1)
-                if(splitItem && splitItem.attrs) {
-                    splitItem.attrs.id = generateUUID()
+                const duplicateId = hasDuplicateId(jsonData.content!)
+                console.log(duplicateId)
+                if (duplicateId) {
+                    const splitItems: any = [];
+                    jsonData.content?.forEach((item: any) => {
+                        if (item.attrs?.id === duplicateId) {
+                            splitItems.push(item)
+                            if (item.content) {
+                                item.content[0].text = item.content[0].text.trim()
+                            }
+                        }
+                    });
+                    console.log(splitItems)
+                    if (!splitItems[0].content) {
+                        splitItems[0].attrs.id = generateUUID()
+                    } else {
+                        splitItems[1].attrs.id = generateUUID()
+                    }
+                    const addIndex = jsonData.content?.findIndex(item => item.attrs?.id === uuid)
+                    if (addIndex && addIndex > -1) {
+                        jsonData.content?.splice(addIndex, 1)
+                    }
                     this.editor.commands.setContent(jsonData)
                 }
+                console.log(this.editor.getJSON())
+
+                // if(splitItem && splitItem.attrs) {
+                //     splitItem.attrs.id = generateUUID()
+                //     const addIndex = jsonData.content?.findIndex(item => item.attrs?.id === uuid)
+                //     if(addIndex && addIndex > -1) {
+                //         jsonData.content?.splice(addIndex, 1)
+                //     }
+                //     this.editor.chain().setContent(jsonData).focus().run()
+                // }
                 return true
             },
             'Control-V': () => {
                 navigator.clipboard.readText().then(text => {
-                    this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, content: [{type: 'text', text}] }).focus().run()
+                    this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, content: [{ type: 'text', text: text.trim() }] }).focus().run()
                 })
                 return true
             },
