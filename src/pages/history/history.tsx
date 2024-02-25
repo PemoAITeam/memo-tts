@@ -23,6 +23,7 @@ import { TbDownload } from "react-icons/tb";
 import { HiOutlineTrash } from "react-icons/hi2";
 import { TemoData } from '@/interface';
 import { RiFileList3Line } from "react-icons/ri";
+import { useTranslation } from 'react-i18next';
 
 declare const window: any;
 
@@ -47,6 +48,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     const [curPlay, setCurPlay] = useState<any>();
     const [batchDownload, setBatchDownload] = useState<boolean>(false);
     let downloadList = [];
+    const { t } = useTranslation()
     useEffect(() => {
         setList(dataStore?.temoData || [])
         if (curTemoId) return
@@ -141,7 +143,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         if (!downloadList.length) {
             toast({
                 variant: "destructive",
-                description: `请先选择要下载的文件`
+                description: t('history.download file')
             })
             return;
         }
@@ -170,12 +172,12 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             const result = await window.AIM.temoDownload(cloneDeep(data), file.filePath);
             if (result === 'Successful') {
                 toast({
-                    description: `保存成功`
+                    description: t('history.save success')
                 })
             } else {
                 toast({
                     variant: "destructive",
-                    description: `保存失败，请重试`
+                    description: t('history.save fail')
                 })
             }
             return result;
@@ -224,7 +226,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             if (!items.length) {
                 toast({
                     variant: "destructive",
-                    description: `请先选择要删除的文件`
+                    description: t('history.delete file')
                 })
                 return;
             }
@@ -245,7 +247,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                     {batchDownload && !item.selected && <span className='absolute w-3 h-3 border right-2 top-1'></span>}
                                     {batchDownload && item.selected && <span className='absolute w-3 h-3 right-2 top-1'><GrCheckboxSelected size={12} /></span>}
                                     <div className={`flex flex-1 items-center space-x-3 rounded-md border flex-shrink-0 p-3 mb-3 ${curTemoId == item.uuid ? 'is-selected' : ''} ${item.fileUrl === curPlay?.fileUrl ? 'is-playing-audio' : ''}`}>
-                                        <Button title='播放' variant={'ghost'} onClick={(e) => playAudio(item, false, e)} className={`p-0 cursor-pointer hover:bg-transparent flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
+                                        <Button title={t('history.play')} variant={'ghost'} onClick={(e) => playAudio(item, false, e)} className={`p-0 cursor-pointer hover:bg-transparent flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
                                             <PiVinylRecord size={36} />
                                         </Button>
                                         <div className="flex-1 space-y-1">
@@ -257,10 +259,10 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                                 <span>{item.duration}</span>
                                             </p>
                                         </div>
-                                        <Button title='下载' variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>
+                                        <Button title={t('history.download')} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>
                                             <TbDownload size={18} />
                                         </Button>
-                                        <Button title='删除' variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => deleteItem(e, item)}>
+                                        <Button title={t('history.delete')} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => deleteItem(e, item)}>
                                             <HiOutlineTrash size={18} />
                                         </Button>
                                         {/* <Button variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm mr-1' onClick={(e) => playAudio(item, false, e)}>{item.fileUrl === curPlay?.fileUrl ? <AiOutlinePauseCircle size={18} /> : <GoPlay size={18} />}</Button> */}
@@ -271,14 +273,14 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                             <div className={`flex items-center justify-between h-12 p-4`}>
                                 {list.length > 1 && <Button variant={'ghost'} className=" temo-no-draggable flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent mr-4" onClick={() => selectBatch()}>
                                     <RiFileList3Line size={18} />
-                                    <span className=" text-sm ml-1">批量操作</span>
+                                    <span className=" text-sm ml-1">{t('history.batch actions')}</span>
                                 </Button>}
                                 {batchDownload && <div className='mb-1 temo-no-draggable'>
                                     <Button variant='ghost' className='text-sm mr-2 hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={downloadBatch}>
-                                        下载
+                                        {t('history.download')}
                                     </Button>
                                     <Button variant='ghost' className='text-sm hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={(e) => deleteItem(e)}>
-                                        删除
+                                        {t('history.delete')}
                                     </Button>
                                 </div>}
                             </div>
@@ -299,11 +301,11 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                             </div>
                                             <div className="relative flex text-xs uppercase">
                                                 <span className="bg-background px-2 text-muted-foreground">
-                                                    其他设置
+                                                    {t('tts.other setting')}
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="mb-1 text-sm">语速</div>
+                                        <div className="mb-1 text-sm">{t('tts.speed')}</div>
                                         <Tabs value={speed}>
                                             <TabsList className="grid w-full grid-cols-7">
                                                 <TabsTrigger className='px-1' value="0.5" onClick={() => setSpeed('0.5')}>0.5</TabsTrigger>
@@ -315,25 +317,25 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                                 <TabsTrigger className='px-1' value="4" onClick={() => setSpeed('4')}>4</TabsTrigger>
                                             </TabsList>
                                         </Tabs>
-                                        <div className="mb-1 text-sm mt-4">文本</div>
+                                        <div className="mb-1 text-sm mt-4">{t('tts.text')}</div>
                                         <Tabs value={target}>
                                             <TabsList className="grid grid-cols-2">
-                                                <TabsTrigger className='px-1' value="original" onClick={() => setTarget('original')}>原文</TabsTrigger>
-                                                <TabsTrigger className='px-1' value="translate" onClick={() => setTarget('translate')}>译文</TabsTrigger>
+                                                <TabsTrigger className='px-1' value="original" onClick={() => setTarget('original')}>{t('tts.original text')}</TabsTrigger>
+                                                <TabsTrigger className='px-1' value="translate" onClick={() => setTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
                                             </TabsList>
                                         </Tabs>
                                     </>
                                 }
                                 <Button className=' mt-6 w-full' size="lg" disabled={jenerating} onClick={generateAudio}>
                                     {jenerating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
-                                    <span>合成</span>
+                                    <span>{t('tts.synthesis')}</span>
                                 </Button>
                             </div>
                         </div>
                     </div>
                 </div>}
             {!list.length && <div className='flex items-center justify-center h-full'>
-                暂无内容
+                {t('tts.no results')}
             </div>}
             {curPlay?.fileUrl && <audio id="audioPlayer" controls>
                 <source src={getLocalFileUrl(curPlay?.fileUrl)} type="audio/wav" />

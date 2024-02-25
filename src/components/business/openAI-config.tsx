@@ -5,6 +5,7 @@ import { TbVolume } from "react-icons/tb";
 import { Separator } from "../ui/separator";
 import { ConfigProps } from "@/lib/tts";
 import md5 from "md5";
+import { useTranslation } from "react-i18next";
 
 const OpenAISpeaker = [{
     value: "alloy",
@@ -28,7 +29,7 @@ const OpenAISpeaker = [{
 const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
     const [model, setModel] = useState<'tts-1-hd' | 'tts-1'>('tts-1')
     const [voice, setVoice] = useState<any>({value: "alloy", label: "alloy"})
-
+    const { t } = useTranslation()
     useEffect(() => {
         if (setOptions) {
             setOptions({ model, voice })
@@ -54,7 +55,7 @@ const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
 
     return (
         <>
-            <div className="mb-1 mt-3 text-sm">模型</div>
+            <div className="mb-1 mt-3 text-sm">{t('tts.model')}</div>
             <Select onValueChange={handelModel}>
                 <SelectTrigger className=" w-auto min-w-36 mr-4">
                     <SelectValue placeholder={model} />
@@ -70,7 +71,7 @@ const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
                     </ScrollArea>
                 </SelectContent>
             </Select>
-            <div className="mb-1 mt-3 text-sm">角色</div>
+            <div className="mb-1 mt-3 text-sm">{t('tts.role')}</div>
             <Separator className="my-2" />
             <div className="voice-type-content">
                 {OpenAISpeaker.map((v: {value: string, label: string}) => (

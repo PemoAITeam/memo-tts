@@ -13,6 +13,7 @@ import { useState } from "react";
 import { TTSOptions } from "@/lib/tts";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { IoIosClose } from "react-icons/io";
+import { useTranslation } from "react-i18next";
 
 const EditorCardItem = ({ node, editor }: NodeViewProps) => {
 
@@ -20,7 +21,7 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
     const [options, setOptions] = useState<TTSOptions>()
     const [voice, setVoice] = useState<string>(node.attrs?.voice?.voiceLocalName)
     const [openTTS, setOpenTTS] = useState(false)
-
+    const { t } = useTranslation()
     const addTranslate = (translateData: WhisperSegments[]) => {
         const jsonData = editor.getJSON();
         if (jsonData.content) {
@@ -107,7 +108,7 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
                     <PopoverContent className="w-auto">
                         <TTSPanel setOptions={setOptions} getService={setService}></TTSPanel>
                         <Button className="w-full" onClick={addVoice}>
-                            <span>确定</span>
+                            <span>{t('app.sure')}</span>
                         </Button>
                     </PopoverContent>
                 </Popover>
@@ -115,20 +116,20 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
 
             <div className="flex items-start">
                 <DropdownMenu>
-                    <DropdownMenuTrigger title='选项' className='flex-shrink-0 p-0 border-none'>
+                    <DropdownMenuTrigger title={t('app.option')} className='flex-shrink-0 p-0 border-none'>
                         <GoPlus size='20' />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
                                 <MdOutlineKeyboardVoice className="mr-2" size={16} />
-                                <span className=" text-sm">添加声音</span>
+                                <span className=" text-sm">{t('app.add voice')}</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent className=" p-3">
                                     <TTSPanel setOptions={setOptions} getService={setService}></TTSPanel>
                                     <Button className="w-full" onClick={addVoice}>
-                                        <span>确定</span>
+                                        <span>{t('app.sure')}</span>
                                     </Button>
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
@@ -136,7 +137,7 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger disabled={node.content.size == 0} className={`${node.content.size == 0 ? 'text-gray-500' : ''}`}>
                                 <TbArrowsDownUp className="mr-2" size={16} />
-                                <span className=" text-sm">翻译</span>
+                                <span className=" text-sm">{t('app.translate')}</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent className=" p-3">

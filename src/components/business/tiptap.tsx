@@ -17,6 +17,7 @@ import mammoth from 'mammoth'
 import { toast } from '../ui/use-toast'
 import { remark } from 'remark'
 import strip from 'strip-markdown'
+import { useTranslation } from 'react-i18next'
 
 interface TiptapProps {
     setEditor?: (editor: Editor) => void,
@@ -26,7 +27,7 @@ interface TiptapProps {
 const Tiptap = ({ setEditor, content }: TiptapProps) => {
     const [openTranslate, setOpenTranslate] = useState(false)
     const [translating, setTranslating] = useState<boolean>(false);
-
+    const { t } = useTranslation()
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -150,7 +151,7 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
                     <PopoverTrigger asChild>
                         <Button variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
                             {translating ? <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} /> : <TbArrowsDownUp size={18} />}
-                            <span className=" text-sm ml-1">翻译</span>
+                            <span className=" text-sm ml-1">{t('app.translate')}</span>
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto">
@@ -159,7 +160,7 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
                 </Popover>
                 <Button variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" onClick={() => clear()}>
                     <AiOutlineClear size={18} />
-                    <span className=" text-sm ml-1">清空</span>
+                    <span className=" text-sm ml-1">{t('app.clear')}</span>
                 </Button>
             </div>
             <div id="drop-area" className='flex-1 overflow-y-auto pr-3'

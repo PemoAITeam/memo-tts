@@ -24,8 +24,6 @@ export const TTSCard = Node.create({
                     return item.type === 'ttsCard' && contentLeng?.length === 0
                 })
                 if(EmptyTTSCard?.length === 0) {
-                    // const data = jsonData.content?.concat([{ type: this.type.name, content: [{ type: 'editorCard' }, { type: 'translateCard' }] }])
-                    // return this.editor.chain().setContent({ type: 'doc', content: data }).focus().run()
                     return this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, content: [{ type: 'editorCard' }] }).focus().run()
                 } else {
                     return false

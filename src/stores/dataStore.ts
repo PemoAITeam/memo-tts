@@ -6,7 +6,7 @@ import { makeAutoObservable, runInAction } from 'mobx'
 import { makePersistable } from 'mobx-persist-store'
 import { settingStore } from '.';
 import { toast } from '@/components/ui/use-toast';
-
+import i18n from 'i18next'
 
 class DataStore {
     constructor() {
@@ -26,6 +26,8 @@ class DataStore {
     editorData: { type: 'doc', content: EditorData } | string = ''
 
     trashData: TemoData[] = []
+
+    
 
     setTemoData = (data: TemoData) => {
         this.temoData.unshift(data)
@@ -109,7 +111,7 @@ class DataStore {
         if (!jsonData?.length) {
             toast({
                 variant: "destructive",
-                description: `请先在左侧输入框编辑文字...`
+                description: i18n.t('app.edit data')
             })
             return
         }
@@ -141,7 +143,7 @@ class DataStore {
             if (!settingStore.settings.openAI?.apiKey) {
                 toast({
                     variant: "destructive",
-                    description: `请前往设置页配置ApiKey`
+                    description: i18n.t('app.set apikey')
                 })
                 return
             }
@@ -168,7 +170,7 @@ class DataStore {
             if (!settingStore.settings.tts?.volctrans?.accessToken) {
                 toast({
                     variant: "destructive",
-                    description: `请前往设置页配置AccessToken`
+                    description: i18n.t('app.set accessToken')
                 })
                 return
             }
@@ -197,7 +199,7 @@ class DataStore {
         if (!result) {
             toast({
                 variant: "destructive",
-                description: `合成语音失败，请重试`
+                description: i18n.t('tts.synthesis fail')
             })
         }
         data.setJenerating(false)

@@ -37,6 +37,7 @@ import { inject, observer } from "mobx-react"
 import DataStore from "@/stores/dataStore"
 import AppStore from "@/stores/appStore"
 import { formatTimestamp } from "@/lib/utils"
+import { useTranslation } from "react-i18next"
 
 interface TrashPageProps {
   dataStore?: DataStore
@@ -63,6 +64,7 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
   const [columnVisibility, setColumnVisibility] =
     useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
+  const { t } = useTranslation()
 
   useEffect(() => {
     dataStore?.getTrashData()
@@ -137,7 +139,7 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            标题
+            {t('trash.title')}
             <CaretSortIcon className="ml-2 h-4 w-4" />
           </Button>
         )
@@ -148,26 +150,26 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
     },
     {
       accessorKey: "type",
-      header: "类型",
+      header: t('trash.type'),
       cell: ({ row }) => <div className="text-left">{row.getValue("type")}</div>,
     },
     {
       accessorKey: "duration",
-      header: () => <div className="text-left">时长</div>,
+      header: () => <div className="text-left">{t('trash.duration')}</div>,
       cell: ({ row }) => (
         <div className="capitalize text-left">{row.getValue("duration")}</div>
       ),
     },
     {
       accessorKey: "date",
-      header: () => <div className="text-left">创建于</div>,
+      header: () => <div className="text-left">{t('trash.create at')}</div>,
       cell: ({ row }) => (
         <div className="capitalize text-left">{row.getValue("date")}</div>
       ),
     },
     {
       id: "actions",
-      header: () => <div className="text-left">操作</div>,
+      header: () => <div className="text-left">{t('trash.handle')}</div>,
       enableHiding: false,
       cell: ({ row }) => {
         const payment = row.original
@@ -181,10 +183,10 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => handleRecover(row.original.uuid)} >
-                回撤
+                {t('trash.revoke')}
               </DropdownMenuItem>
               <DropdownMenuItem className=" text-red-500 focus:text-red-400" onClick={() => handleDelete(row.original.uuid)} >
-                彻底删除
+                {t('trash.permanently delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -217,15 +219,15 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
       <div className="h-full temo-no-draggable">
         <div className="flex items-center py-4">
           <Input
-            placeholder="搜索标题"
+            placeholder={t('trash.search title')}
             value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
               table.getColumn("title")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
           />
-          {table.getFilteredSelectedRowModel().rows.length > 0 && <Button className="ml-2 px-2 h-7 bg-red-500 hover:bg-red-500/90" onClick={() => handleDelete()} >彻底删除</Button>}
-          {table.getFilteredSelectedRowModel().rows.length > 0 && <Button className="ml-2 px-2 h-7" onClick={() => handleRecover()}>回撤</Button>}
+          {table.getFilteredSelectedRowModel().rows.length > 0 && <Button className="ml-2 px-2 h-7 bg-red-500 hover:bg-red-500/90" onClick={() => handleDelete()} >{t('trash.permanently delete')}</Button>}
+          {table.getFilteredSelectedRowModel().rows.length > 0 && <Button className="ml-2 px-2 h-7" onClick={() => handleRecover()}>{t('trash.revoke')}</Button>}
         </div>
         <div className="rounded-md border">
           <Table>
@@ -270,7 +272,7 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
                     colSpan={columns.length}
                     className="h-24 text-center"
                   >
-                    No results.
+                    {t('trash.no results')}
                   </TableCell>
                 </TableRow>
               )}
@@ -279,7 +281,7 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
         </div>
         <div className="flex items-center justify-end space-x-2 py-4">
           <div className="flex-1 text-sm text-muted-foreground">
-            {table.getFilteredSelectedRowModel().rows.length} 项选中
+            {/* {table.getFilteredSelectedRowModel().rows.length} 项选中 */}
           </div>
           <div className="space-x-2">
             <Button
@@ -288,7 +290,7 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              上一页
+              {t('trash.pre')}
             </Button>
             <Button
               variant="outline"
@@ -296,7 +298,7 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              下一页
+              {t('trash.next')}
             </Button>
           </div>
         </div>

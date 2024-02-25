@@ -15,6 +15,7 @@ import AppStore from '@/stores/appStore'
 import { TbHome, TbTrash, TbPlaylist } from "react-icons/tb";
 import HistoryPage from '@/pages/history/history'
 import TrashPage from '@/pages/trash/trash'
+import { useTranslation } from 'react-i18next'
 
 const hideTabs = [
     /\/details/g,
@@ -49,6 +50,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
     const navigate = useNavigate()
     const { hideBar, setHideBar } = appStore!
     const [selectedId, setSelectedId] = useState('home')
+    const { t } = useTranslation()
     const [sidebarItems] = useState<Routers[]>([
         {
             id: 'home',
@@ -60,13 +62,13 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
             id: 'history',
             path: '/history',
             icon: TbPlaylist,
-            label: '媒体列表',
+            label: t('route.media list'),
         },
         {
             id: 'trash',
             path: '/trash',
             icon: TbTrash,
-            label: '回收站',
+            label: t('route.trash'),
         },
         // {
         //     id: 'setting',
@@ -74,6 +76,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
         //     icon: TbSettings
         // },
     ])
+    
 
     useEffect(() => {
         navigate(`/home`)

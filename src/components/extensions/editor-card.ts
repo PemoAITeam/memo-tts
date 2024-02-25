@@ -60,16 +60,6 @@ export const EditorCard = Node.create({
                     }
                     this.editor.commands.setContent(jsonData)
                 }
-                console.log(this.editor.getJSON())
-
-                // if(splitItem && splitItem.attrs) {
-                //     splitItem.attrs.id = generateUUID()
-                //     const addIndex = jsonData.content?.findIndex(item => item.attrs?.id === uuid)
-                //     if(addIndex && addIndex > -1) {
-                //         jsonData.content?.splice(addIndex, 1)
-                //     }
-                //     this.editor.chain().setContent(jsonData).focus().run()
-                // }
                 return true
             },
             'Control-V': () => {

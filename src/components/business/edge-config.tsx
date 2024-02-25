@@ -6,13 +6,14 @@ import { TbVolume } from "react-icons/tb";
 import { IoIosFemale, IoIosMale } from "react-icons/io";
 import { Separator } from "../ui/separator";
 import md5 from "md5";
+import { useTranslation } from "react-i18next";
 
 const EdgeConfig = ({ setOptions, getAudition }: ConfigProps) => {
+    const { t } = useTranslation()
     const [currentLanguage, setCurrentLanguage] = useState<AllLanguage>('ZH_CN')
     const [voiceList, setVoiceList] = useState<any>(voices.filter(v => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()))
     const [voice, setVoice] = useState<any>(voiceList[0])
-    const [voiceSex, setVoiceSex] = useState<{ value: 'Male' | 'Female' | 'All', text: '全部' | '男' | '女' }>({ value: 'All', text: '全部' })
-
+    const [voiceSex, setVoiceSex] = useState<{ value: 'Male' | 'Female' | 'All', text: '全部' | '男' | '女' }>({ value: 'All', text: t('tts.all') })
     useEffect(() => {
         if (setOptions) {
             setOptions({ lang: currentLanguage, voice })
@@ -28,7 +29,7 @@ const EdgeConfig = ({ setOptions, getAudition }: ConfigProps) => {
     }
 
     const handelVoiceSex = (value: 'Male' | 'Female' | 'All') => {
-        const sex: any = value == 'All' ? { text: '全部', value: 'All' } : value == 'Female' ? { text: '女', value: 'Female' } : { text: '男', value: 'Male' }
+        const sex: any = value == 'All' ? { text: t('tts.all'), value: 'All' } : value == 'Female' ? { text: t('tts.female'), value: 'Female' } : { text: t('tts.male'), value: 'Male' }
         setVoiceSex(sex);
         const filterVoices = value == 'All' ? voices.filter((v: any) => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()) :
             voices.filter((v: any) => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()).filter((v: any) => v.properties.Gender == sex.value)
@@ -52,7 +53,7 @@ const EdgeConfig = ({ setOptions, getAudition }: ConfigProps) => {
 
     return (
         <>
-            <div className="mb-1 mt-3 text-sm">语言</div>
+            <div className="mb-1 mt-3 text-sm">{t('tts.language')}</div>
             <Select defaultValue={currentLanguage} onValueChange={handleSelectCurrentLanguage}>
                 <SelectTrigger value={lang[currentLanguage]} className=" w-auto min-w-36 mr-4">
                     <SelectValue />
@@ -61,30 +62,30 @@ const EdgeConfig = ({ setOptions, getAudition }: ConfigProps) => {
                     <ScrollArea className="h-[300px]">
                         {(Object.keys(lang) as AllLanguage[]).map((k) => (
                             <SelectItem value={k} key={k}>
-                                {lang[k]}
+                                {t(`tts.lang.${lang[k]}`)}
                             </SelectItem>
                         ))}
                     </ScrollArea>
                 </SelectContent>
             </Select>
-            <div className="mb-1 mt-3 text-sm">性别</div>
+            <div className="mb-1 mt-3 text-sm">{t('tts.sex')}</div>
             <Select defaultValue={voiceSex.value} onValueChange={handelVoiceSex}>
                 <SelectTrigger value={voiceSex.text} className=" w-auto min-w-36 mr-4">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value='All'>
-                        全部
+                        {t('tts.all')}
                     </SelectItem>
                     <SelectItem value='Male'>
-                        男
+                        {t('tts.male')}
                     </SelectItem>
                     <SelectItem value='Female'>
-                        女
+                        {t('tts.female')}
                     </SelectItem>
                 </SelectContent>
             </Select>
-            <div className="mb-1 mt-3 text-sm">角色</div>
+            <div className="mb-1 mt-3 text-sm">{t('tts.role')}</div>
             <Separator className="my-2" />
             <div className="voice-type-content">
                 {voiceList.map((k: any) => (
@@ -96,20 +97,6 @@ const EdgeConfig = ({ setOptions, getAudition }: ConfigProps) => {
                     </div>
                 ))}
             </div>
-            {/* <Select onValueChange={handelVoice}>
-                <SelectTrigger className=" w-auto min-w-36 mr-4">
-                    <SelectValue placeholder={defaultVoice} />
-                </SelectTrigger>
-                <SelectContent>
-                    <ScrollArea className="h-[300px]">
-                        {voiceList.map((k: any) => (
-                            <SelectItem value={k.properties.DisplayName} key={k.properties.DisplayName}>
-                                {k.properties.LocalName}
-                            </SelectItem>
-                        ))}
-                    </ScrollArea>
-                </SelectContent>
-            </Select> */}
         </>
     )
 }

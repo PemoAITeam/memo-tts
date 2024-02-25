@@ -7,6 +7,7 @@ import { TbVolume } from "react-icons/tb";
 import { IoIosFemale, IoIosMale } from "react-icons/io";
 import md5 from "md5";
 import { ConfigProps } from "@/lib/tts";
+import { useTranslation } from "react-i18next";
 
 const VolcanoConfig = ({ setOptions, getAudition }: ConfigProps) => {
     const [scenes, setScenes] = useState<ScenesType>('common')
@@ -20,7 +21,7 @@ const VolcanoConfig = ({ setOptions, getAudition }: ConfigProps) => {
             setOptions({ emotion: emotion?.value === 'none' ? '' : emotion?.value, voice, scenes })
         }
     }, [scenes, voice, emotion, setOptions])
-
+    const { t } = useTranslation()
     const audition = async (e: any, voice: any) => {
         e.stopPropagation()
         const uuid = md5(`Volc${scenes}${emotion?.value}${voice?.value}Welcome to temo`)
@@ -70,7 +71,7 @@ const VolcanoConfig = ({ setOptions, getAudition }: ConfigProps) => {
 
     return (
         <>
-            <div className="mb-1 mt-3 text-sm">场景</div>
+            <div className="mb-1 mt-3 text-sm">{t('tts.scenes')}</div>
             <Select defaultValue={scenes} onValueChange={handleScenes}>
                 <SelectTrigger className=" w-auto min-w-36 mr-4">
                     <SelectValue placeholder={scenes} />
@@ -86,7 +87,7 @@ const VolcanoConfig = ({ setOptions, getAudition }: ConfigProps) => {
                 </SelectContent>
             </Select>
             {VolcanoSceneEmotion[scenes] && <>
-                <div className="mb-1 mt-3 text-sm">选择感情</div>
+                <div className="mb-1 mt-3 text-sm">{t('tts.select emotion')}</div>
                 <Select onValueChange={handleEmotion}>
                     <SelectTrigger className=" w-auto min-w-36 mr-4">
                         <SelectValue placeholder={emotion?.label} />
@@ -102,24 +103,24 @@ const VolcanoConfig = ({ setOptions, getAudition }: ConfigProps) => {
                     </SelectContent>
                 </Select>
             </>}
-            <div className="mb-1 mt-3 text-sm">性别</div>
+            <div className="mb-1 mt-3 text-sm">{t('tts.gender')}</div>
             <Select defaultValue={voiceGender.value} onValueChange={handelVoiceGender}>
                 <SelectTrigger value={voiceGender.text} className=" w-auto min-w-36 mr-4">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value='all'>
-                        全部
+                    {t('tts.all')}
                     </SelectItem>
                     <SelectItem value='male'>
-                        男
+                    {t('tts.male')}
                     </SelectItem>
                     <SelectItem value='female'>
-                        女
+                    {t('tts.female')}
                     </SelectItem>
                 </SelectContent>
             </Select>
-            <div className="mb-1 mt-3 text-sm">角色</div>
+            <div className="mb-1 mt-3 text-sm">{t('tts.role')}</div>
             <Separator className="my-2" />
             {voiceList.length ?
                 <div className="valcano-voice-content">
@@ -130,7 +131,7 @@ const VolcanoConfig = ({ setOptions, getAudition }: ConfigProps) => {
                             {v.gender == 'female' && <IoIosFemale className=" ml-1" size={15} />}
                             {v.gender == 'male' && <IoIosMale className=" ml-1" size={15} />}
                         </div>
-                    ))} </div> : <div className=" text-sm h-16 flex items-center justify-center">暂无角色</div>}
+                    ))} </div> : <div className=" text-sm h-16 flex items-center justify-center">{t('tts.no role')}</div>}
 
         </>
     )

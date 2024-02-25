@@ -14,6 +14,7 @@ import DataStore from '@/stores/dataStore';
 import { useNavigate } from 'react-router-dom';
 import AppStore from '@/stores/appStore';
 import TTSPanel from '@/components/business/tts-panel';
+import { useTranslation } from 'react-i18next';
 
 interface HomePageProps {
     settingStore?: SettingStore
@@ -31,6 +32,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     const [editorRef, setEditorRef] = useState<Editor>();
     const [options, setOptions] = useState<TTSOptions>()
     const navigate = useNavigate()
+    const { t } = useTranslation()
     useEffect(() => {
         if (dataStore?.editorData) {
             setCurEditorData(dataStore.editorData)
@@ -94,11 +96,11 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                                         </div>
                                         <div className="relative flex text-xs uppercase">
                                             <span className="bg-background px-2 text-muted-foreground">
-                                                其他设置
+                                                {t('tts.other setting')}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="mb-1 text-sm">语速</div>
+                                    <div className="mb-1 text-sm">{t('tts.speed')}</div>
                                     <Tabs value={speed}>
                                         <TabsList className="grid w-full grid-cols-7">
                                             <TabsTrigger className='px-1' value="0.5" onClick={() => setSpeed('0.5')}>0.5</TabsTrigger>
@@ -110,18 +112,18 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                                             <TabsTrigger className='px-1' value="4" onClick={() => setSpeed('4')}>4</TabsTrigger>
                                         </TabsList>
                                     </Tabs>
-                                    <div className="mb-1 text-sm mt-4">文本</div>
+                                    <div className="mb-1 text-sm mt-4">{t('tts.text')}</div>
                                     <Tabs value={target}>
                                         <TabsList className="grid grid-cols-2">
-                                            <TabsTrigger className='px-1' value="original" onClick={() => setTarget('original')}>原文</TabsTrigger>
-                                            <TabsTrigger className='px-1' value="translate" onClick={() => setTarget('translate')}>译文</TabsTrigger>
+                                            <TabsTrigger className='px-1' value="original" onClick={() => setTarget('original')}>{t('tts.original text')}</TabsTrigger>
+                                            <TabsTrigger className='px-1' value="translate" onClick={() => setTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
                                         </TabsList>
                                     </Tabs>
                                 </>
                             }
                             <Button className=' mt-6 w-full' size="lg" disabled={jenerating} onClick={generateAudio}>
                                 {jenerating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
-                                <span>合成</span>
+                                <span>{t('tts.synthesis')}</span>
                             </Button>
                         </div>
                     </div>

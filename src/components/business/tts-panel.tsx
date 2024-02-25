@@ -6,6 +6,7 @@ import VolcanoConfig from "./volcano-config"
 import { getLocalFileUrl } from "@/lib/utils"
 import { inject, observer } from "mobx-react"
 import SettingStore from "@/stores/settingStore"
+import { useTranslation } from "react-i18next"
 
 interface TTSPanelProps {
     settingStore?: SettingStore,
@@ -23,7 +24,7 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, speed, setOpti
         setService(e)
         getService(e)
     }
-
+    const { t } = useTranslation()
     let audioPlayer: HTMLAudioElement | null;
     const playAudio = (item: any, isAudition?: boolean, event?: any) => {
         if (event) {
@@ -71,20 +72,20 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, speed, setOpti
 
     return (
         <>
-            <div className="mb-1 text-sm">服务</div>
+            <div className="mb-1 text-sm">{t('tts.provider')}</div>
             <Select defaultValue={service} onValueChange={handleService}>
                 <SelectTrigger className=" w-auto min-w-36 mr-4">
                     <SelectValue placeholder={service} />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value='OpenAI'>
-                        Open AI {!settings.openAI?.apiKey && '(未配置)'}
+                        Open AI {!settings.openAI?.apiKey && t('tts.unset')}
                     </SelectItem>
                     <SelectItem value='Edge'>
                         Edge
                     </SelectItem>
                     <SelectItem value='Volcano'>
-                        Volcano {!settings.tts?.volctrans?.accessToken && '(未配置)'}
+                        Volcano {!settings.tts?.volctrans?.accessToken && t('tts.unset')}
                     </SelectItem>
                 </SelectContent>
             </Select>
