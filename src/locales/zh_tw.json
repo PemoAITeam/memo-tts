@@ -1,8 +1,8 @@
 {
     "app": {
         "edit data": "請先在左側輸入框編輯文字...",
-        "set apikey": "請先在左側輸入框編輯文字...",
-        "set accessToken": "請先在左側輸入框編輯文字...",
+        "set apikey": "請前往設置頁配置ApiKey",
+        "set accessToken": "請前往設置頁配置AccessToken",
         "sure": "確定",
         "option": "選項",
         "add voice": "添加聲音",
@@ -226,4 +226,4 @@
         "delete": "刪除",
         "batch actions": "批量操作"
     }
-}    
+}

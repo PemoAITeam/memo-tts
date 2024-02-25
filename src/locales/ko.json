@@ -1,8 +1,8 @@
 {
     "app": {
         "edit data": "왼쪽 상자에 텍스트를 먼저 편집하십시오...",
-        "set apikey": "왼쪽 상자에 텍스트를 먼저 편집하십시오...",
-        "set accessToken": "왼쪽 상자에 텍스트를 먼저 편집하십시오...",
+        "set apikey": "ApiKey를 설정 페이지에서 구성하십시오",
+        "set accessToken": "AccessToken을 설정 페이지에서 구성하십시오",
         "sure": "확인",
         "option": "옵션",
         "add voice": "음성 추가",

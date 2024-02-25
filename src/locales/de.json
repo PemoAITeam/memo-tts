@@ -1,8 +1,8 @@
 {
     "app": {
         "edit data": "Bitte bearbeiten Sie den Text im linken Eingabefeld...",
-        "set apikey": "Bitte konfigurieren Sie den API-Schlüssel im linken Eingabefeld...",
-        "set accessToken": "Bitte konfigurieren Sie den Zugriffstoken im linken Eingabefeld...",
+        "set apikey": "Bitte gehen Sie zur Einstellungsseite, um den API-Schlüssel zu konfigurieren",
+        "set accessToken": "Bitte gehen Sie zur Einstellungsseite, um den Zugriffstoken zu konfigurieren",
         "sure": "Sicher",
         "option": "Option",
         "add voice": "Stimme hinzufügen",

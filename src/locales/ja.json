@@ -1,8 +1,8 @@
 {
     "app": {
         "edit data": "左の入力ボックスでテキストを編集してください...",
-        "set apikey": "左の入力ボックスでテキストを編集してください...",
-        "set accessToken": "左の入力ボックスでテキストを編集してください...",
+        "set apikey": "ApiKeyを設定ページで構成してください",
+        "set accessToken": "AccessTokenを設定ページで構成してください",
         "sure": "確定",
         "option": "オプション",
         "add voice": "声を追加",

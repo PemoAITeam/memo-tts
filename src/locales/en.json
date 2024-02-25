@@ -1,8 +1,8 @@
 {
     "app": {
         "edit data": "Please edit text in the left input box first...",
-        "set apikey": "Please set API key in the left input box first...",
-        "set accessToken": "Please set access token in the left input box first...",
+        "set apikey": "Please go to the settings page to configure API key",
+        "set accessToken": "Please go to the settings page to configure Access Token",
         "sure": "Sure",
         "option": "Options",
         "add voice": "Add Voice",

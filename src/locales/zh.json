@@ -1,8 +1,8 @@
 {
     "app": {
         "edit data": "请先在左侧输入框编辑文字...",
-        "set apikey": "请先在左侧输入框编辑文字...",
-        "set accessToken": "请先在左侧输入框编辑文字...",
+        "set apikey": "请前往设置页配置ApiKey",
+        "set accessToken": "请前往设置页配置AccessToken",
         "sure": "确定",
         "option": "选项",
         "add voice": "添加声音",

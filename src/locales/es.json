@@ -1,8 +1,8 @@
 {
     "app": {
         "edit data": "Por favor, edite el texto en el cuadro izquierdo...",
-        "set apikey": "Por favor, configure la clave API en el cuadro izquierdo...",
-        "set accessToken": "Por favor, configure el token de acceso en el cuadro izquierdo...",
+        "set apikey": "Por favor, dirígete a la página de configuración para establecer la clave API",
+        "set accessToken": "Por favor, dirígete a la página de configuración para establecer el token de acceso",
         "sure": "Seguro",
         "option": "Opción",
         "add voice": "Agregar voz",

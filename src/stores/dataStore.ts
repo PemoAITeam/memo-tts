@@ -115,7 +115,6 @@ class DataStore {
             })
             return
         }
-        data.setJenerating(true)
         let params;
         if (data.service === 'Edge') {
             const rate = getSpeed(data.speed);
@@ -194,6 +193,7 @@ class DataStore {
                 })
             }
         }
+        data.setJenerating(true)
         console.log(params)
         const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, cloneDeep(data.editorData));
         if (!result) {
