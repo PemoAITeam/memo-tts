@@ -8,7 +8,7 @@ module.exports = {
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh'],
+  plugins: ['react-refresh', "@remotion"],
   rules: {
     'react-refresh/only-export-components': [
       'warn',
@@ -17,4 +17,10 @@ module.exports = {
     'no-useless-escape': "error",
     "@typescript-eslint/no-explicit-any": "off"
   },
+  "overrides": [
+    {
+      "files": ["remotion/*.{ts,tsx}"],
+      "extends": ["plugin:@remotion/recommended"]
+    }
+  ]
 }
