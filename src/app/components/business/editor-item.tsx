@@ -27,7 +27,7 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
         if (jsonData.content) {
             const index = jsonData.content?.findIndex(item => item.attrs?.id == node.attrs.id)
             if (index > -1) {
-                if (jsonData.content[index + 1].type === 'translateCard') {
+                if (jsonData.content[index + 1]?.type === 'translateCard') {
                     jsonData.content[index + 1].content = [{ type: 'text', text: translateData[0].text }];
                     editor.chain().setContent({ type: 'doc', content: cloneDeep(jsonData.content) }).focus().run()
                 } else {

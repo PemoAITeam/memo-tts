@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { ScrollArea } from "../ui/scroll-area";
 import { Button } from "../ui/button";
-import { resultItemString } from "@/app/lib/utils";
+import { lowercaseFirstLetter, resultItemString } from "@/app/lib/utils";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { useToast } from "../ui/use-toast";
 import { TranslateComplete, TranslateMessage, TranslateProgress, TranslateStart, WhisperSegments } from "@/app/interface";
@@ -26,13 +26,15 @@ export type SupportProviders =
 enum ServiceProvider {
     Google = 'Google',
     Microsoft = 'Microsoft',
-    OpenAI = 'openAI',
-    Volctrans = 'volctrans',
+    OpenAI = 'OpenAI',
+    Volctrans = 'Volctrans',
     DeepL = 'DeepL',
-    Ernie = 'ernie',
-    Baidu = 'baidu',
-    ZhipuAI = 'zhipuAI',
+    Ernie = 'Ernie',
+    Baidu = 'Baidu',
+    ZhipuAI = 'ZhipuAI',
 }
+
+type LowercaseServiceProvider = 'openAI' | 'volctrans' | 'DeepL' | 'ernie' | 'baidu' | 'zhipuAI';
 
 const providerList = [
     {
@@ -85,20 +87,20 @@ const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePan
     const { t } = useTranslation()
     const handler = useCallback((_event: any, messageData: TranslateProgress | TranslateComplete | TranslateStart | TranslateMessage) => {
         switch (messageData.type) {
-            case 'translate:start':
-                console.log(messageData.data.type + '翻译开始', messageData.data);
-                break;
-            case 'translate:progress':
-                console.log('进度：', (messageData.data[0].index + 1) / getContent().length * 100 + '%', messageData.data[0].text);
-                break;
-            case 'translate:message':
-                console.log('翻译消息', messageData.data[0].text);
-                break;
+            // case 'translate:start':
+            //     console.log(messageData.data.type + '翻译开始', messageData.data);
+            //     break;
+            // case 'translate:progress':
+            //     console.log('进度：', (messageData.data[0].index + 1) / getContent().length * 100 + '%', messageData.data[0].text);
+            //     break;
+            // case 'translate:message':
+            //     console.log('翻译消息', messageData.data[0].text);
+            //     break;
             case 'translate:complete':
                 console.log(messageData.data.type + '翻译完成', messageData.data);
                 break;
         }
-    }, [getContent]) // getContent变更时更新 handler
+    }, []) // getContent变更时更新 handler
 
     useEffect(() => {
         window.AIM?.handleMessage(handler, 'MemoTTSTranslateContent') // MemoTTSTranslateContent是唯一标识，可以用于区分不同的消息监听
@@ -118,7 +120,11 @@ const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePan
             })
             return
         }
-        if (provider.value !== ServiceProvider.Google && provider.value !== ServiceProvider.Microsoft && !settingStore?.settings[provider.value]) {
+        const providerValue = lowercaseFirstLetter(provider.value) as LowercaseServiceProvider;
+        const providerOptions: any = settingStore?.settings[providerValue]
+        if (provider.value !== ServiceProvider.Google && provider.value !== ServiceProvider.Microsoft
+            && ((provider.value !== ServiceProvider.DeepL && !providerOptions?.apiKey && !providerOptions?.secretKey) || (provider.value === ServiceProvider.DeepL && !providerOptions.freeApi && !providerOptions?.authKey))
+        ) {
             toast({
                 variant: "destructive",
                 description: t('translate.set service')
@@ -134,7 +140,9 @@ const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePan
         }
         try {
             closePanel && closePanel()
+            console.log({ data: options, provider: provider.value })
             const res = await window.AIM.translateContent(cloneDeep(options), cloneDeep(provider.value))
+            console.log(res)
             if (res.status) {
                 console.log(res.content);
                 let arr

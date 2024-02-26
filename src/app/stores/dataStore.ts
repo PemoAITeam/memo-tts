@@ -130,7 +130,7 @@ class DataStore {
                     const data: any = { text: '', md5: '' }
                     if (textData) {
                         data.text = textData.text;
-                        data.md5 = md5(rate + 0 + (item.attrs?.voice) ? (item.attrs?.voice.voiceLocalName) : options?.voice?.shortName + textData.text)
+                        data.md5 = md5(rate + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
                         }
