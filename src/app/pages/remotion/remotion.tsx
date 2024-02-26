@@ -14,7 +14,7 @@ export const RemotionPage: React.FC = () => {
                     fps={30}
                     style={{
                         width: '100%',
-                        height: 720,
+                        height: '100%',
                     }}
                     controls
                 />

@@ -25,6 +25,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "remotion.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
