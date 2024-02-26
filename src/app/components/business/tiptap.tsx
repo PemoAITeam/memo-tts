@@ -18,13 +18,17 @@ import { toast } from '../ui/use-toast'
 import { remark } from 'remark'
 import strip from 'strip-markdown'
 import { useTranslation } from 'react-i18next'
+import { inject, observer } from 'mobx-react'
+import DataStore from '@/app/stores/dataStore'
 
 interface TiptapProps {
     setEditor?: (editor: Editor) => void,
     content?: any,
+    from?: string,
+    dataStore?: DataStore,
 }
 
-const Tiptap = ({ setEditor, content }: TiptapProps) => {
+const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore }: TiptapProps) => {
     const [openTranslate, setOpenTranslate] = useState(false)
     const [translating, setTranslating] = useState<boolean>(false);
     const { t } = useTranslation()
@@ -43,6 +47,12 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
             const hasEditorCard = jsonData.content?.filter(item => item.type === 'editorCard')
             if (!hasEditorCard?.length) {
                 props.editor.chain().insertContentAt(props.editor.state.selection.head, { type: 'editorCard', attrs: { id: generateUUID() } }).focus().run()
+            }
+            if (from === 'home') {
+                const data = props.editor.getJSON()
+                if (data) {
+                    dataStore?.setEditorData(data)
+                }
             }
         }
     })
@@ -171,6 +181,6 @@ const Tiptap = ({ setEditor, content }: TiptapProps) => {
             </div>
         </>
     )
-}
+}))
 
 export default Tiptap

@@ -96,7 +96,7 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
 
     return (
         <NodeViewWrapper className="editor-card-item">
-            {voice && <div className=" pl-7 mt-4">
+            {voice && <div className=" pl-7 mt-4 voice-item">
                 <Popover open={openTTS} onOpenChange={(open: boolean) => setOpenTTS(open)}>
                     <PopoverTrigger asChild>
                         <Button variant={'ghost'} className=" relative editor-voice p-0 pr-2 h-5 mb-1  bg-accent text-accent-foreground">

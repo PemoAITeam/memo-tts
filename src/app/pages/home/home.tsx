@@ -43,21 +43,21 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
 
     }, []);
 
-    useEffect(() => {
-        // 设置定时器，每隔一段时间保存一次内容
-        const saveIntervalId = setInterval(async () => {
-            // 模拟保存内容到存储的操作
-            const data = editorRef?.getJSON()
-            if (data) {
-                dataStore?.setEditorData(data)
-            }
-        }, 1000);
+    // useEffect(() => {
+    //     // 设置定时器，每隔一段时间保存一次内容
+    //     const saveIntervalId = setInterval(async () => {
+    //         // 模拟保存内容到存储的操作
+    //         const data = editorRef?.getJSON()
+    //         if (data) {
+    //             dataStore?.setEditorData(data)
+    //         }
+    //     }, 1000);
 
-        // 在组件卸载时清除定时器
-        return () => {
-            clearInterval(saveIntervalId);
-        }
-    }, [editorRef, dataStore])
+    //     // 在组件卸载时清除定时器
+    //     return () => {
+    //         clearInterval(saveIntervalId);
+    //     }
+    // }, [editorRef, dataStore])
 
     const generateAudio = async () => {
         try {
@@ -83,7 +83,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                 <div className='flex flex-1 temo-draggable pt-12 overflow-hidden'>
                     <div className='flex-1 pl-4 pb-4 flex temo-no-draggable'>
                         <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
-                            <Tiptap content={curEditorData} setEditor={setEditorRef} />
+                            <Tiptap content={curEditorData} setEditor={setEditorRef} from='home' />
                         </div>
                         <div className='px-4 flex-shrink-0 tts-service-panel'>
                             <TTSPanel speed={speed} setOptions={setOptions} getService={setService}></TTSPanel>
