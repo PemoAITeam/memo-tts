@@ -1,7 +1,8 @@
+/* eslint-disable no-case-declarations */
 import './home.scss'
 import { Button } from '@/app/components/ui/button';
 import Tiptap from '@/app/components/business/tiptap';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { secondsToHMS, generateUUID } from '@/app/lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
@@ -15,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import AppStore from '@/app/stores/appStore';
 import TTSPanel from '@/app/components/business/tts-panel';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/app/components/ui/use-toast';
 
 interface HomePageProps {
     settingStore?: SettingStore
@@ -33,6 +35,8 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     const [options, setOptions] = useState<TTSOptions>()
     const navigate = useNavigate()
     const { t } = useTranslation()
+    const { toast } = useToast()
+
     useEffect(() => {
         if (dataStore?.editorData) {
             setCurEditorData(dataStore.editorData)
@@ -42,22 +46,45 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
         }
 
     }, []);
+    const handler = useCallback((_event: any, messageData: any) => {
+        switch (messageData.type) {
+            // case 'translate:start':
+            //     console.log(messageData.data.type + '翻译开始', messageData.data);
+            //     break;
+            // case 'translate:progress':
+            //     console.log('进度：', (messageData.data[0].index + 1) / getContent().length * 100 + '%', messageData.data[0].text);
+            //     break;
+            // case 'translate:message':
+            //     console.log('翻译消息', messageData.data[0].text);
+            //     break;
+            case 'text:audio:abort':
+                console.log('翻译中止');
+                break;
+            case 'text:audio:error':
+                console.log(messageData)
+                const error = messageData.data?.message;
+                if (error.includes('Unsupported voice')) {
+                    toast({
+                        variant: "destructive",
+                        description: t('Unsupported voice')
+                    })
+                } else {
+                    toast({
+                        variant: "destructive",
+                        description: t('tts.synthesis fail')
+                    })
+                }
+                break
+        }
+    }, [])
+    useEffect(() => {
+        window.AIM?.handleMessage(handler, 'MemoTTSContent') // MemoTTSTranslateContent是唯一标识，可以用于区分不同的消息监听
 
-    // useEffect(() => {
-    //     // 设置定时器，每隔一段时间保存一次内容
-    //     const saveIntervalId = setInterval(async () => {
-    //         // 模拟保存内容到存储的操作
-    //         const data = editorRef?.getJSON()
-    //         if (data) {
-    //             dataStore?.setEditorData(data)
-    //         }
-    //     }, 1000);
-
-    //     // 在组件卸载时清除定时器
-    //     return () => {
-    //         clearInterval(saveIntervalId);
-    //     }
-    // }, [editorRef, dataStore])
+        return () => {
+            // 组件销毁时移除事件监听
+            window.AIM.removeHandler('MemoTTSContent')
+        }
+    }, [handler]) // handler更新时重新注册事件
 
     const generateAudio = async () => {
         try {

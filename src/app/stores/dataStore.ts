@@ -196,12 +196,12 @@ class DataStore {
         data.setJenerating(true)
         console.log(params)
         const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, cloneDeep(data.editorData));
-        if (!result) {
-            toast({
-                variant: "destructive",
-                description: i18n.t('tts.synthesis fail')
-            })
-        }
+        // if (!result) {
+        //     toast({
+        //         variant: "destructive",
+        //         description: i18n.t('tts.synthesis fail')
+        //     })
+        // }
         data.setJenerating(false)
         return result
     }
