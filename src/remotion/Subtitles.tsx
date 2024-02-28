@@ -17,9 +17,8 @@ const useWindowedFrameSubs = (
 	const { windowStart, windowEnd } = options;
 	const config = useVideoConfig();
 	const { fps } = config;
-
 	const parsed = useMemo(() => parseSRT(src), [src]);
-
+	console.log(parsed)
 	return useMemo(() => {
 		return parsed
 			.map((item) => {
@@ -59,110 +58,110 @@ export const PaginatedSubtitles: React.FC<{
 	subtitlesLineHeight,
 	onlyDisplayCurrentSentence,
 }) => {
-	const frame = useCurrentFrame();
-	const windowRef = useRef<HTMLDivElement>(null);
-	const zoomMeasurer = useRef<HTMLDivElement>(null);
-	const [handle] = useState(() => delayRender());
-	const [fontHandle] = useState(() => delayRender());
-	const [fontLoaded, setFontLoaded] = useState(false);
-	const windowedFrameSubs = useWindowedFrameSubs(subtitles, {
-		windowStart: startFrame,
-		windowEnd: endFrame,
-	});
+		const frame = useCurrentFrame();
+		const windowRef = useRef<HTMLDivElement>(null);
+		const zoomMeasurer = useRef<HTMLDivElement>(null);
+		const [handle] = useState(() => delayRender());
+		const [fontHandle] = useState(() => delayRender());
+		const [fontLoaded, setFontLoaded] = useState(false);
+		const windowedFrameSubs = useWindowedFrameSubs(subtitles, {
+			windowStart: startFrame,
+			windowEnd: endFrame,
+		});
 
-	const [lineOffset, setLineOffset] = useState(0);
+		const [lineOffset, setLineOffset] = useState(0);
 
-	const currentAndFollowingSentences = useMemo(() => {
-		// If we don't want to only display the current sentence, return all the words
-		if (!onlyDisplayCurrentSentence) return windowedFrameSubs;
+		const currentAndFollowingSentences = useMemo(() => {
+			// If we don't want to only display the current sentence, return all the words
+			if (!onlyDisplayCurrentSentence) return windowedFrameSubs;
 
-		const indexOfCurrentSentence =
-			windowedFrameSubs.findLastIndex((w, i) => {
-				const nextWord = windowedFrameSubs[i + 1];
+			const indexOfCurrentSentence =
+				windowedFrameSubs.findLastIndex((w, i) => {
+					const nextWord = windowedFrameSubs[i + 1];
 
-				return (
-					nextWord &&
-					(w.text.endsWith('?') ||
-						w.text.endsWith('.') ||
-						w.text.endsWith('!')) &&
-					nextWord.start < frame
-				);
-			}) + 1;
+					return (
+						nextWord &&
+						(w.text.endsWith('?') ||
+							w.text.endsWith('.') ||
+							w.text.endsWith('!')) &&
+						nextWord.start < frame
+					);
+				}) + 1;
 
-		return windowedFrameSubs.slice(indexOfCurrentSentence);
-	}, [frame, onlyDisplayCurrentSentence, windowedFrameSubs]);
+			return windowedFrameSubs.slice(indexOfCurrentSentence);
+		}, [frame, onlyDisplayCurrentSentence, windowedFrameSubs]);
 
-	useEffect(() => {
-		if (!fontLoaded) {
-			return;
-		}
-		const zoom =
-			(zoomMeasurer.current?.getBoundingClientRect().height as number) /
-			subtitlesZoomMeasurerSize;
-		const linesRendered =
-			(windowRef.current?.getBoundingClientRect().height as number) /
-			(subtitlesLineHeight * zoom);
-		const linesToOffset = Math.max(0, linesRendered - linesPerPage);
-		setLineOffset(linesToOffset);
-		continueRender(handle);
-	}, [
-		fontLoaded,
-		frame,
-		handle,
-		linesPerPage,
-		subtitlesLineHeight,
-		subtitlesZoomMeasurerSize,
-	]);
+		useEffect(() => {
+			if (!fontLoaded) {
+				return;
+			}
+			const zoom =
+				(zoomMeasurer.current?.getBoundingClientRect().height as number) /
+				subtitlesZoomMeasurerSize;
+			const linesRendered =
+				(windowRef.current?.getBoundingClientRect().height as number) /
+				(subtitlesLineHeight * zoom);
+			const linesToOffset = Math.max(0, linesRendered - linesPerPage);
+			setLineOffset(linesToOffset);
+			continueRender(handle);
+		}, [
+			fontLoaded,
+			frame,
+			handle,
+			linesPerPage,
+			subtitlesLineHeight,
+			subtitlesZoomMeasurerSize,
+		]);
 
-	useEffect(() => {
-		ensureFont()
-			.then(() => {
-				continueRender(fontHandle);
-				setFontLoaded(true);
-			})
-			.catch((err) => {
-				cancelRender(err);
-			});
-	}, [fontHandle, fontLoaded]);
+		useEffect(() => {
+			ensureFont()
+				.then(() => {
+					continueRender(fontHandle);
+					setFontLoaded(true);
+				})
+				.catch((err) => {
+					cancelRender(err);
+				});
+		}, [fontHandle, fontLoaded]);
 
-	const currentFrameSentences = currentAndFollowingSentences.filter((word) => {
-		return word.start < frame;
-	});
-
-	return (
-		<div
-			style={{
-				position: 'relative',
-				overflow: 'hidden',
-				paddingBottom: '20px',
-			}}
-		>
+		const currentFrameSentences = currentAndFollowingSentences.filter((word) => {
+			return word.start < frame;
+		});
+		console.log(currentAndFollowingSentences)
+		return (
 			<div
-				ref={windowRef}
 				style={{
-					transform: `translateY(-${lineOffset * subtitlesLineHeight}px)`,
+					position: 'relative',
+					overflow: 'hidden',
+					paddingBottom: '20px',
 				}}
 			>
-				{currentFrameSentences.map((item) => (
-					<span key={item.id} id={String(item.id)}>
-						<Word
-							frame={frame}
-							item={item}
-							transcriptionColor={transcriptionColor}
-						/>{' '}
-					</span>
-				))}
+				<div
+					ref={windowRef}
+					style={{
+						transform: `translateY(-${lineOffset * subtitlesLineHeight}px)`,
+					}}
+				>
+					{currentFrameSentences.map((item) => (
+						<span className='font-text' key={item.id} id={String(item.id)}>
+							<Word
+								frame={frame}
+								item={item}
+								transcriptionColor={transcriptionColor}
+							/>{' '}
+						</span>
+					))}
+				</div>
+				<div
+					ref={zoomMeasurer}
+					style={{
+						height: subtitlesZoomMeasurerSize,
+						width: subtitlesZoomMeasurerSize,
+					}}
+				/>
 			</div>
-			<div
-				ref={zoomMeasurer}
-				style={{
-					height: subtitlesZoomMeasurerSize,
-					width: subtitlesZoomMeasurerSize,
-				}}
-			/>
-		</div>
-	);
-};
+		);
+	};
 
 declare global {
 	interface Array<T> {

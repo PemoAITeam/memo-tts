@@ -90,9 +90,9 @@ const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePan
             // case 'translate:start':
             //     console.log(messageData.data.type + '翻译开始', messageData.data);
             //     break;
-            // case 'translate:progress':
-            //     console.log('进度：', (messageData.data[0].index + 1) / getContent().length * 100 + '%', messageData.data[0].text);
-            //     break;
+            case 'translate:progress':
+                console.log('进度：', (messageData.data[0].index + 1) / getContent().length * 100 + '%', messageData.data[0].text);
+                break;
             // case 'translate:message':
             //     console.log('翻译消息', messageData.data[0].text);
             //     break;

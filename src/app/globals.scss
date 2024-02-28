@@ -40,6 +40,9 @@
     --ring: 204 22% 91%;
 
     --radius: 0.5rem;
+
+    --remotion-font: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --base-size: 32px;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -115,7 +118,8 @@
   /* 兼容 WebKit 浏览器 */
 }
 
-#audioPlayer, #auditionPlayer {
+#audioPlayer,
+#auditionPlayer {
   position: absolute;
   top: -9999px;
 }
