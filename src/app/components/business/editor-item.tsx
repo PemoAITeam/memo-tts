@@ -3,7 +3,7 @@ import { GoPlus } from "react-icons/go";
 import { MdOutlineKeyboardVoice } from "react-icons/md";
 import { TbArrowsDownUp } from "react-icons/tb";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { generateUUID } from "@/app/lib/utils";
+import { generateUUID, getSpeed } from "@/app/lib/utils";
 import TranslatePanel from "./translate-panel";
 import { cloneDeep } from 'lodash-es';
 import { WhisperSegments } from "@/app/interface";
@@ -17,11 +17,13 @@ import { useTranslation } from "react-i18next";
 
 const EditorCardItem = ({ node, editor }: NodeViewProps) => {
 
+    const { t } = useTranslation()
     const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
     const [options, setOptions] = useState<TTSOptions>()
-    const [voice, setVoice] = useState<string>(node.attrs?.voice?.voiceLocalName)
+    const [speed, setSpeed] = useState<string>('1')
+    const [target, setTarget] = useState<'original' | 'translate'>('original')
+    const [voice, setVoice] = useState<string>(node.attrs.voice ? `${node.attrs.voice?.voiceLocalName}(${!node.attrs.voice?.target || node.attrs.voice?.target === 'original' ? t('tts.original text') : t('tts.translate text')}-${node.attrs.voice?.speed || 1})` : '')
     const [openTTS, setOpenTTS] = useState(false)
-    const { t } = useTranslation()
     const addTranslate = (translateData: WhisperSegments[]) => {
         const jsonData = editor.getJSON();
         if (jsonData.content) {
@@ -51,19 +53,24 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
             if (curItem && curItem.attrs) {
                 console.log(curItem)
                 if (service === 'Edge') {
+                    const rate = getSpeed(speed);
                     curItem.attrs.voice = {
                         type: 'Edge',
                         lang: options?.lang,
+                        rate,
                         pitch: 0,
                         voiceName: options?.voice?.shortName,
                         voiceLocalName: options?.voice?.properties.LocalName,
+                        target,
                     }
                 } else if (service === 'OpenAI') {
                     curItem.attrs.voice = {
                         type: 'OpenAI',
                         model: options?.model,
+                        speed: speed,
                         voice: options?.voice?.value,
                         voiceLocalName: options?.voice?.label,
+                        target,
                     }
                 } else if (service === 'Volcano') {
                     curItem.attrs.voice = {
@@ -72,10 +79,11 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
                         voice_type: options?.voice?.value,
                         voiceLocalName: options?.voice?.label,
                         scene: options?.scenes,
+                        target,
                     }
                 }
 
-                setVoice(curItem.attrs.voice.voiceLocalName)
+                setVoice(`${curItem.attrs.voice.voiceLocalName}(${target === 'original' ? t('tts.original text') : t('tts.translate text')}-${speed})`)
                 editor.chain().setContent(jsonData).focus().run()
             }
         }
@@ -105,9 +113,9 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
                             <IoIosClose size={16} className=" absolute -top-1 -right-1" onClick={deleteVoice} />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto">
-                        <TTSPanel setOptions={setOptions} getService={setService}></TTSPanel>
-                        <Button className="w-full" onClick={addVoice}>
+                    <PopoverContent side="right" sideOffset={10} className="w-auto editor-card-tts">
+                        <TTSPanel setOptions={setOptions} getSpeed={setSpeed} getTarget={setTarget} getService={setService}></TTSPanel>
+                        <Button className="w-full mt-2" onClick={addVoice}>
                             <span>{t('app.sure')}</span>
                         </Button>
                     </PopoverContent>
@@ -126,9 +134,9 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
                                 <span className=" text-sm">{t('app.add voice')}</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
-                                <DropdownMenuSubContent className=" p-3">
-                                    <TTSPanel setOptions={setOptions} getService={setService}></TTSPanel>
-                                    <Button className="w-full" onClick={addVoice}>
+                                <DropdownMenuSubContent className=" p-3 editor-card-tts">
+                                    <TTSPanel setOptions={setOptions} getSpeed={setSpeed} getTarget={setTarget} getService={setService}></TTSPanel>
+                                    <Button className="w-full mt-2" onClick={addVoice}>
                                         <span>{t('app.sure')}</span>
                                     </Button>
                                 </DropdownMenuSubContent>

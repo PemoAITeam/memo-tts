@@ -105,8 +105,26 @@ class DataStore {
             })
         }
         console.log(editorContent)
-        const jsonData = data.target === 'original' ? editorContent?.filter((item: { content: string | any[]; type: string; }) => !!item.content?.length && item.content[0].text && item.type === 'editorCard')
-            : editorContent?.filter((item: { content: string | any[]; type: string; }) => !!item.content?.length && item.content[0].text && item.type === 'translateCard')
+        const jsonData: any[] = [];
+        editorContent.forEach((item: { attrs: { id: string, voice?: any }, content: string | any[]; type: string; }) => {
+            if (item.content?.length && item.content[0].text && (item.type === 'editorCard' || item.type === 'translateCard')) {
+                if (item.attrs.voice?.target === 'original' && item.type === 'editorCard' || (item.attrs.voice?.target !== 'original' && item.type === 'translateCard')) {
+                    jsonData.push(item)
+                } else if (!item.attrs.voice && (data.target === 'original' && item.type === 'editorCard' || (data.target !== 'original' && item.type === 'translateCard'))) {
+                    jsonData.push(item)
+
+                }
+            }
+        })
+        // const jsonData = data.target === 'original' ? editorContent?.filter((item: { attrs: {id: string, voice?: any}, content: string | any[]; type: string; }) => {
+        //     if (item.attrs.voice && item) {
+
+        //     } else {
+        //         return !!item.content?.length && item.content[0].text && item.type === 'editorCard'
+        //     }
+
+        // })
+        //     : editorContent?.filter((item: { content: string | any[]; type: string; }) => !!item.content?.length && item.content[0].text && item.type === 'translateCard')
         console.log(jsonData)
         if (!jsonData?.length) {
             toast({
@@ -130,7 +148,7 @@ class DataStore {
                     const data: any = { text: '', md5: '' }
                     if (textData) {
                         data.text = textData.text;
-                        data.md5 = md5(rate + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
+                        data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
                         }
@@ -157,7 +175,7 @@ class DataStore {
                     const data: any = { text: '', md5: '' }
                     if (textData) {
                         data.text = textData.text;
-                        data.md5 = md5(data.speed + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
+                        data.md5 = md5((item.attrs?.voice?.speed || data.speed) + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
                         }

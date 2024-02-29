@@ -7,23 +7,25 @@ import { getLocalFileUrl } from "@/app/lib/utils"
 import { inject, observer } from "mobx-react"
 import SettingStore from "@/app/stores/settingStore"
 import { useTranslation } from "react-i18next"
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
 
 interface TTSPanelProps {
     settingStore?: SettingStore,
-    speed?: string,
     setOptions: (data: any) => void
     getService: (service: "Edge" | "OpenAI" | "Volcano") => void;
+    getSpeed: (speed: string) => void
+    getTarget: (target: 'original' | 'translate') => void
 }
 
-const TTSPanel = inject('settingStore')(observer(({ settingStore, speed, setOptions, getService }: TTSPanelProps) => {
+const TTSPanel = inject('settingStore')(observer(({ settingStore, setOptions, getService, getSpeed, getTarget }: TTSPanelProps) => {
 
     const { settings } = settingStore!
     const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
     const [curPlay, setCurPlay] = useState<any>();
-    const handleService = (e: 'Edge' | 'OpenAI' | 'Volcano') => {
-        setService(e)
-        getService(e)
-    }
+    const [speed, setSpeed] = useState<string>('1')
+    const [target, setTarget] = useState<'original' | 'translate'>('original')
+
+
     const { t } = useTranslation()
     let audioPlayer: HTMLAudioElement | null;
     const playAudio = (item: any, isAudition?: boolean, event?: any) => {
@@ -48,7 +50,6 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, speed, setOpti
             })
         }
     }
-
     const handleEnded = () => {
         console.log('Audio playback stopped');
         // 在这里执行播放结束后的逻辑
@@ -68,6 +69,20 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, speed, setOpti
         if (fileUrl) {
             playAudio({ fileUrl }, true)
         }
+    }
+
+    const handleService = (e: 'Edge' | 'OpenAI' | 'Volcano') => {
+        setService(e)
+        getService(e)
+    }
+    const switchSpeed = (speed: string) => {
+        setSpeed(speed)
+        getSpeed(speed)
+    }
+
+    const switchTarget = (target: 'original' | 'translate') => {
+        setTarget(target)
+        getTarget(target)
     }
 
     return (
@@ -92,6 +107,41 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, speed, setOpti
             {service === 'Edge' && <EdgeConfig setOptions={setOptions} getAudition={audition} />}
             {service === 'OpenAI' && <OpenAIConfig setOptions={setOptions} getAudition={audition} />}
             {service === 'Volcano' && <VolcanoConfig setOptions={setOptions} getAudition={audition} />}
+            <div className="relative mt-8 mb-2">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                </div>
+                <div className="relative flex text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                        {t('tts.other setting')}
+                    </span>
+                </div>
+            </div>
+            {
+                service !== 'Volcano' &&
+                <>
+                    <div className="mb-1 text-sm">{t('tts.speed')}</div>
+                    <Tabs value={speed}>
+                        <TabsList className="grid w-full grid-cols-7">
+                            <TabsTrigger className='px-1' value="0.5" onClick={() => switchSpeed('0.5')}>0.5</TabsTrigger>
+                            <TabsTrigger className='px-1' value="0.75" onClick={() => switchSpeed('0.75')}>0.75</TabsTrigger>
+                            <TabsTrigger className='px-1' value="1" onClick={() => switchSpeed('1')}>1</TabsTrigger>
+                            <TabsTrigger className='px-1' value="1.5" onClick={() => switchSpeed('1.5')}>1.5</TabsTrigger>
+                            <TabsTrigger className='px-1' value="2" onClick={() => switchSpeed('2')}>2</TabsTrigger>
+                            <TabsTrigger className='px-1' value="3" onClick={() => switchSpeed('3')}>3</TabsTrigger>
+                            <TabsTrigger className='px-1' value="4" onClick={() => switchSpeed('4')}>4</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </>
+            }
+            <div className="mb-1 text-sm mt-4">{t('tts.text')}</div>
+            <Tabs value={target}>
+                <TabsList className="grid grid-cols-2">
+                    <TabsTrigger className='px-1' value="original" onClick={() => switchTarget('original')}>{t('tts.original text')}</TabsTrigger>
+                    <TabsTrigger className='px-1' value="translate" onClick={() => switchTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
+                </TabsList>
+            </Tabs>
+
             {curPlay?.fileUrl && <audio id="auditionPlayer" controls>
                 <source src={getLocalFileUrl(curPlay?.fileUrl)} type="audio/wav" />
             </audio>}
