@@ -1,4 +1,4 @@
-import { EditorData, TemoData } from '@/app/interface';
+import { BgmData, EditorData, TemoData } from '@/app/interface';
 import { getSpeed, secondsToHMS } from '@/app/lib/utils';
 import { cloneDeep } from 'lodash-es';
 import md5 from 'md5';
@@ -16,7 +16,9 @@ class DataStore {
             properties: [
                 'temoData',
                 'editorData',
-                'trashData'
+                'trashData',
+                'TTSType',
+                'bgm'
             ],
         });
     }
@@ -27,7 +29,28 @@ class DataStore {
 
     trashData: TemoData[] = []
 
+    TTSType: 'audio' | 'video' = 'audio'
 
+    CurTTSType: 'audio' | 'video' = 'audio'//主页编辑的ttstype, 主要用于存储
+
+    bgm: BgmData | null = null
+
+    setBgm = (bgm: BgmData | null) => {
+        this.bgm = bgm ? cloneDeep(bgm) : null
+        if (this.bgm) {
+            localStorage.setItem('temo-tts-bgm', JSON.stringify(this.bgm))
+        } else {
+            localStorage.removeItem('temo-tts-bgm')
+        }
+    }
+
+    setTTSType = (type: 'audio' | 'video', needSave?: boolean) => {
+        this.TTSType = type
+        if (needSave) {
+            this.CurTTSType = type
+            localStorage.setItem('temo-tts-type', this.TTSType)
+        }
+    }
 
     setTemoData = (data: TemoData) => {
         this.temoData.unshift(data)
@@ -85,30 +108,38 @@ class DataStore {
             temoData = temoData.map((item: any) => ({ ...item, duration: secondsToHMS(item.metadata?.duration) }))
         }
         const editorData = localStorage.getItem('temo-editor') || ""
+        const ttsType = localStorage.getItem('temo-tts-type') || 'audio'
+        const bgm = localStorage.getItem('temo-tts-bgm')
         runInAction(() => {
             this.temoData = temoData
             this.editorData = editorData ? JSON.parse(editorData) : ''
+            this.CurTTSType = this.TTSType = ttsType as 'audio' | 'video'
+            this.bgm = bgm ? JSON.parse(bgm) : null
         })
     }
 
-    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano', target: string, speed: string, uuid: string, editorData: any, setJenerating: (params: boolean) => void }, options: any) => {
+    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano', target: string, speed: string, uuid: string, editorData: any, bgm?: BgmData, setJenerating: (params: boolean) => void }, options: any) => {
         const editorContent = data.editorData.content;
         if (editorContent?.length) {
-            editorContent.forEach((item: { type: string; attrs: { voice: any; }; }, index: number) => {
+            editorContent.forEach((item: { type: string; attrs: { voice: any, picture: any }; }, index: number) => {
                 if (item.type == 'editorCard' && editorContent[index + 1]?.type == 'translateCard') {
                     if (item.attrs?.voice) {
                         editorContent[index + 1].attrs!.voice = item.attrs.voice
                     } else {
                         delete editorContent[index + 1].attrs!.voice
                     }
+                    if (item.attrs?.picture) {
+                        editorContent[index + 1].attrs!.picture = item.attrs.picture
+                    } else {
+                        delete editorContent[index + 1].attrs!.picture
+                    }
                 }
             })
         }
-        console.log(editorContent)
         const jsonData: any[] = [];
-        editorContent.forEach((item: { attrs: { id: string, voice?: any }, content: string | any[]; type: string; }) => {
+        editorContent.forEach((item: { attrs: { id: string, voice?: any, picture?: any }, content: string | any[]; type: string; }) => {
             if (item.content?.length && item.content[0].text && (item.type === 'editorCard' || item.type === 'translateCard')) {
-                if (item.attrs.voice?.target === 'original' && item.type === 'editorCard' || (item.attrs.voice?.target !== 'original' && item.type === 'translateCard')) {
+                if (item.attrs.voice && (item.attrs.voice?.target === 'original' && item.type === 'editorCard' || (item.attrs.voice?.target !== 'original' && item.type === 'translateCard'))) {
                     jsonData.push(item)
                 } else if (!item.attrs.voice && (data.target === 'original' && item.type === 'editorCard' || (data.target !== 'original' && item.type === 'translateCard'))) {
                     jsonData.push(item)
@@ -116,15 +147,6 @@ class DataStore {
                 }
             }
         })
-        // const jsonData = data.target === 'original' ? editorContent?.filter((item: { attrs: {id: string, voice?: any}, content: string | any[]; type: string; }) => {
-        //     if (item.attrs.voice && item) {
-
-        //     } else {
-        //         return !!item.content?.length && item.content[0].text && item.type === 'editorCard'
-        //     }
-
-        // })
-        //     : editorContent?.filter((item: { content: string | any[]; type: string; }) => !!item.content?.length && item.content[0].text && item.type === 'translateCard')
         console.log(jsonData)
         if (!jsonData?.length) {
             toast({
@@ -147,7 +169,8 @@ class DataStore {
                     const textData = item.content?.find((info: any) => info.type === 'text')
                     const data: any = { text: '', md5: '' }
                     if (textData) {
-                        data.text = textData.text;
+                        data.text = textData.text.replace(/<br \/>/g, '');
+                        data.picture = item.attrs?.picture
                         data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
@@ -174,7 +197,8 @@ class DataStore {
                     const textData = item.content?.find((info: any) => info.type === 'text')
                     const data: any = { text: '', md5: '' }
                     if (textData) {
-                        data.text = textData.text;
+                        data.text = textData.text.replace(/<br \/>/g, '');
+                        data.picture = item.attrs?.picture
                         data.md5 = md5((item.attrs?.voice?.speed || data.speed) + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
@@ -201,7 +225,8 @@ class DataStore {
                     const textData = item.content?.find((info: any) => info.type === 'text')
                     const data: any = { text: '', md5: '' }
                     if (textData) {
-                        data.text = textData.text;
+                        data.text = textData.text.replace(/<br \/>/g, '').replace(/\n/g, '');
+                        data.picture = item.attrs?.picture
                         data.md5 = md5(data.speed + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
@@ -212,14 +237,14 @@ class DataStore {
             }
         }
         data.setJenerating(true)
-        console.log(params)
-        const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, cloneDeep(data.editorData));
+        const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType });
         // if (!result) {
         //     toast({
         //         variant: "destructive",
         //         description: i18n.t('tts.synthesis fail')
         //     })
         // }
+        console.log(result)
         data.setJenerating(false)
         return result
     }

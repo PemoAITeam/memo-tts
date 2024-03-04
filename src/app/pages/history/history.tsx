@@ -4,10 +4,9 @@ import { Button } from '@/app/components/ui/button';
 import Tiptap from '@/app/components/business/tiptap';
 import { useCallback, useEffect, useState } from 'react';
 
-import { secondsToHMS, getLocalFileUrl, getTextFragment } from '@/app/lib/utils';
+import { secondsToHMS, getTextFragment } from '@/app/lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
-import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import { PiVinylRecord } from "react-icons/pi";
+// import { PiVinylRecord } from "react-icons/pi";
 import { GrCheckboxSelected } from "react-icons/gr";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from '@/app/lib/tts';
@@ -22,9 +21,10 @@ import TTSPanel from '@/app/components/business/tts-panel';
 import { cloneDeep } from 'lodash-es';
 import { TbDownload } from "react-icons/tb";
 import { HiOutlineTrash } from "react-icons/hi2";
-import { TemoData } from '@/app/interface';
+import { BgmData, TemoData } from '@/app/interface';
 import { RiFileList3Line } from "react-icons/ri";
 import { useTranslation } from 'react-i18next';
+import { Remotion } from '@/app/components/business/remotion';
 
 declare const window: any;
 
@@ -40,13 +40,15 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     const { id } = useParams()
     const [curTemoId, setCurTemoId] = useState<string>('');
     const [curEditorData, setCurEditorData] = useState<any>()
+    const [currentFile, setCurrentFile] = useState<TemoData | null>();
+    const [bgm, setBgm] = useState<BgmData>();
     const [speed, setSpeed] = useState<string>('1')
     const [target, setTarget] = useState<'original' | 'translate'>('original')
     const [jenerating, setJenerating] = useState(false)
     const [list, setList] = useState<any[]>([])
     const [editorRef, setEditorRef] = useState<Editor>();
     const [options, setOptions] = useState<TTSOptions>()
-    const [curPlay, setCurPlay] = useState<any>();
+    // const [curPlay, setCurPlay] = useState<any>();
     const [batchDownload, setBatchDownload] = useState<boolean>(false);
     let downloadList = [];
     const { t } = useTranslation()
@@ -58,10 +60,11 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         if (dataStore?.temoData.length) {
             setCurTemoId(id || dataStore.temoData[0].uuid)
             const curData = dataStore.temoData.find(item => item.uuid === id || item.uuid === dataStore.temoData[0].uuid)
-            console.log(dataStore.temoData)
             if (curData) {
+                setCurrentFile(curData)
                 setCurEditorData(curData.editorData)
-                console.log(curData.editorData)
+                console.log(curData)
+                setBgm(curData.bgm)
             }
         }
 
@@ -123,7 +126,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
 
     const generateAudio = async () => {
         try {
-            const result = await dataStore?.mergeTemo({ setJenerating, target, service, speed, uuid: curTemoId, editorData: editorRef?.getJSON() }, options)
+            const result = await dataStore?.mergeTemo({ setJenerating, target, service, speed, uuid: curTemoId, bgm, editorData: editorRef?.getJSON() }, options)
             if (result) {
                 result.duration = secondsToHMS(result.metadata?.duration)
                 const index = list.findIndex(item => item.uuid === result.uuid)
@@ -132,6 +135,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                     list.unshift(result)
                 }
                 setList(cloneDeep(list))
+                setCurrentFile(result)
             }
         } catch (error) {
             setJenerating(false);
@@ -139,38 +143,38 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         }
     }
 
-    let audioPlayer: HTMLAudioElement | null;
-    const playAudio = (item: any, isAudition?: boolean, event?: any) => {
-        if (event) {
-            event.stopPropagation();
-        }
-        if (curPlay?.fileUrl === item.fileUrl && !isAudition) {
-            handleEnded()
-        } else {
-            if (audioPlayer) {
-                audioPlayer.pause()
-                audioPlayer?.removeEventListener('ended', handleEnded);
-            }
-            setCurPlay(item);
-            setTimeout(() => {
-                audioPlayer = document.getElementById('audioPlayer') as HTMLAudioElement;
-                audioPlayer.load();
-                audioPlayer.play();
-                if (!isAudition) {
-                    audioPlayer.addEventListener('ended', handleEnded);
-                }
-            })
-        }
-    }
+    // let audioPlayer: HTMLAudioElement | null;
+    // const playAudio = (item: any, isAudition?: boolean, event?: any) => {
+    //     if (event) {
+    //         event.stopPropagation();
+    //     }
+    //     if (curPlay?.fileUrl === item.fileUrl && !isAudition) {
+    //         handleEnded()
+    //     } else {
+    //         if (audioPlayer) {
+    //             audioPlayer.pause()
+    //             audioPlayer?.removeEventListener('ended', handleEnded);
+    //         }
+    //         setCurPlay(item);
+    //         setTimeout(() => {
+    //             audioPlayer = document.getElementById('audioPlayer') as HTMLAudioElement;
+    //             audioPlayer.load();
+    //             audioPlayer.play();
+    //             if (!isAudition) {
+    //                 audioPlayer.addEventListener('ended', handleEnded);
+    //             }
+    //         })
+    //     }
+    // }
 
-    const handleEnded = () => {
-        console.log('Audio playback stopped');
-        // 在这里执行播放结束后的逻辑
-        // 移除事件监听器
-        audioPlayer?.removeEventListener('ended', handleEnded);
-        setCurPlay(null)
-        audioPlayer = null;
-    };
+    // const handleEnded = () => {
+    //     console.log('Audio playback stopped');
+    //     // 在这里执行播放结束后的逻辑
+    //     // 移除事件监听器
+    //     audioPlayer?.removeEventListener('ended', handleEnded);
+    //     setCurPlay(null)
+    //     audioPlayer = null;
+    // };
 
     const download = async (event: any, data: any) => {
         if (event) {
@@ -235,6 +239,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             setList(updatedData)
         } else {
             setCurEditorData(data.editorData);
+            setCurrentFile(data)
             setCurTemoId(data.uuid)
         }
     }
@@ -282,17 +287,17 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         <>
             {!!list.length &&
                 <div className="flex flex-col h-full">
-
                     <div className='flex flex-1 temo-draggable temo-content pt-12'>
+
                         <div className='pl-4'>
                             <ScrollArea className='list-scroll-area pr-3 temo-no-draggable'> {list.map(item => (
                                 <div key={item.fileUrl} className='relative' onClick={() => selectDownload(item)}>
                                     {batchDownload && !item.selected && <span className='absolute w-3 h-3 border right-2 top-1'></span>}
                                     {batchDownload && item.selected && <span className='absolute w-3 h-3 right-2 top-1'><GrCheckboxSelected size={12} /></span>}
-                                    <div className={`flex flex-1 items-center space-x-3 rounded-md border flex-shrink-0 p-3 mb-3 ${curTemoId == item.uuid ? 'is-selected' : ''} ${item.fileUrl === curPlay?.fileUrl ? 'is-playing-audio' : ''}`}>
-                                        <Button title={t('history.play')} variant={'ghost'} onClick={(e) => playAudio(item, false, e)} className={`p-0 cursor-pointer hover:bg-transparent flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
+                                    <div className={`flex flex-1 items-center space-x-3 rounded-md border flex-shrink-0 p-3 mb-3 ${curTemoId == item.uuid ? 'is-selected' : ''}`}>
+                                        {/* <Button title={t('history.play')} variant={'ghost'} className={`p-0 cursor-pointer hover:bg-transparent flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
                                             <PiVinylRecord size={36} />
-                                        </Button>
+                                        </Button> */}
                                         <div className="flex-1 space-y-1">
                                             <p className="font-medium cursor-default">
                                                 {item.title}
@@ -328,47 +333,16 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                 </div>}
                             </div>
                         </div>
-
+                        {!!currentFile && <div className=' flex-shrink-0 tts-remotion-history mt-3 mb-3 mr-3'>
+                            <div>{currentFile.title}</div>
+                            <Remotion temoData={currentFile}></Remotion>
+                        </div>}
                         <div className='flex-1 pl-4 pb-4 flex '>
                             <div className='flex temo-no-draggable  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
-                                <Tiptap content={curEditorData} setEditor={setEditorRef} />
+                                <Tiptap content={curEditorData} setEditor={setEditorRef} type={currentFile?.type} bgmData={currentFile?.bgm} getBgm={setBgm} />
                             </div>
                             <div className='temo-no-draggable px-4 flex-shrink-0 tts-service-panel'>
-                                <TTSPanel speed={speed} setOptions={setOptions} getService={setService}></TTSPanel>
-                                {
-                                    service !== 'Volcano' &&
-                                    <>
-                                        <div className="relative mt-8 mb-2">
-                                            <div className="absolute inset-0 flex items-center">
-                                                <span className="w-full border-t" />
-                                            </div>
-                                            <div className="relative flex text-xs uppercase">
-                                                <span className="bg-background px-2 text-muted-foreground">
-                                                    {t('tts.other setting')}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="mb-1 text-sm">{t('tts.speed')}</div>
-                                        <Tabs value={speed}>
-                                            <TabsList className="grid w-full grid-cols-7">
-                                                <TabsTrigger className='px-1' value="0.5" onClick={() => setSpeed('0.5')}>0.5</TabsTrigger>
-                                                <TabsTrigger className='px-1' value="0.75" onClick={() => setSpeed('0.75')}>0.75</TabsTrigger>
-                                                <TabsTrigger className='px-1' value="1" onClick={() => setSpeed('1')}>1</TabsTrigger>
-                                                <TabsTrigger className='px-1' value="1.5" onClick={() => setSpeed('1.5')}>1.5</TabsTrigger>
-                                                <TabsTrigger className='px-1' value="2" onClick={() => setSpeed('2')}>2</TabsTrigger>
-                                                <TabsTrigger className='px-1' value="3" onClick={() => setSpeed('3')}>3</TabsTrigger>
-                                                <TabsTrigger className='px-1' value="4" onClick={() => setSpeed('4')}>4</TabsTrigger>
-                                            </TabsList>
-                                        </Tabs>
-                                        <div className="mb-1 text-sm mt-4">{t('tts.text')}</div>
-                                        <Tabs value={target}>
-                                            <TabsList className="grid grid-cols-2">
-                                                <TabsTrigger className='px-1' value="original" onClick={() => setTarget('original')}>{t('tts.original text')}</TabsTrigger>
-                                                <TabsTrigger className='px-1' value="translate" onClick={() => setTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
-                                            </TabsList>
-                                        </Tabs>
-                                    </>
-                                }
+                                <TTSPanel getTarget={setTarget} getSpeed={setSpeed} setOptions={setOptions} getService={setService}></TTSPanel>
                                 <Button className=' mt-6 w-full' size="lg" disabled={jenerating} onClick={generateAudio}>
                                     {jenerating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
                                     <span>{t('tts.synthesis')}</span>
@@ -380,9 +354,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             {!list.length && <div className='flex items-center justify-center h-full'>
                 {t('tts.no results')}
             </div>}
-            {curPlay?.fileUrl && <audio id="audioPlayer" controls>
-                <source src={getLocalFileUrl(curPlay?.fileUrl)} type="audio/wav" />
-            </audio>}
+            {/* {curPlay?.fileUrl && <audio ref={audioRef} controls></audio>} */}
         </>
     )
 }))

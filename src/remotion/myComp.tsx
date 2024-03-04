@@ -7,12 +7,13 @@ import {
     delayRender,
     Img,
     Sequence,
-    staticFile,
-    useVideoConfig,
+    // useVideoConfig,
 } from 'remotion';
-import { PaginatedSubtitles } from './Subtitles';
+// import { PaginatedSubtitles } from './Subtitles';
 import { z } from 'zod';
 import { zColor } from '@remotion/zod-types';
+import { TemoFileList } from '@/app/interface';
+import { getLocalFileUrl } from '@/app/lib/utils';
 
 export const fps = 30;
 export const AudioGramSchema = z.object({
@@ -23,20 +24,20 @@ export const AudioGramSchema = z.object({
     audioFileName: z.string().refine((s) => s.endsWith('.mp3'), {
         message: 'Audio file must be a .mp3 file',
     }),
-    coverImgFileName: z
-        .string()
-        .refine(
-            (s) =>
-                s.endsWith('.jpg') ||
-                s.endsWith('.jpeg') ||
-                s.endsWith('.png') ||
-                s.endsWith('.bmp'),
-            {
-                message: 'Image file must be a .jpg / .jpeg / .png / .bmp file',
-            }
-        ),
-    titleText: z.string(),
-    titleColor: zColor(),
+    // coverImgFileName: z
+    //     .string()
+    //     .refine(
+    //         (s) =>
+    //             s.endsWith('.jpg') ||
+    //             s.endsWith('.jpeg') ||
+    //             s.endsWith('.png') ||
+    //             s.endsWith('.bmp'),
+    //         {
+    //             message: 'Image file must be a .jpg / .jpeg / .png / .bmp file',
+    //         }
+    //     ),
+    // titleText: z.string(),
+    // titleColor: zColor(),
     subText: z.string(),
     subtitlesTextColor: zColor(),
     subtitlesLinePerPage: z.number().int().min(0),
@@ -45,23 +46,34 @@ export const AudioGramSchema = z.object({
     onlyDisplayCurrentSentence: z.boolean(),
 });
 
-type AudiogramCompositionSchemaType = z.infer<typeof AudioGramSchema>;
+// const defaultWave = {
+//     waveColor: '#a3a5ae',
+//     waveFreqRangeStartIndex: 7,
+//     waveLinesToDisplay: 29,
+//     waveNumberOfSamples: '256', // This is string for Remotion controls and will be converted to a number
+//     mirrorWave: true,
+// }
 
-export const MyComp: React.FC<AudiogramCompositionSchemaType> = ({
+type AudiogramCompositionSchemaType = z.infer<typeof AudioGramSchema>;
+export const MyComp: React.FC<AudiogramCompositionSchemaType & { bgm?: string, fileList: TemoFileList[], duration: number, type: 'audio' | 'video' }> = ({
     subtitlesFileName,
     subText,
+    bgm,
+    type,
     audioFileName,
-    coverImgFileName,
-    titleText,
-    titleColor,
-    subtitlesTextColor,
-    subtitlesLinePerPage,
-    audioOffsetInSeconds,
-    subtitlesZoomMeasurerSize,
-    subtitlesLineHeight,
-    onlyDisplayCurrentSentence,
+    // coverImgFileName,
+    // titleText,
+    // titleColor,
+    // subtitlesTextColor,
+    // subtitlesLinePerPage,
+    // audioOffsetInSeconds,
+    // subtitlesZoomMeasurerSize,
+    // subtitlesLineHeight,
+    // onlyDisplayCurrentSentence,
+    fileList,
+    duration,
 }) => {
-    const { durationInFrames } = useVideoConfig();
+    // const { durationInFrames } = useVideoConfig();
 
     const [handle] = useState(() => delayRender());
     const [subtitles, setSubtitles] = useState<string | null>(null);
@@ -87,17 +99,17 @@ export const MyComp: React.FC<AudiogramCompositionSchemaType> = ({
     if (!subtitles) {
         return null;
     }
-
-    const audioOffsetInFrames = Math.round(audioOffsetInSeconds * fps);
+    // const audioOffsetInFrames = Math.round(audioOffsetInSeconds * fps);
 
     return (
         <div ref={ref}>
             <AbsoluteFill>
-                <Sequence from={0}>
+                <Sequence from={0} durationInFrames={duration}>
+                    {!!bgm && <Audio src={bgm} />}
                     <Audio src={audioFileName} />
 
                     <div
-                        className="container"
+                        className="container w-full max-w-none"
                         style={{
                             fontFamily: 'IBM Plex Sans',
                         }}
@@ -110,7 +122,7 @@ export const MyComp: React.FC<AudiogramCompositionSchemaType> = ({
                             </div>
                         </div> */}
 
-                        <div
+                        {/* <div
                             style={{ lineHeight: `${subtitlesLineHeight}px` }}
                             className="captions z-10 absolute bottom-2 left-0 w-full px-6"
                         >
@@ -124,27 +136,28 @@ export const MyComp: React.FC<AudiogramCompositionSchemaType> = ({
                                 subtitlesLineHeight={subtitlesLineHeight}
                                 onlyDisplayCurrentSentence={onlyDisplayCurrentSentence}
                             />
-                        </div>
+                        </div> */}
                     </div>
-                    <Sequence from={0} durationInFrames={30 * 13}>
-                        <div className="w-full">
-                            <Img className="cover w-full h-full" src={staticFile('animal-1.jpg')} />
+                    {type === 'video' && fileList.map((file: TemoFileList, index: number) => (
+                        <Sequence key={index} from={30 * file.from!} durationInFrames={30 * file.duration!}>
+                            {file.pic && <div className="w-full">
+                                <Img className="cover w-full h-full object-cover" src={getLocalFileUrl(file.pic.path)} />
 
-                            {/* <div className="title" style={{ color: titleColor }}>
-                                {titleText}
-                            </div> */}
-                        </div>
-                    </Sequence>
-
-                    <Sequence from={30 * 13} durationInFrames={30 * 26}>
-                        <div className="w-full">
-                            <Img className="cover w-full h-full" src={staticFile('animal-2.jpg')} />
-
-                            {/* <div className="title" style={{ color: titleColor }}>
-                                {titleText}
-                            </div> */}
-                        </div>
-                    </Sequence>
+                                <div className="subtitle absolute w-full p-6 left-0 bottom-0 opacity-0 font-text">
+                                    {file.text}
+                                </div>
+                            </div>}
+                        </Sequence>
+                    ))}
+                    {type !== 'video' && fileList.map((file: TemoFileList, index) => (
+                        <Sequence key={index} from={30 * file.from!} durationInFrames={30 * file.duration!}>
+                            <div className="w-full">
+                                <div className="subtitle absolute w-full p-6 left-0 bottom-0 opacity-0 font-text">
+                                    {file.text}
+                                </div>
+                            </div>
+                        </Sequence>
+                    ))}
                 </Sequence>
             </AbsoluteFill>
         </div>

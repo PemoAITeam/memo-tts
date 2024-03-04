@@ -16,8 +16,6 @@ import { TbHome, TbTrash, TbPlaylist } from "react-icons/tb";
 import HistoryPage from '@/app/pages/history/history'
 import TrashPage from '@/app/pages/trash/trash'
 import { useTranslation } from 'react-i18next'
-import { TbPhotoVideo } from "react-icons/tb";
-import { RemotionPage } from '../pages/remotion/remotion'
 
 const hideTabs = [
     /\/details/g,
@@ -72,12 +70,12 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
             icon: TbTrash,
             label: t('route.trash'),
         },
-        {
-            id: 'remotion',
-            path: '/remotion',
-            label: 'remotion',
-            icon: TbPhotoVideo
-        },
+        // {
+        //     id: 'remotion',
+        //     path: '/remotion',
+        //     label: 'remotion',
+        //     icon: TbPhotoVideo
+        // },
     ])
 
 
@@ -133,7 +131,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
                     <Route path="/" element={<Navigate to="/home" replace />} />
                     <Route path="/home" element={<HomePage />}></Route>
                     <Route path="/trash" element={<TrashPage />}></Route>
-                    <Route path="/remotion" element={<RemotionPage />}></Route>
+                    {/* <Route path="/remotion" element={<RemotionPage />}></Route> */}
                     <Route path="/history/:id?" element={<HistoryPage />}></Route>
                 </Routes>
             </div>

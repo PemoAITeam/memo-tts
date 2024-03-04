@@ -112,6 +112,8 @@
 }
 
 .font-text {
+  font-size: 67px;
+  line-height: 1.2;
   font-family: inherit;
   color: rgb(254, 254, 254);
   background-color: rgba(1, 1, 1, 0);
@@ -124,4 +126,17 @@
     rgb(1, 1, 1) 0px 0px 7px;
   font-weight: bold;
   letter-spacing: 5px;
+  transform: translateY(100%);
+  animation: subtitleAnimation 0.5s ease-out forwards;
+}
+
+@keyframes subtitleAnimation {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

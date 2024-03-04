@@ -145,7 +145,7 @@ export interface AppSettings {
 export interface TemoData {
   dest?: string;//存储文件夹
   fileUrl?: string;//文件地址
-  infoData?: Record<string, {fileDest: string, metadata: Record<string, any>, text: string} | string[]>;
+  infoData?: Record<string, { fileDest: string, metadata: Record<string, any>, text: string } | string[]>;
   lang?: AllLanguage;
   metadata?: Record<string, any>;
   title: string;
@@ -155,6 +155,24 @@ export interface TemoData {
   date?: number;
   duration?: string;
   editorData?: EditorData[];
+  bgm?: BgmData;
+  type?: 'audio' | 'video';
+  fileList: TemoFileList[]
+}
+
+export interface BgmData {
+  name: string,
+  path: string,
+  duration: number
+}
+
+export interface TemoFileList {
+  fileDest: string,
+  metadata: any,
+  text: string,
+  pic?: { name: string, path: string },
+  from?: number,
+  duration?: number
 }
 
 export interface EditorData {

@@ -18,6 +18,10 @@ export const EditorCard = Node.create({
             voice: {
                 default: null,
                 rendered: false
+            },
+            picture: {
+                default: null,
+                rendered: false
             }
         }
     },
@@ -58,7 +62,7 @@ export const EditorCard = Node.create({
                     if (addIndex && addIndex > -1) {
                         jsonData.content?.splice(addIndex, 1)
                     }
-                    this.editor.commands.setContent(jsonData)
+                    this.editor.commands.setContent(jsonData, true)
                 }
                 return true
             },

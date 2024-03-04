@@ -15,6 +15,14 @@ export const TranslateCard = Node.create({
                 default: generateUUID(),
                 rendered: false,
             },
+            voice: {
+                default: null,
+                rendered: false
+            },
+            video: {
+                default: null,
+                rendered: false
+            }
         }
     },
 

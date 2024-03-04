@@ -18,7 +18,6 @@ const useWindowedFrameSubs = (
 	const config = useVideoConfig();
 	const { fps } = config;
 	const parsed = useMemo(() => parseSRT(src), [src]);
-	console.log(parsed)
 	return useMemo(() => {
 		return parsed
 			.map((item) => {
@@ -127,7 +126,6 @@ export const PaginatedSubtitles: React.FC<{
 		const currentFrameSentences = currentAndFollowingSentences.filter((word) => {
 			return word.start < frame;
 		});
-		console.log(currentAndFollowingSentences)
 		return (
 			<div
 				style={{

@@ -1,5 +1,5 @@
 .tts-service-panel {
-    min-width: 250px;
+    min-width: 292px;
 }
 
 .ProseMirror .is-empty::before {
@@ -16,10 +16,33 @@
 }
 
 .valcano-voice-content {
-    max-height: 34vh;
+    max-height: 26vh;
     overflow-y: auto;
+}
+
+.editor-card-tts {
+
+    .valcano-voice-content,
+    .voice-type-content {
+        max-height: 20vh;
+    }
 }
 
 .node-editorCard:first-child .voice-item {
     margin-top: 0;
+}
+
+.tts-remotion {
+    min-width: 30vw;
+}
+
+.tts-remotion-history {
+    min-width: 20vw;
+}
+
+.tts-remotion-player {
+    &>div:last-child {
+        background-image: none !important;
+        padding-top: 20px !important;
+    }
 }

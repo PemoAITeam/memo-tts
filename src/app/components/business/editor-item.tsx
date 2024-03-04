@@ -3,19 +3,26 @@ import { GoPlus } from "react-icons/go";
 import { MdOutlineKeyboardVoice } from "react-icons/md";
 import { TbArrowsDownUp } from "react-icons/tb";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { generateUUID, getSpeed } from "@/app/lib/utils";
+import { generateUUID, getLocalFileUrl, getSpeed } from "@/app/lib/utils";
 import TranslatePanel from "./translate-panel";
 import { cloneDeep } from 'lodash-es';
 import { WhisperSegments } from "@/app/interface";
 import { Button } from "../ui/button";
 import TTSPanel from "./tts-panel";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TTSOptions } from "@/app/lib/tts";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { IoIosClose } from "react-icons/io";
 import { useTranslation } from "react-i18next";
+import { SlPicture } from "react-icons/sl";
+import { inject, observer } from "mobx-react";
+import DataStore from "@/app/stores/dataStore";
 
-const EditorCardItem = ({ node, editor }: NodeViewProps) => {
+interface EditorCardProps extends NodeViewProps {
+    dataStore?: DataStore
+}
+
+const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }: EditorCardProps) => {
 
     const { t } = useTranslation()
     const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
@@ -23,7 +30,39 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
     const [speed, setSpeed] = useState<string>('1')
     const [target, setTarget] = useState<'original' | 'translate'>('original')
     const [voice, setVoice] = useState<string>(node.attrs.voice ? `${node.attrs.voice?.voiceLocalName}(${!node.attrs.voice?.target || node.attrs.voice?.target === 'original' ? t('tts.original text') : t('tts.translate text')}-${node.attrs.voice?.speed || 1})` : '')
+    const [hasPic, setHasPic] = useState<boolean>(!!node.attrs.picture)
     const [openTTS, setOpenTTS] = useState(false)
+    const [selectedImage, setSelectedImage] = useState(node.attrs.picture ? node.attrs.picture.path : null);
+
+    useEffect(() => {
+        setHasPic(dataStore?.TTSType === 'video')
+        console.log(dataStore?.TTSType)
+    }, [dataStore?.TTSType])
+
+    useEffect(() => {
+        setSelectedImage(node.attrs.picture ? node.attrs.picture.path : null)
+    }, [node.attrs])
+
+    const selectBgPic = async () => {
+        const file: any = await window.AIM.openDialog('showOpenDialogSync', {
+            properties: ['openFile'],
+            filters: [{ name: '', extensions: ['jpg', 'jpeg', 'png'] }]
+        })
+        const filePath = file[0];
+        setSelectedImage(filePath)
+        const jsonData = editor.getJSON();
+        if (jsonData.content) {
+            const curItem = jsonData.content?.find(item => item.attrs?.id == node.attrs.id && item.type === "editorCard")
+            if (curItem && curItem.attrs) {
+                curItem.attrs.picture = {
+                    path: filePath
+                }
+                editor.chain().setContent(jsonData, true).focus().run()
+            }
+        }
+
+    }
+
     const addTranslate = (translateData: WhisperSegments[]) => {
         const jsonData = editor.getJSON();
         if (jsonData.content) {
@@ -31,11 +70,11 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
             if (index > -1) {
                 if (jsonData.content[index + 1]?.type === 'translateCard') {
                     jsonData.content[index + 1].content = [{ type: 'text', text: translateData[0].text }];
-                    editor.chain().setContent({ type: 'doc', content: cloneDeep(jsonData.content) }).focus().run()
+                    editor.chain().setContent({ type: 'doc', content: cloneDeep(jsonData.content) }, true).focus().run()
                 } else {
                     const list = [...jsonData.content.slice(0, index + 1), { type: 'translateCard', attrs: { id: generateUUID() }, content: [{ type: 'text', text: translateData[0].text }] }, ...jsonData.content.slice(index + 1)];
                     console.log(list)
-                    editor.chain().setContent({ type: 'doc', content: list }).focus().run()
+                    editor.chain().setContent({ type: 'doc', content: list }, true).focus().run()
                 }
             }
         }
@@ -84,7 +123,7 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
                 }
 
                 setVoice(`${curItem.attrs.voice.voiceLocalName}(${target === 'original' ? t('tts.original text') : t('tts.translate text')}-${speed})`)
-                editor.chain().setContent(jsonData).focus().run()
+                editor.chain().setContent(jsonData, true).focus().run()
             }
         }
     }
@@ -98,7 +137,7 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
         if (curItem?.attrs) {
             curItem.attrs.voice = null;
             setVoice("")
-            editor.chain().setContent(jsonData).focus().run()
+            editor.chain().setContent(jsonData, true).focus().run()
         }
     }
 
@@ -156,9 +195,19 @@ const EditorCardItem = ({ node, editor }: NodeViewProps) => {
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <NodeViewContent className={`content flex-1 px-2 editable-content ${node.content.size == 0 ? 'is-empty' : ''}`} />
+                {hasPic &&
+                    <div className="text-gray-500 flex-shrink-0 cursor-pointer" onClick={selectBgPic}>
+                        {/* <label htmlFor={`ttsImag-${node.attrs.id}`} className="cursor-pointer">
+                            <input type="file" id={`ttsImag-${node.attrs.id}`} accept="image/*" className=" hidden" onChange={handleImageChange}></input>
+                        </label> */}
+                        {!selectedImage && <SlPicture size={48} />}
+                        {selectedImage && <img width={48} src={getLocalFileUrl(selectedImage)} alt={t('tts.select img')} />}
+
+                    </div>
+                }
             </div>
         </NodeViewWrapper>
     );
-};
+}));
 
 export default EditorCardItem
