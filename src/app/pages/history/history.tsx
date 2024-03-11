@@ -117,7 +117,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                 } else {
                     toast({
                         variant: "destructive",
-                        description: t('tts.synthesis fail')
+                        description: error
                     })
                 }
                 break
