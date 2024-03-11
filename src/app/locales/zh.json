@@ -186,6 +186,10 @@
         "select img": "选择图片",
         "select music": "背景音乐",
         "music": "音乐",
+        "tts": "语音",
+        "my library": "我的素材",
+        "generate": "合成",
+        "favorate": "最爱",
         "lang": {
             "英语(英国)": "英语(英国)",
             "英语(美国)": "英语(美国)",

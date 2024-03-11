@@ -1,4 +1,4 @@
-import { BgmData, EditorData, TemoData } from '@/app/interface';
+import { BgmData, EditorData, LibraryData, TemoData, TemoFileList } from '@/app/interface';
 import { getSpeed, secondsToHMS } from '@/app/lib/utils';
 import { cloneDeep } from 'lodash-es';
 import md5 from 'md5';
@@ -17,6 +17,7 @@ class DataStore {
                 'temoData',
                 'editorData',
                 'trashData',
+                'libraryData',
                 'TTSType',
                 'bgm'
             ],
@@ -28,6 +29,8 @@ class DataStore {
     editorData: { type: 'doc', content: EditorData } | string = ''
 
     trashData: TemoData[] = []
+
+    libraryData: LibraryData[] = []
 
     TTSType: 'audio' | 'video' = 'audio'
 
@@ -101,20 +104,51 @@ class DataStore {
         return trashData
     }
 
+    setLibraryData = (data: LibraryData[]) => {
+        this.libraryData = data.concat(this.libraryData)
+        window.AIM.saveTemoLibrary(cloneDeep(this.libraryData))
+        console.log(data)
+    }
+
+    copyLibraryFile = async (path: string, type: 'pic' | 'media', duration?: string) => {
+        const data = await window.AIM.copyTemoFile(path, 'library')
+        if (!data.exist) {
+            data.type = type
+            data.duration = duration
+            this.setLibraryData([data])
+        }
+    }
+
     initData = async () => {
         let temoData = await window.AIM.getTemoData() || []
         if (temoData?.length) {
             console.log(temoData)
-            temoData = temoData.map((item: any) => ({ ...item, duration: secondsToHMS(item.metadata?.duration) }))
+            temoData = temoData.map((item: any) => {
+                let from = 0, duration = 0;
+                const fileList: TemoFileList[] = item.fileList?.map((file: TemoFileList) => {
+                    const newObj = {
+                        ...file,
+                        from,
+                        duration: Math.ceil(file.metadata.duration)
+                    }
+                    from += Math.ceil(file.metadata.duration)
+                    duration += newObj.duration
+                    return newObj
+                })
+                item.fileList = fileList
+                return { ...item, duration: secondsToHMS(duration), fileDuration: duration }
+            })
         }
         const editorData = localStorage.getItem('temo-editor') || ""
         const ttsType = localStorage.getItem('temo-tts-type') || 'audio'
         const bgm = localStorage.getItem('temo-tts-bgm')
+        const libraryData = await window.AIM.getTemoLibrary() || []
         runInAction(() => {
             this.temoData = temoData
             this.editorData = editorData ? JSON.parse(editorData) : ''
             this.CurTTSType = this.TTSType = ttsType as 'audio' | 'video'
             this.bgm = bgm ? JSON.parse(bgm) : null
+            this.libraryData = libraryData
         })
     }
 
@@ -217,7 +251,7 @@ class DataStore {
             }
             params = {
                 type: 'Volc',
-                emotion: options?.emotion,
+                emotion: options?.emotion?.value,
                 voice_type: options?.voice?.value,
                 voiceLocalName: options?.voice?.label,
                 scene: options?.scenes,
@@ -237,7 +271,7 @@ class DataStore {
             }
         }
         data.setJenerating(true)
-        const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType });
+        const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType, ttsOptions: cloneDeep({ service: data.service, speed: data.speed, target: data.target, ttsOptions: options }) });
         // if (!result) {
         //     toast({
         //         variant: "destructive",

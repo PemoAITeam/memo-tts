@@ -5,13 +5,13 @@ import { EditorCard } from '../extensions/editor-card'
 import { useEffect, useRef, useState } from 'react'
 import { EventHandler } from '../extensions/paste-plugin'
 import { TranslateCard } from '../extensions/translate-card'
-import { generateUUID, getLocalFileUrl, mergeTranslate } from '@/app/lib/utils'
+import { generateUUID, getLocalFileUrl, mergeTranslate, secondsToHMS } from '@/app/lib/utils'
 import { Button } from '../ui/button'
 import { AiOutlineClear, AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import TranslatePanel from './translate-panel'
 import { TbArrowsDownUp } from 'react-icons/tb'
-import { BgmData, WhisperSegments } from '@/app/interface'
+import { BgmData, TemoData, WhisperSegments } from '@/app/interface'
 import { cloneDeep } from 'lodash-es'
 import mammoth from 'mammoth'
 import { toast } from '../ui/use-toast'
@@ -21,23 +21,36 @@ import { useTranslation } from 'react-i18next'
 import { inject, observer } from 'mobx-react'
 import DataStore from '@/app/stores/dataStore'
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
-import { MdOutlineMusicNote } from "react-icons/md";
+import { MdOutlineKeyboardVoice, MdOutlineMusicNote } from "react-icons/md";
 import { BsPause, BsPlay } from "react-icons/bs";
+import TTSPanel, { VoiceOptions } from './tts-panel'
+import AppStore from '@/app/stores/appStore'
+import { PiMagicWandLight } from "react-icons/pi";
+import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
+import TTSDialog from './tts-dialog'
 
 interface TiptapProps {
     setEditor?: (editor: Editor) => void,
     getBgm?: (bgm: { name: string, path: string, duration: number }) => void,
     content?: any,
     from?: string,
-    dataStore?: DataStore,
     type?: 'audio' | 'video',
-    bgmData?: BgmData
+    bgmData?: BgmData,
+    dataStore?: DataStore,
+    appStore?: AppStore,
+    currentFile?: TemoData,
+    updateList?: (data: TemoData) => void
 }
 
-const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore, getBgm, type, bgmData }: TiptapProps) => {
+const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore, updateList, getBgm, bgmData, currentFile }: TiptapProps) => {
     const [openTranslate, setOpenTranslate] = useState(false)
-    const [translating, setTranslating] = useState<boolean>(false);
+    const [translating, setTranslating] = useState<boolean>(false)
+    const [synthesising, setSynthesising] = useState<boolean>(false)
+    const [openSynthesis, setOpenSynthesis] = useState<boolean>(false)
+    const [curOptions, setCurOptions] = useState<VoiceOptions>()
     const [TTSType, setTTSType] = useState<'video' | 'audio'>('audio')
+    const [voice, setVoice] = useState<string>();
+    const [openDialog, setOpenDialog] = useState(false);
     const { t } = useTranslation()
     const editor = useEditor({
         extensions: [
@@ -64,7 +77,8 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         }
     })
 
-    const [bgm, setBgm] = useState<{ name: string, path: string, duration?: number } | undefined>(bgmData);
+    const [bgm, setBgm] = useState<BgmData | undefined>(bgmData);
+    const [selectedBgm, setSelectedBgm] = useState<boolean>(false)
     const audioRef = useRef<any>();
     const [isPlaying, setIsPlaying] = useState(false);
     useEffect(() => {
@@ -93,18 +107,29 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     }, [editor, content])
 
     useEffect(() => {
-        if (type) {
-            setTTSType(type)
-            dataStore?.setTTSType(type)
+        if (currentFile) {
+            if (currentFile.type) {
+                setTTSType(currentFile.type)
+                dataStore?.setTTSType(currentFile.type)
+            }
+            setVoice(currentFile.voiceLocalName)
+            setCurOptions(currentFile.ttsOptions)
+        } else if (dataStore?.TTSType) {
+            setTTSType(dataStore.TTSType)
         }
         if (bgmData) {
             setBgm(bgmData)
         }
+
+    }, [dataStore, bgmData, currentFile])
+
+    useEffect(() => {
         return () => {
             dataStore?.setTTSType('audio')
             setBgm(undefined)
+            setCurOptions(undefined)
         }
-    }, [dataStore, type, bgmData])
+    }, [])
 
     const clear = () => {
         editor?.commands.clearContent();
@@ -178,26 +203,33 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         }
     };
 
-    const selectBgm = async () => {
-        const file: any = await window.AIM.openDialog('showOpenDialogSync', {
-            properties: ['openFile'],
-            filters: [{ name: '', extensions: ['mp3'] }]
-        })
-        const filePath = file[0];
-        const fileName = file[0].replace(/^.*[\\/]/, '');
+    const selectBgm = async (filePath: string) => {
+        // const file: any = await window.AIM.openDialog('showOpenDialogSync', {
+        //     properties: ['openFile'],
+        //     filters: [{ name: '', extensions: ['mp3'] }]
+        // })
+        // if (!file) return
+        // const filePath = file[0];
+
+        const fileName = filePath.replace(/^.*[\\/]/, '');
         if (audioRef.current) {
             audioRef.current.src = getLocalFileUrl(filePath);
             // 使用loadedmetadata事件获取音频文件的duration
             audioRef.current.addEventListener('loadedmetadata', () => {
                 const duration = audioRef.current.duration;
                 // 在这里可以处理音频文件的时长
-                getBgm && getBgm({ name: fileName, path: filePath, duration })
+                const bgmData = { name: fileName, path: filePath, duration }
+                dataStore!.copyLibraryFile(filePath, 'media', secondsToHMS(duration))
+                getBgm && getBgm(bgmData)
                 if (from === 'home') {
-                    dataStore?.setBgm({ name: fileName, path: filePath, duration })
+                    dataStore?.setBgm(bgmData)
+                } else {
+                    setSelectedBgm(true)
                 }
+                setBgm(bgmData);
+                setOpenDialog(false)
             });
         }
-        setBgm({ name: fileName, path: filePath });
     }
 
     const switchTTSType = (type: 'audio' | 'video') => {
@@ -221,26 +253,78 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         setIsPlaying(!isPlaying);
     }
 
+    const generateAudio = async () => {
+        try {
+            const result = await dataStore?.mergeTemo({ setJenerating: setSynthesising, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
+            if (result) {
+                result.duration = secondsToHMS(result.metadata?.duration)
+                updateList && updateList(result)
+            }
+        } catch (error) {
+            setSynthesising(false);
+            console.log(error)
+        }
+    }
+
+    const addVoice = (data: VoiceOptions) => {
+        setOpenSynthesis(false)
+        const ttsOptions = data.ttsOptions
+        if (data.service === 'Edge') {
+            setVoice(ttsOptions?.voice.properties.LocalName)
+        } else {
+            setVoice(ttsOptions?.voice.label)
+        }
+        setCurOptions(data)
+    }
+
     return (
         <>
             <div className='flex items-center flex-shrink-0 justify-between mb-4 pr-3'>
-                <Tabs value={TTSType}>
+                {from === 'home' && <Tabs value={TTSType}>
                     <TabsList className="grid grid-cols-2">
                         <TabsTrigger className='px-1' value="audio" onClick={() => switchTTSType('audio')}>{t('tts.audio')}</TabsTrigger>
                         <TabsTrigger className='px-1' value="video" onClick={() => switchTTSType('video')}>{t('tts.video')}</TabsTrigger>
                     </TabsList>
-                </Tabs>
+                </Tabs>}
                 <div className='flex items-center flex-shrink-0'>
-                    {!!setBgm && <Button variant={'ghost'} onClick={selectBgm} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
-                        {!bgm && <MdOutlineMusicNote size={18} />}
-                        {(bgm && isPlaying) && <BsPause onClick={playBgm} size={18} />}
-                        {(bgm && !isPlaying) && <BsPlay onClick={playBgm} size={18} />}
-                        <span className=" text-sm ml-1">{bgm ? bgm.name : t('tts.select music')}</span>
+                    {from != 'home' && <Button title={t('tts.synthesis')} variant={'ghost'} className=" hover:text-indigo-600 flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" size="lg" disabled={synthesising} onClick={generateAudio}>
+                        {synthesising && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} />}
+                        {!synthesising && <PiMagicWandLight size={16} />}
+                        <span className='synthesis-text ml-1 '>{t('tts.synthesis')}</span>
                     </Button>}
+
+                    {!!setBgm && <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+                        <DialogTrigger asChild>
+                            <Button title={t('tts.select music')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
+                                {!bgm && <MdOutlineMusicNote size={18} />}
+                                {(bgm && isPlaying) && <BsPause onClick={playBgm} size={18} />}
+                                {(bgm && !isPlaying) && <BsPlay onClick={playBgm} size={18} />}
+                                <span className={`text-sm ml-1 ${selectedBgm ? ' text-indigo-600' : ''}`}>{bgm ? bgm.name : t('tts.select music')}</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="pic-dialog w-2/3 h-2/3 max-w-none">
+                            <TTSDialog selectImage={selectBgm} fileType="media"></TTSDialog>
+                        </DialogContent>
+                    </Dialog>}
+                    {from != 'home' && <Popover open={openSynthesis} onOpenChange={(open) => setOpenSynthesis(open)}>
+                        <PopoverTrigger asChild>
+                            <Button title={t('tts.tts')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
+                                <MdOutlineKeyboardVoice size={18} />
+                                <span className={`text-sm ml-1 ${voice !== currentFile?.voiceLocalName ? ' text-indigo-600' : ''}`}> {voice} </span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto">
+                            <TTSPanel showButton={true} getVoiceOptions={addVoice}></TTSPanel>
+                            {/* <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
+                                <span>{t('app.sure')}</span>
+                            </Button> */}
+                        </PopoverContent>
+                    </Popover>}
+
                     <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
                         <PopoverTrigger asChild>
-                            <Button variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
-                                {translating ? <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} /> : <TbArrowsDownUp size={18} />}
+                            <Button title={t('app.translate')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
+                                {translating ? <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} /> : <TbArrowsDownUp size={18} />}
                                 <span className=" text-sm ml-1">{t('app.translate')}</span>
                             </Button>
                         </PopoverTrigger>
@@ -248,7 +332,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                             <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
                         </PopoverContent>
                     </Popover>
-                    <Button variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" onClick={() => clear()}>
+                    <Button title={t('app.clear')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" onClick={() => clear()}>
                         <AiOutlineClear size={18} />
                         <span className=" text-sm ml-1">{t('app.clear')}</span>
                     </Button>

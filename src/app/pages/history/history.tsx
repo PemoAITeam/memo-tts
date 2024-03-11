@@ -4,12 +4,12 @@ import { Button } from '@/app/components/ui/button';
 import Tiptap from '@/app/components/business/tiptap';
 import { useCallback, useEffect, useState } from 'react';
 
-import { secondsToHMS, getTextFragment } from '@/app/lib/utils';
-import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { getTextFragment } from '@/app/lib/utils';
+// import { AiOutlineLoading3Quarters } from "react-icons/ai";
 // import { PiVinylRecord } from "react-icons/pi";
 import { GrCheckboxSelected } from "react-icons/gr";
-import { Editor } from '@tiptap/react';
-import { TTSOptions } from '@/app/lib/tts';
+// import { Editor } from '@tiptap/react';
+// import { TTSOptions } from '@/app/lib/tts';
 import { useToast } from "@/app/components/ui/use-toast"
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { inject, observer } from 'mobx-react';
@@ -17,14 +17,17 @@ import SettingStore from '@/app/stores/settingStore';
 import DataStore from '@/app/stores/dataStore';
 import { useParams } from 'react-router-dom';
 import AppStore from '@/app/stores/appStore';
-import TTSPanel from '@/app/components/business/tts-panel';
+// import TTSPanel from '@/app/components/business/tts-panel';
 import { cloneDeep } from 'lodash-es';
 import { TbDownload } from "react-icons/tb";
 import { HiOutlineTrash } from "react-icons/hi2";
-import { BgmData, TemoData } from '@/app/interface';
-import { RiFileList3Line } from "react-icons/ri";
+import { TemoData, TemoFileList } from '@/app/interface';
+// import { RiFileList3Line } from "react-icons/ri";
 import { useTranslation } from 'react-i18next';
 import { Remotion } from '@/app/components/business/remotion';
+import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { PlayerRef } from '@remotion/player';
+import CircularProgressBar from '@/app/components/business/progress';
 
 declare const window: any;
 
@@ -34,41 +37,45 @@ interface HomePageProps {
     appStore?: AppStore
 }
 
-const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ settingStore, dataStore }: HomePageProps) => {
-
-    const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
+const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dataStore }: HomePageProps) => {
     const { id } = useParams()
     const [curTemoId, setCurTemoId] = useState<string>('');
     const [curEditorData, setCurEditorData] = useState<any>()
-    const [currentFile, setCurrentFile] = useState<TemoData | null>();
-    const [bgm, setBgm] = useState<BgmData>();
-    const [speed, setSpeed] = useState<string>('1')
-    const [target, setTarget] = useState<'original' | 'translate'>('original')
-    const [jenerating, setJenerating] = useState(false)
+    const [currentFile, setCurrentFile] = useState<TemoData>();
     const [list, setList] = useState<any[]>([])
-    const [editorRef, setEditorRef] = useState<Editor>();
-    const [options, setOptions] = useState<TTSOptions>()
-    // const [curPlay, setCurPlay] = useState<any>();
-    const [batchDownload, setBatchDownload] = useState<boolean>(false);
-    let downloadList = [];
+    const [TTSType, setTTSType] = useState<'video' | 'audio' | 'all'>('all')
+    const [batchDownload] = useState<boolean>(false);
+    const [isDownload, setIsDownload] = useState<boolean>(false);
+    const [downloadProgress, setDownloadProgress] = useState<number>(0);
     const { t } = useTranslation()
     const { toast } = useToast()
+    const [player, setPlayer] = useState<PlayerRef>()
 
     useEffect(() => {
         setList(dataStore?.temoData || [])
-        if (curTemoId) return
         if (dataStore?.temoData.length) {
             setCurTemoId(id || dataStore.temoData[0].uuid)
-            const curData = dataStore.temoData.find(item => item.uuid === id || item.uuid === dataStore.temoData[0].uuid)
-            if (curData) {
-                setCurrentFile(curData)
-                setCurEditorData(curData.editorData)
-                console.log(curData)
-                setBgm(curData.bgm)
-            }
         }
 
-    }, [dataStore?.temoData, settingStore, id, curTemoId]);
+    }, []);
+
+    useEffect(() => {
+        const curData = dataStore?.temoData.find(item => item.uuid === curTemoId)
+        if (curData) {
+            let from = 0;
+            const list: TemoFileList[] = curData.fileList?.map(file => {
+                const newObj = {
+                    ...file,
+                    from,
+                    duration: Math.ceil(file.metadata.duration)
+                }
+                from += Math.ceil(file.metadata.duration)
+                return newObj
+            })
+            setCurrentFile({ ...curData, fileList: list })
+            setCurEditorData(curData.editorData)
+        }
+    }, [curTemoId])
 
     useEffect(() => {
         if (id) {
@@ -93,6 +100,16 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             // case 'translate:message':
             //     console.log('翻译消息', messageData.data[0].text);
             //     break;
+            case 'tts:media:progress':
+                setDownloadProgress(messageData.data.progress)
+                break;
+            case 'tts:media:done':
+                setIsDownload(false)
+                setDownloadProgress(0)
+                toast({
+                    description: t('history.save success')
+                })
+                break;
             case 'text:audio:abort':
                 console.log('翻译中止');
                 break;
@@ -113,6 +130,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                 break
         }
     }, [])
+
     useEffect(() => {
         window.AIM?.handleMessage(handler, 'MemoTTSContent') // MemoTTSTranslateContent是唯一标识，可以用于区分不同的消息监听
 
@@ -121,60 +139,6 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             window.AIM.removeHandler('MemoTTSContent')
         }
     }, [handler]) // handler更新时重新注册事件
-
-
-
-    const generateAudio = async () => {
-        try {
-            const result = await dataStore?.mergeTemo({ setJenerating, target, service, speed, uuid: curTemoId, bgm, editorData: editorRef?.getJSON() }, options)
-            if (result) {
-                result.duration = secondsToHMS(result.metadata?.duration)
-                const index = list.findIndex(item => item.uuid === result.uuid)
-                if (index > -1) {
-                    list.splice(index, 1)
-                    list.unshift(result)
-                }
-                setList(cloneDeep(list))
-                setCurrentFile(result)
-            }
-        } catch (error) {
-            setJenerating(false);
-            console.log(error)
-        }
-    }
-
-    // let audioPlayer: HTMLAudioElement | null;
-    // const playAudio = (item: any, isAudition?: boolean, event?: any) => {
-    //     if (event) {
-    //         event.stopPropagation();
-    //     }
-    //     if (curPlay?.fileUrl === item.fileUrl && !isAudition) {
-    //         handleEnded()
-    //     } else {
-    //         if (audioPlayer) {
-    //             audioPlayer.pause()
-    //             audioPlayer?.removeEventListener('ended', handleEnded);
-    //         }
-    //         setCurPlay(item);
-    //         setTimeout(() => {
-    //             audioPlayer = document.getElementById('audioPlayer') as HTMLAudioElement;
-    //             audioPlayer.load();
-    //             audioPlayer.play();
-    //             if (!isAudition) {
-    //                 audioPlayer.addEventListener('ended', handleEnded);
-    //             }
-    //         })
-    //     }
-    // }
-
-    // const handleEnded = () => {
-    //     console.log('Audio playback stopped');
-    //     // 在这里执行播放结束后的逻辑
-    //     // 移除事件监听器
-    //     audioPlayer?.removeEventListener('ended', handleEnded);
-    //     setCurPlay(null)
-    //     audioPlayer = null;
-    // };
 
     const download = async (event: any, data: any) => {
         if (event) {
@@ -185,78 +149,121 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         showSaveDialog(data.title, [{ ...data, srtData }])
     }
 
-    const downloadBatch = async () => {
-        downloadList = list.filter(item => item.selected);
-        if (!downloadList.length) {
-            toast({
-                variant: "destructive",
-                description: t('history.download file')
-            })
-            return;
-        }
-        downloadList = downloadList.map(item => ({
-            ...item,
-            srtData: getTextFragment(item.infoData)
-        }));
-        const result = await showSaveDialog('temo_audios', downloadList)
-        if (result === 'Successful') {
-            cancelDownloadBatch()
-        }
-    }
-
     const showSaveDialog = async (title: string, data: any[]) => {
         const file: any = await window.AIM.openDialog('showSaveDialog', {
-            defaultPath: `${title}.zip`,
+            defaultPath: `${title}.mp4`,
             filters: [
                 {
                     name: '',
-                    extensions: ['zip']
+                    extensions: ['mp4']
                 }
             ],
             properties: []
         })
         if (!file?.canceled) {
-            const result = await window.AIM.temoDownload(cloneDeep(data), file.filePath);
-            if (result === 'Successful') {
-                toast({
-                    description: t('history.save success')
-                })
-            } else {
-                toast({
-                    variant: "destructive",
-                    description: t('history.save fail')
+            // const result = await window.AIM.temoDownload(cloneDeep(data), file.filePath);
+            // if (result === 'Successful') {
+            //     toast({
+            //         description: t('history.save success')
+            //     })
+            // } else {
+            //     toast({
+            //         variant: "destructive",
+            //         description: t('history.save fail')
+            //     })
+            // }
+            // return result;
+            const curFile = data[0]
+            let from = 0;
+            const list: TemoFileList[] = curFile.fileList?.map((file: any) => {
+                const newObj = {
+                    ...file,
+                    from,
+                    duration: Math.ceil(file.metadata.duration)
+                }
+                from += Math.ceil(file.metadata.duration)
+                return newObj
+            })
+            const params: any = {
+                type: curFile.type!,
+                // Audio settings
+                audioOffsetInSeconds: 0,
+                bgm: curFile.bgm || '',
+                audioFileName: 'temo_audio.mp3',
+                onlyDisplayCurrentSentence: true,
+                subtitlesTextColor: 'rgba(255, 255, 255, 0.93)',
+                subtitlesLinePerPage: 4,
+                subtitlesZoomMeasurerSize: 10,
+                subtitlesLineHeight: 64,
+                fileList: list!,
+                metadata: curFile.metadata,
+                duration: Math.ceil(curFile.metadata?.duration)
+            }
+
+            const copyFiles = [curFile.fileUrl];
+            if (params.bgm) {
+                copyFiles.push(params.bgm.path)
+            }
+            if (params.fileList?.length) {
+                params.fileList.forEach((file: TemoFileList) => {
+                    if (file.pic) {
+                        copyFiles.push(file.pic.path)
+                    }
                 })
             }
-            return result;
+            params.copyFiles = copyFiles
+            console.log(params)
+            setIsDownload(true)
+            await window.AIM.renderMedia(cloneDeep(params), file.filePath)
+            setIsDownload(false)
         }
     }
 
-    const selectDownload = (data: any) => {
+    const selectItem = (data: any) => {
         if (batchDownload) {
             const updatedData = list.map(item =>
                 item.fileUrl === data.fileUrl ? { ...item, selected: !data.selected } : item
             );
             setList(updatedData)
         } else {
-            setCurEditorData(data.editorData);
-            setCurrentFile(data)
+            // setCurEditorData(data.editorData);
+            // setCurrentFile(data)
             setCurTemoId(data.uuid)
         }
     }
 
-    const selectBatch = () => {
-        if (batchDownload) {
-            cancelDownloadBatch()
-        } else {
-            setBatchDownload(true)
-        }
-    }
+    // const downloadBatch = async () => {
+    //     downloadList = list.filter(item => item.selected);
+    //     if (!downloadList.length) {
+    //         toast({
+    //             variant: "destructive",
+    //             description: t('history.download file')
+    //         })
+    //         return;
+    //     }
+    //     downloadList = downloadList.map(item => ({
+    //         ...item,
+    //         srtData: getTextFragment(item.infoData)
+    //     }));
+    //     const result = await showSaveDialog('temo_audios', downloadList)
+    //     if (result === 'Successful') {
+    //         cancelDownloadBatch()
+    //     }
+    // }
 
-    const cancelDownloadBatch = () => {
-        const updatedData = list.map(item => ({ ...item, selected: false }));
-        setBatchDownload(false)
-        setList(updatedData)
-    }
+    // const selectBatch = () => {
+    //     if (batchDownload) {
+    //         cancelDownloadBatch()
+    //     } else {
+    //         setBatchDownload(true)
+    //     }
+    // }
+
+    // const cancelDownloadBatch = () => {
+    //     const updatedData = list.map(item => ({ ...item, selected: false }));
+    //     setBatchDownload(false)
+    //     setList(updatedData)
+    // }
 
     const deleteItem = async (event: any, data?: TemoData) => {
         if (event) {
@@ -283,78 +290,108 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         dataStore?.setTrashData(items)
     }
 
+    const filterTTS = (type: 'audio' | 'video' | 'all') => {
+        setTTSType(type)
+        if (type == 'all') {
+            setList(dataStore?.temoData || [])
+        } else if (type == 'audio') {
+            const data = dataStore?.temoData.filter(item => item.type === 'audio')
+            setList(data || [])
+        } else if (type == 'video') {
+            const data = dataStore?.temoData.filter(item => item.type === 'video')
+            setList(data || [])
+        }
+    }
+
+    const generateAudio = (result: TemoData) => {
+        const index = list.findIndex(item => item.uuid === result.uuid)
+        if (index > -1) {
+            list.splice(index, 1)
+            list.unshift(result)
+        }
+        setList(cloneDeep(list))
+        let from = 0, duration = 0;
+        const fileList: TemoFileList[] = result.fileList?.map(file => {
+            const newObj = {
+                ...file,
+                from,
+                duration: Math.ceil(file.metadata.duration)
+            }
+            from += Math.ceil(file.metadata.duration)
+            duration += newObj.duration
+            return newObj
+        })
+        result.fileDuration = duration
+        result.fileList = fileList
+        setCurrentFile(result)
+    }
+
     return (
         <>
-            {!!list.length &&
+            {!!dataStore?.temoData.length &&
                 <div className="flex flex-col h-full">
                     <div className='flex flex-1 temo-draggable temo-content pt-12'>
 
-                        <div className='pl-4'>
-                            <ScrollArea className='list-scroll-area pr-3 temo-no-draggable'> {list.map(item => (
-                                <div key={item.fileUrl} className='relative' onClick={() => selectDownload(item)}>
-                                    {batchDownload && !item.selected && <span className='absolute w-3 h-3 border right-2 top-1'></span>}
-                                    {batchDownload && item.selected && <span className='absolute w-3 h-3 right-2 top-1'><GrCheckboxSelected size={12} /></span>}
-                                    <div className={`flex flex-1 items-center space-x-3 rounded-md border flex-shrink-0 p-3 mb-3 ${curTemoId == item.uuid ? 'is-selected' : ''}`}>
-                                        {/* <Button title={t('history.play')} variant={'ghost'} className={`p-0 cursor-pointer hover:bg-transparent flex-shrink-0 ${item.fileUrl === curPlay?.fileUrl ? 'animate-spin' : ''}`}>
-                                            <PiVinylRecord size={36} />
-                                        </Button> */}
-                                        <div className="flex-1 space-y-1">
-                                            <p className="font-medium cursor-default">
-                                                {item.title}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                <span className=' mr-2'>{item.voiceLocalName}</span>
-                                                <span>{item.duration}</span>
-                                            </p>
+                        <div className='pl-4 flex flex-col temo-list flex-shrink-0'>
+                            <Tabs value={TTSType} className='temo-no-draggable flex-shrink-0'>
+                                <TabsList className="grid grid-cols-3 mb-4 w-2/4">
+                                    <TabsTrigger className='px-1' value="all" onClick={() => filterTTS('all')}>{t('tts.all')}</TabsTrigger>
+                                    <TabsTrigger className='px-1' value="audio" onClick={() => filterTTS('audio')}>{t('tts.audio')}</TabsTrigger>
+                                    <TabsTrigger className='px-1' value="video" onClick={() => filterTTS('video')}>{t('tts.video')}</TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                            <div className='temo-no-draggable list-scroll-area'>
+                                {!!list.length &&
+                                    <ScrollArea className='pr-3'> {list.map(item => (
+                                        <div key={item.fileUrl} className='relative cursor-pointer' onClick={() => selectItem(item)}>
+                                            {batchDownload && !item.selected && <span className='absolute w-3 h-3 border right-2 top-1'></span>}
+                                            {batchDownload && item.selected && <span className='absolute w-3 h-3 right-2 top-1'><GrCheckboxSelected size={12} /></span>}
+                                            <div className={`flex flex-1 items-center space-x-3 rounded-md border flex-shrink-0 p-3 mb-3 ${curTemoId == item.uuid ? 'is-selected' : ''}`}>
+                                                <div className="flex-1 space-y-1">
+                                                    <p className="font-medium">
+                                                        {item.title}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        <span className=' mr-2'>{item.voiceLocalName}</span>
+                                                        <span>{item.duration}</span>
+                                                    </p>
+                                                </div>
+                                                {(isDownload && curTemoId === item.uuid) ? <CircularProgressBar progress={downloadProgress}></CircularProgressBar>
+                                                    : <Button title={t('history.download')} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>
+                                                        <TbDownload size={18} />
+                                                    </Button>}
+                                                <Button title={t('history.delete')} disabled={isDownload} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => deleteItem(e, item)}>
+                                                    <HiOutlineTrash size={18} />
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <Button title={t('history.download')} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>
-                                            <TbDownload size={18} />
-                                        </Button>
-                                        <Button title={t('history.delete')} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => deleteItem(e, item)}>
-                                            <HiOutlineTrash size={18} />
-                                        </Button>
-                                        {/* <Button variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm mr-1' onClick={(e) => playAudio(item, false, e)}>{item.fileUrl === curPlay?.fileUrl ? <AiOutlinePauseCircle size={18} /> : <GoPlay size={18} />}</Button> */}
-                                    </div>
-                                </div>
-                            )
-                            )}</ScrollArea>
-                            <div className={`flex items-center justify-between h-12 p-4`}>
-                                {list.length > 1 && <Button variant={'ghost'} className=" temo-no-draggable flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent mr-4" onClick={() => selectBatch()}>
-                                    <RiFileList3Line size={18} />
-                                    <span className=" text-sm ml-1">{t('history.batch actions')}</span>
-                                </Button>}
-                                {batchDownload && <div className='mb-1 temo-no-draggable'>
-                                    <Button variant='ghost' className='text-sm mr-2 hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={downloadBatch}>
-                                        {t('history.download')}
-                                    </Button>
-                                    <Button variant='ghost' className='text-sm hover:bg-transparent w-8 h-8 rounded-full transition-colors ease-linear' onClick={(e) => deleteItem(e)}>
-                                        {t('history.delete')}
-                                    </Button>
+                                    )
+                                    )}</ScrollArea>}
+                                {!list.length && <div className='flex items-center justify-center text-sm mt-8'>
+                                    {t('tts.no results')}
                                 </div>}
+
                             </div>
                         </div>
-                        {!!currentFile && <div className=' flex-shrink-0 tts-remotion-history mt-3 mb-3 mr-3'>
-                            <div>{currentFile.title}</div>
-                            <Remotion temoData={currentFile}></Remotion>
-                        </div>}
-                        <div className='flex-1 pl-4 pb-4 flex '>
-                            <div className='flex temo-no-draggable  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
-                                <Tiptap content={curEditorData} setEditor={setEditorRef} type={currentFile?.type} bgmData={currentFile?.bgm} getBgm={setBgm} />
+                        <div className='flex-1 flex flex-col temo-no-draggable'>
+                            <div className='flex flex-1'>
+                                {!!currentFile && <div className=' flex-shrink-0 tts-remotion-history m-3'>
+                                    <div>{currentFile.title}</div>
+                                    <Remotion temoData={currentFile} getPlayer={setPlayer}></Remotion>
+                                </div>}
+                                <div className='flex-1 px-4 pb-4 flex '>
+                                    <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
+                                        <Tiptap updateList={generateAudio} content={curEditorData} currentFile={currentFile} bgmData={currentFile?.bgm} />
+                                    </div>
+                                </div>
                             </div>
-                            <div className='temo-no-draggable px-4 flex-shrink-0 tts-service-panel'>
-                                <TTSPanel getTarget={setTarget} getSpeed={setSpeed} setOptions={setOptions} getService={setService}></TTSPanel>
-                                <Button className=' mt-6 w-full' size="lg" disabled={jenerating} onClick={generateAudio}>
-                                    {jenerating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
-                                    <span>{t('tts.synthesis')}</span>
-                                </Button>
-                            </div>
+                            {!!currentFile && <div className=' h-24 flex-shrink-0'>控制条</div>}
                         </div>
                     </div>
                 </div>}
             {!list.length && <div className='flex items-center justify-center h-full'>
                 {t('tts.no results')}
             </div>}
-            {/* {curPlay?.fileUrl && <audio ref={audioRef} controls></audio>} */}
         </>
     )
 }))

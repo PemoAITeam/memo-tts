@@ -11,12 +11,12 @@
 }
 
 .voice-type-content {
-    max-height: 26vh;
+    max-height: 20vh;
     overflow-y: auto;
 }
 
 .valcano-voice-content {
-    max-height: 26vh;
+    max-height: 20vh;
     overflow-y: auto;
 }
 
@@ -37,12 +37,12 @@
 }
 
 .tts-remotion-history {
-    min-width: 20vw;
+    min-width: 23vw;
+    max-width: 40vw;
 }
 
 .tts-remotion-player {
     &>div:last-child {
-        background-image: none !important;
-        padding-top: 20px !important;
+        display: none;
     }
 }

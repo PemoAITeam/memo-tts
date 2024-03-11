@@ -8,15 +8,17 @@ import TranslatePanel from "./translate-panel";
 import { cloneDeep } from 'lodash-es';
 import { WhisperSegments } from "@/app/interface";
 import { Button } from "../ui/button";
-import TTSPanel from "./tts-panel";
+import TTSPanel, { VoiceOptions } from "./tts-panel";
 import { useEffect, useState } from "react";
-import { TTSOptions } from "@/app/lib/tts";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { IoIosClose } from "react-icons/io";
 import { useTranslation } from "react-i18next";
 import { SlPicture } from "react-icons/sl";
 import { inject, observer } from "mobx-react";
 import DataStore from "@/app/stores/dataStore";
+import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
+import TTSDialog from "./tts-dialog";
+import { HiOutlineTrash } from "react-icons/hi2";
 
 interface EditorCardProps extends NodeViewProps {
     dataStore?: DataStore
@@ -25,14 +27,17 @@ interface EditorCardProps extends NodeViewProps {
 const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }: EditorCardProps) => {
 
     const { t } = useTranslation()
-    const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
-    const [options, setOptions] = useState<TTSOptions>()
-    const [speed, setSpeed] = useState<string>('1')
-    const [target, setTarget] = useState<'original' | 'translate'>('original')
+    // const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
+    // const [options, setOptions] = useState<TTSOptions>()
+    const [curOptions, setCurOptions] = useState<VoiceOptions>()
+    // const [speed, setSpeed] = useState<string>('1')
+    // const [target, setTarget] = useState<'original' | 'translate'>('original')
     const [voice, setVoice] = useState<string>(node.attrs.voice ? `${node.attrs.voice?.voiceLocalName}(${!node.attrs.voice?.target || node.attrs.voice?.target === 'original' ? t('tts.original text') : t('tts.translate text')}-${node.attrs.voice?.speed || 1})` : '')
     const [hasPic, setHasPic] = useState<boolean>(!!node.attrs.picture)
     const [openTTS, setOpenTTS] = useState(false)
+    const [openMenu, setOpenMenu] = useState(false)
     const [selectedImage, setSelectedImage] = useState(node.attrs.picture ? node.attrs.picture.path : null);
+    const [openDialog, setOpenDialog] = useState(false);
 
     useEffect(() => {
         setHasPic(dataStore?.TTSType === 'video')
@@ -41,15 +46,16 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
 
     useEffect(() => {
         setSelectedImage(node.attrs.picture ? node.attrs.picture.path : null)
+        if (node.attrs.voice) {
+            setCurOptions(node.attrs.voice.ttsOptions)
+            // setOptions(node.attrs.voice.ttsOptions.ttsOptions)
+        }
     }, [node.attrs])
 
-    const selectBgPic = async () => {
-        const file: any = await window.AIM.openDialog('showOpenDialogSync', {
-            properties: ['openFile'],
-            filters: [{ name: '', extensions: ['jpg', 'jpeg', 'png'] }]
-        })
-        const filePath = file[0];
+    const selectBgPic = async (filePath: string) => {
+        dataStore!.copyLibraryFile(filePath, 'pic')
         setSelectedImage(filePath)
+        setOpenDialog(false)
         const jsonData = editor.getJSON();
         if (jsonData.content) {
             const curItem = jsonData.content?.find(item => item.attrs?.id == node.attrs.id && item.type === "editorCard")
@@ -84,46 +90,50 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
         return [{ text: node.content.toJSON()[0].text }]
     }
 
-    const addVoice = () => {
-        console.log(options, service)
+    const addVoice = (data: VoiceOptions) => {
         const jsonData = editor.getJSON();
         if (jsonData.content) {
             const curItem = jsonData.content?.find(item => item.attrs?.id == node.attrs.id && item.type === "editorCard")
             if (curItem && curItem.attrs) {
                 console.log(curItem)
+                const { speed, target, service, ttsOptions } = data;
                 if (service === 'Edge') {
-                    const rate = getSpeed(speed);
+                    const rate = getSpeed(speed!);
                     curItem.attrs.voice = {
                         type: 'Edge',
-                        lang: options?.lang,
+                        lang: ttsOptions?.lang,
                         rate,
                         pitch: 0,
-                        voiceName: options?.voice?.shortName,
-                        voiceLocalName: options?.voice?.properties.LocalName,
+                        voiceName: ttsOptions?.voice?.shortName,
+                        voiceLocalName: ttsOptions?.voice?.properties.LocalName,
                         target,
+                        ttsOptions: data,
                     }
                 } else if (service === 'OpenAI') {
                     curItem.attrs.voice = {
                         type: 'OpenAI',
-                        model: options?.model,
+                        model: ttsOptions?.model,
                         speed: speed,
-                        voice: options?.voice?.value,
-                        voiceLocalName: options?.voice?.label,
+                        voice: ttsOptions?.voice?.value,
+                        voiceLocalName: ttsOptions?.voice?.label,
                         target,
+                        ttsOptions: data,
                     }
                 } else if (service === 'Volcano') {
                     curItem.attrs.voice = {
                         type: 'Volc',
-                        emotion: options?.emotion,
-                        voice_type: options?.voice?.value,
-                        voiceLocalName: options?.voice?.label,
-                        scene: options?.scenes,
+                        emotion: ttsOptions?.emotion,
+                        voice_type: ttsOptions?.voice?.value,
+                        voiceLocalName: ttsOptions?.voice?.label,
+                        scene: ttsOptions?.scenes,
                         target,
+                        ttsOptions: data,
                     }
                 }
-
+                setCurOptions(data)
                 setVoice(`${curItem.attrs.voice.voiceLocalName}(${target === 'original' ? t('tts.original text') : t('tts.translate text')}-${speed})`)
                 editor.chain().setContent(jsonData, true).focus().run()
+                setOpenMenu(false)
             }
         }
     }
@@ -141,6 +151,21 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
         }
     }
 
+    const deletePic = (event: any) => {
+        if (event) {
+            event.stopPropagation();
+        }
+        setSelectedImage(null)
+        const jsonData = editor.getJSON();
+        if (jsonData.content) {
+            const curItem = jsonData.content?.find(item => item.attrs?.id == node.attrs.id && item.type === "editorCard")
+            if (curItem && curItem.attrs) {
+                curItem.attrs.picture = null
+                editor.chain().setContent(jsonData, true).focus().run()
+            }
+        }
+    }
+
     return (
         <NodeViewWrapper className="editor-card-item">
             {voice && <div className=" pl-7 mt-4 voice-item">
@@ -153,16 +178,17 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent side="right" sideOffset={10} className="w-auto editor-card-tts">
-                        <TTSPanel setOptions={setOptions} getSpeed={setSpeed} getTarget={setTarget} getService={setService}></TTSPanel>
+                        <TTSPanel getVoiceOptions={addVoice} showButton={true}></TTSPanel>
+                        {/* <TTSPanel getOptions={setOptions} getSpeed={setSpeed} getTarget={setTarget} getService={setService}></TTSPanel>
                         <Button className="w-full mt-2" onClick={addVoice}>
                             <span>{t('app.sure')}</span>
-                        </Button>
+                        </Button> */}
                     </PopoverContent>
                 </Popover>
             </div>}
 
             <div className="flex items-start">
-                <DropdownMenu>
+                <DropdownMenu open={openMenu} onOpenChange={setOpenMenu}>
                     <DropdownMenuTrigger title={t('app.option')} className='flex-shrink-0 p-0 border-none'>
                         <GoPlus size='20' />
                     </DropdownMenuTrigger>
@@ -174,10 +200,10 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent className=" p-3 editor-card-tts">
-                                    <TTSPanel setOptions={setOptions} getSpeed={setSpeed} getTarget={setTarget} getService={setService}></TTSPanel>
-                                    <Button className="w-full mt-2" onClick={addVoice}>
+                                    <TTSPanel getVoiceOptions={addVoice} showButton={true}></TTSPanel>
+                                    {/* <Button className="w-full mt-2" onClick={addVoice}>
                                         <span>{t('app.sure')}</span>
-                                    </Button>
+                                    </Button> */}
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
@@ -195,16 +221,24 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <NodeViewContent className={`content flex-1 px-2 editable-content ${node.content.size == 0 ? 'is-empty' : ''}`} />
-                {hasPic &&
-                    <div className="text-gray-500 flex-shrink-0 cursor-pointer" onClick={selectBgPic}>
-                        {/* <label htmlFor={`ttsImag-${node.attrs.id}`} className="cursor-pointer">
-                            <input type="file" id={`ttsImag-${node.attrs.id}`} accept="image/*" className=" hidden" onChange={handleImageChange}></input>
-                        </label> */}
-                        {!selectedImage && <SlPicture size={48} />}
-                        {selectedImage && <img width={48} src={getLocalFileUrl(selectedImage)} alt={t('tts.select img')} />}
-
-                    </div>
-                }
+                <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+                    <DialogTrigger asChild>
+                        {hasPic &&
+                            <div className="text-gray-400 flex-shrink-0 cursor-pointer w-12 h-12">
+                                {!selectedImage && <SlPicture size={48} />}
+                                {selectedImage && <div className=" relative w-full h-full editor-pic-item overflow-hidden">
+                                    <Button title={t('history.delete')} variant={'ghost'} className='delete-button hidden absolute right-0 top-0 cursor-pointer shadow-none h-auto text-sm' onClick={(e) => deletePic(e)}>
+                                        <HiOutlineTrash size={12} />
+                                    </Button>
+                                    <img className="cover w-full h-full object-cover" src={getLocalFileUrl(selectedImage)} alt={t('tts.select img')} />
+                                </div>}
+                            </div>
+                        }
+                    </DialogTrigger>
+                    <DialogContent className="pic-dialog w-2/3 h-2/3 max-w-none">
+                        <TTSDialog selectImage={selectBgPic} fileType="pic"></TTSDialog>
+                    </DialogContent>
+                </Dialog>
             </div>
         </NodeViewWrapper>
     );

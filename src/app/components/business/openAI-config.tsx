@@ -26,7 +26,7 @@ const OpenAISpeaker = [{
     value: "shimmer",
     label: "shimmer"
 }]
-const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
+const OpenAIConfig = ({ setOptions, getAudition, options }: ConfigProps) => {
     const [model, setModel] = useState<'tts-1-hd' | 'tts-1'>('tts-1')
     const [voice, setVoice] = useState<any>({ value: "alloy", label: "alloy" })
     const { t } = useTranslation()
@@ -35,6 +35,15 @@ const OpenAIConfig = ({ setOptions, getAudition }: ConfigProps) => {
             setOptions({ model, voice })
         }
     }, [model, voice, setOptions])
+
+    useEffect(() => {
+        if (options?.model) {
+            setModel(options.model)
+        }
+        if (options?.voice) {
+            setVoice(options.voice)
+        }
+    }, [options])
 
     const handelModel = (model: 'tts-1-hd' | 'tts-1') => {
         setModel(model)

@@ -21136,14 +21136,16 @@ export const voices = [
     },
 ];
 
-export interface TTSOptions { 
-    lang?: AllLanguage, 
-    voice?: any, model?: 'tts-1-hd' | 'tts-1', 
-    emotion?: string, 
+export interface TTSOptions {
+    lang?: AllLanguage,
+    voice?: any,
+    model?: 'tts-1-hd' | 'tts-1',
+    emotion?: { label: string, value: string },
     scenes?: ScenesType
 }
 
 export interface ConfigProps {
     setOptions?: (options: TTSOptions) => void
     getAudition?: (params: any, uuid: string) => void
+    options?: TTSOptions
 }

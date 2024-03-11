@@ -16,6 +16,7 @@
 
 .translate-card-item {
   color: gray;
+
   .is-none {
     height: 20px;
     overflow: hidden;
@@ -23,9 +24,18 @@
 }
 
 .editor-voice {
-    font-size: 10px;
+  font-size: 10px;
 }
 
 #drop-area {
   height: calc(100vh - 3rem);
+}
+
+.synthesis-text {
+  font-size: 15px;
+}
+
+.pic-file-item {
+  width: 120px;
+  height: 120px;
 }

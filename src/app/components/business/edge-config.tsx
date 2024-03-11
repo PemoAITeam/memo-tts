@@ -8,7 +8,7 @@ import { Separator } from "../ui/separator";
 import md5 from "md5";
 import { useTranslation } from "react-i18next";
 
-const EdgeConfig = ({ setOptions, getAudition }: ConfigProps) => {
+const EdgeConfig = ({ setOptions, getAudition, options }: ConfigProps) => {
     const { t } = useTranslation()
     const [currentLanguage, setCurrentLanguage] = useState<AllLanguage>('ZH_CN')
     const [voiceList, setVoiceList] = useState<any>(voices.filter(v => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()))
@@ -19,6 +19,15 @@ const EdgeConfig = ({ setOptions, getAudition }: ConfigProps) => {
             setOptions({ lang: currentLanguage, voice })
         }
     }, [currentLanguage, voice, setOptions])
+
+    useEffect(() => {
+        if (options) {
+            setVoice(options.voice)
+            if (options.lang) {
+                setCurrentLanguage(options.lang)
+            }
+        }
+    }, [options])
 
     const handleSelectCurrentLanguage = (k: AllLanguage) => {
         setCurrentLanguage(k)

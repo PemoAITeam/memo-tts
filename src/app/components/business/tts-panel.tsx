@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import EdgeConfig from "./edge-config"
 import OpenAIConfig from "./openAI-config"
@@ -8,25 +8,51 @@ import { inject, observer } from "mobx-react"
 import SettingStore from "@/app/stores/settingStore"
 import { useTranslation } from "react-i18next"
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
+import { TTSOptions } from "@/app/lib/tts"
+import { Button } from "../ui/button"
+export interface VoiceOptions {
+    ttsOptions?: TTSOptions
+    service?: 'Edge' | 'OpenAI' | 'Volcano',
+    speed?: string,
+    target?: 'original' | 'translate'
+}
 
 interface TTSPanelProps {
     settingStore?: SettingStore,
-    setOptions: (data: any) => void
-    getService: (service: "Edge" | "OpenAI" | "Volcano") => void;
-    getSpeed: (speed: string) => void
-    getTarget: (target: 'original' | 'translate') => void
+    getOptions?: (data: any) => void
+    getService?: (service: "Edge" | "OpenAI" | "Volcano") => void;
+    getSpeed?: (speed: string) => void
+    getTarget?: (target: 'original' | 'translate') => void
+    voiceOptions?: VoiceOptions
+    getVoiceOptions?: (options: VoiceOptions) => void
+    // voiceService?: 'Edge' | 'OpenAI' | 'Volcano'
+    // voiceSpeed?: string
+    // voiceTarget?: 'original' | 'translate'
+    showButton?: boolean
 }
 
-const TTSPanel = inject('settingStore')(observer(({ settingStore, setOptions, getService, getSpeed, getTarget }: TTSPanelProps) => {
+const TTSPanel = inject('settingStore')(observer(({ settingStore, showButton, voiceOptions, getVoiceOptions, getOptions, getService, getSpeed, getTarget }: TTSPanelProps) => {
 
     const { settings } = settingStore!
-    const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
+    const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>(voiceOptions?.service || 'Edge')
     const [curPlay, setCurPlay] = useState<any>();
-    const [speed, setSpeed] = useState<string>('1')
-    const [target, setTarget] = useState<'original' | 'translate'>('original')
-
-
+    const [speed, setSpeed] = useState<string>(voiceOptions?.speed || '1')
+    const [target, setTarget] = useState<'original' | 'translate'>(voiceOptions?.target || 'original')
+    const [options, setOptions] = useState<TTSOptions>()
     const { t } = useTranslation()
+
+    useEffect(() => {
+        if (voiceOptions) {
+            setOptions(voiceOptions.ttsOptions)
+        }
+    }, [voiceOptions])
+
+    useEffect(() => {
+        if (!showButton) {
+            getOptions && getOptions(options)
+        }
+    }, [options, showButton, getOptions])
+
     let audioPlayer: HTMLAudioElement | null;
     const playAudio = (item: any, isAudition?: boolean, event?: any) => {
         if (event) {
@@ -73,16 +99,30 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, setOptions, ge
 
     const handleService = (e: 'Edge' | 'OpenAI' | 'Volcano') => {
         setService(e)
-        getService(e)
+        if (!showButton) {
+            getService && getService(e)
+        }
     }
     const switchSpeed = (speed: string) => {
         setSpeed(speed)
-        getSpeed(speed)
+        if (!showButton) {
+            getSpeed && getSpeed(speed)
+        }
     }
 
     const switchTarget = (target: 'original' | 'translate') => {
         setTarget(target)
-        getTarget(target)
+        if (!showButton) {
+            getTarget && getTarget(target)
+        }
+    }
+
+    const addVoice = () => {
+        // getService(service)
+        // getSpeed(speed)
+        // getTarget(target)
+        // getOptions(options)
+        getVoiceOptions && getVoiceOptions({ ttsOptions: options, service, speed, target })
     }
 
     return (
@@ -104,10 +144,10 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, setOptions, ge
                     </SelectItem>
                 </SelectContent>
             </Select>
-            {service === 'Edge' && <EdgeConfig setOptions={setOptions} getAudition={audition} />}
-            {service === 'OpenAI' && <OpenAIConfig setOptions={setOptions} getAudition={audition} />}
-            {service === 'Volcano' && <VolcanoConfig setOptions={setOptions} getAudition={audition} />}
-            <div className="relative mt-8 mb-2">
+            {service === 'Edge' && <EdgeConfig options={voiceOptions?.service === 'Edge' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
+            {service === 'OpenAI' && <OpenAIConfig options={voiceOptions?.service === 'OpenAI' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
+            {service === 'Volcano' && <VolcanoConfig options={voiceOptions?.service === 'Volcano' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
+            <div className="relative mt-4 mb-2">
                 <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
                 </div>
@@ -141,6 +181,10 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, setOptions, ge
                     <TabsTrigger className='px-1' value="translate" onClick={() => switchTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
                 </TabsList>
             </Tabs>
+            {showButton && <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
+                <span>{t('app.sure')}</span>
+            </Button>}
+
 
             {curPlay?.fileUrl && <audio id="auditionPlayer" controls>
                 <source src={getLocalFileUrl(curPlay?.fileUrl)} type="audio/wav" />

@@ -9,18 +9,31 @@ import md5 from "md5";
 import { ConfigProps } from "@/app/lib/tts";
 import { useTranslation } from "react-i18next";
 
-const VolcanoConfig = ({ setOptions, getAudition }: ConfigProps) => {
+const VolcanoConfig = ({ setOptions, getAudition, options }: ConfigProps) => {
     const [scenes, setScenes] = useState<ScenesType>('common')
-    const [emotion, setEmotion] = useState<{ label: string, value: string } | null>({ label: '无', value: 'none' })
+    const [emotion, setEmotion] = useState<{ label: string, value: string }>({ label: '无', value: 'none' })
     const [voiceGender, setVoiceGender] = useState<{ value: 'male' | 'female' | 'all', text: '全部' | '男' | '女' }>({ value: 'all', text: '全部' })
     const [voiceList, setVoiceList] = useState<any>(VolcanoVoiceType[scenes])
     const [voice, setVoice] = useState<{ label: string, value: string, gender: string }>(voiceList[0])
 
     useEffect(() => {
         if (setOptions) {
-            setOptions({ emotion: emotion?.value === 'none' ? '' : emotion?.value, voice, scenes })
+            setOptions({ emotion, voice, scenes })
         }
     }, [scenes, voice, emotion, setOptions])
+
+    useEffect(() => {
+        if (options?.scenes) {
+            setScenes(options.scenes)
+        }
+        if (options?.emotion) {
+            setEmotion(options.emotion)
+        }
+        if (options?.voice) {
+            setVoice(options.voice)
+        }
+    }, [options])
+
     const { t } = useTranslation()
     const audition = async (e: any, voice: any) => {
         e.stopPropagation()

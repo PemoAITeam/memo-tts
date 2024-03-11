@@ -1,53 +1,42 @@
-import { Player } from "@remotion/player";
+import { Player, PlayerRef } from "@remotion/player";
 import { MyComp } from "@/remotion/myComp";
-import { staticFile } from "remotion";
 import { inject, observer } from "mobx-react";
 import DataStore from "@/app/stores/dataStore";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TemoData, TemoFileList } from "@/app/interface";
-import { getLocalFileUrl, getTextFragment } from "@/app/lib/utils";
+import { getLocalFileUrl } from "@/app/lib/utils";
 
 interface RemotionPageProps {
     dataStore?: DataStore
     temoData: TemoData,
+    getPlayer?: (player: PlayerRef) => void
 }
 
-export const Remotion = inject('dataStore')(observer(({ temoData }: RemotionPageProps) => {
+export const Remotion = inject('dataStore')(observer(({ temoData, getPlayer }: RemotionPageProps) => {
 
     // const { temoData } = dataStore!
     const [file, setFile] = useState<TemoData | null>();
     const [fileList, setFileList] = useState<TemoFileList[]>();
-    const [subTitle, setSubTitle] = useState<string>('');
+    const playerRef = useRef<PlayerRef>(null);
 
     useEffect(() => {
         if (temoData) {
             setFile(temoData)
-            const srtData = getTextFragment(temoData.infoData)
-            // const subtitles = parseSRT(srtData);
-            // const mergedSRT = mergeSubtitlesToSRT(subtitles1);
-            let from = 0;
-            const list: TemoFileList[] = temoData.fileList?.map(file => {
-                const newObj = {
-                    ...file,
-                    from,
-                    duration: Math.floor(file.metadata.duration)
-                }
-                from += Math.ceil(file.metadata.duration)
-                return newObj
-            })
-            // console.log(mergedSRT)
-            setSubTitle(srtData)
-            setFileList(list)
-            console.log(list)
+            setFileList(temoData.fileList)
         }
 
     }, [temoData])
 
     useEffect(() => {
+        if (playerRef?.current && getPlayer) {
+            getPlayer(playerRef.current)
+        }
+    }, [playerRef, getPlayer])
+
+    useEffect(() => {
         return () => {
             setFile(null)
             setFileList([])
-            setSubTitle('')
         }
     }, [])
 
@@ -56,12 +45,11 @@ export const Remotion = inject('dataStore')(observer(({ temoData }: RemotionPage
             <div className="h-full w-full temo-no-draggable">
                 {!!file &&
                     <Player
+                        ref={playerRef}
                         key={file.uuid}
                         component={MyComp}
                         inputProps={{
                             type: file.type!,
-                            // Audio settings
-                            audioOffsetInSeconds: 0,
 
                             // Title settings
                             // audioFileName: staticFile('audio.mp3'),
@@ -72,17 +60,10 @@ export const Remotion = inject('dataStore')(observer(({ temoData }: RemotionPage
                             // titleColor: 'rgba(186, 186, 186, 0.93)',
 
                             // Subtitles settings
-                            subtitlesFileName: staticFile('subtitles.srt'),
-                            subText: subTitle,
-                            onlyDisplayCurrentSentence: true,
-                            subtitlesTextColor: 'rgba(255, 255, 255, 0.93)',
-                            subtitlesLinePerPage: 4,
-                            subtitlesZoomMeasurerSize: 10,
-                            subtitlesLineHeight: 64,
                             fileList: fileList!,
-                            duration: 30 * Math.ceil(file.metadata?.duration)
+                            duration: 30 * Math.ceil(file.fileDuration)
                         }}
-                        durationInFrames={30 * Math.ceil(file.metadata?.duration)}
+                        durationInFrames={30 * Math.ceil(file.fileDuration)}
                         compositionWidth={1920}
                         compositionHeight={1080}
                         fps={30}

@@ -157,7 +157,9 @@ export interface TemoData {
   editorData?: EditorData[];
   bgm?: BgmData;
   type?: 'audio' | 'video';
-  fileList: TemoFileList[]
+  fileList: TemoFileList[],
+  ttsOptions: any,
+  fileDuration: number,
 }
 
 export interface BgmData {
@@ -179,4 +181,11 @@ export interface EditorData {
   content?: { type: "text", text: string }[],
   attrs?: Record<string, any>,
   type: "editorCard" | "translateCard"
+}
+
+export interface LibraryData {
+  name: string,
+  path: string
+  type: 'pic' | 'media'
+  duration?: string
 }
