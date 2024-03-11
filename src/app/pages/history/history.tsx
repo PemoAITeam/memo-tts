@@ -376,7 +376,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                         </div>
                         <div className='flex-1 flex flex-col temo-no-draggable'>
                             <div className='flex flex-1'>
-                                {!!currentFile && <div className=' flex-shrink-0 tts-remotion-history m-3'>
+                                {!!currentFile && <div className='flex-1 m-3'>
                                     <div>{currentFile.title}</div>
                                     <Remotion temoData={currentFile} getPlayer={setPlayer}></Remotion>
                                 </div>}
