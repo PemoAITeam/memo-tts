@@ -21,6 +21,9 @@ export const myCompSchema = z.object({
     type: z.string(),
     fileList: z.any(),
     duration: z.number().int().min(0),
+    subtitlesLinePerPage: z.number().int().min(0),
+    subtitlesLineHeight: z.number().int().min(0),
+    subtitlesSize: z.number().int().min(0),
 });
 
 export const MyComp: React.FC<z.infer<typeof myCompSchema>> = ({
@@ -29,26 +32,31 @@ export const MyComp: React.FC<z.infer<typeof myCompSchema>> = ({
     audioFileName,
     fileList,
     duration,
+    subtitlesLinePerPage,
+    subtitlesLineHeight,
+    subtitlesSize,
 }) => {
 
     return (
         <AbsoluteFill>
             <Sequence from={0} durationInFrames={duration}>
-                {!!bgm && <Audio volume={0.5} src={bgm} />}
-                <Audio src={audioFileName} />
+                {!!bgm && <Audio volume={0.3} src={bgm} />}
+                <Audio volume={0.8} src={audioFileName} />
                 {type === 'video' && fileList.map((file: TemoFileList, index: number) => (
                     <Sequence key={index} from={30 * file.from!} durationInFrames={30 * file.duration!}>
                         {file.pic && <div className="w-full">
                             <Img className="cover w-full h-full object-cover" src={getLocalFileUrl(file.pic.path)} />
 
-                            <Subtitle text={file.text} />
+                            <Subtitle linesPerPage={subtitlesLinePerPage} subtitlesSize={subtitlesSize}
+                                subtitlesLineHeight={subtitlesLineHeight} text={file.text} />
                         </div>}
                     </Sequence>
                 ))}
                 {type !== 'video' && fileList.map((file: TemoFileList, index: number) => (
                     <Sequence key={index} from={30 * file.from!} durationInFrames={30 * file.duration!}>
                         <div className="w-full">
-                            <Subtitle text={file.text} />
+                            <Subtitle linesPerPage={subtitlesLinePerPage} subtitlesSize={subtitlesSize}
+                                subtitlesLineHeight={subtitlesLineHeight} text={file.text} />
                         </div>
                     </Sequence>
                 ))}

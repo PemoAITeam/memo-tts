@@ -50,18 +50,13 @@ export const Remotion = inject('dataStore')(observer(({ temoData, getPlayer }: R
                         component={MyComp}
                         inputProps={{
                             type: file.type!,
-
-                            // Title settings
-                            // audioFileName: staticFile('audio.mp3'),
                             bgm: file.bgm?.path ? getLocalFileUrl(file.bgm?.path) : '',
                             audioFileName: getLocalFileUrl(file.fileUrl!),
-                            // titleText:
-                            //     '#234 – Money, Kids, and Choosing Your Market with Justin Jackson of Transistor.fm',
-                            // titleColor: 'rgba(186, 186, 186, 0.93)',
-
-                            // Subtitles settings
                             fileList: fileList!,
-                            duration: 30 * Math.ceil(file.fileDuration)
+                            duration: 30 * Math.ceil(file.fileDuration),
+                            subtitlesLinePerPage: 2,
+                            subtitlesSize: 48 * 1.5,
+                            subtitlesLineHeight: 1.2,
                         }}
                         durationInFrames={30 * Math.ceil(file.fileDuration)}
                         compositionWidth={1920}

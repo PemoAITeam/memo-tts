@@ -4,7 +4,7 @@ import { Button } from '@/app/components/ui/button';
 import Tiptap from '@/app/components/business/tiptap';
 import { useCallback, useEffect, useState } from 'react';
 
-import { getTextFragment } from '@/app/lib/utils';
+import { getTextFragment, updateTemoData } from '@/app/lib/utils';
 // import { AiOutlineLoading3Quarters } from "react-icons/ai";
 // import { PiVinylRecord } from "react-icons/pi";
 import { GrCheckboxSelected } from "react-icons/gr";
@@ -62,17 +62,8 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     useEffect(() => {
         const curData = dataStore?.temoData.find(item => item.uuid === curTemoId)
         if (curData) {
-            let from = 0;
-            const list: TemoFileList[] = curData.fileList?.map(file => {
-                const newObj = {
-                    ...file,
-                    from,
-                    duration: Math.ceil(file.metadata.duration)
-                }
-                from += Math.ceil(file.metadata.duration)
-                return newObj
-            })
-            setCurrentFile({ ...curData, fileList: list })
+            const data = updateTemoData(curData)
+            setCurrentFile(data)
             setCurEditorData(curData.editorData)
         }
     }, [curTemoId])
@@ -101,7 +92,9 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             //     console.log('翻译消息', messageData.data[0].text);
             //     break;
             case 'tts:media:progress':
-                setDownloadProgress(messageData.data.progress)
+                if (messageData.data.progress * 100 > 1) {
+                    setDownloadProgress(messageData.data.progress)
+                }
                 break;
             case 'tts:media:done':
                 setIsDownload(false)
@@ -140,16 +133,20 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         }
     }, [handler]) // handler更新时重新注册事件
 
-    const download = async (event: any, data: any) => {
+    const download = async (event: any, data: TemoData) => {
         if (event) {
             event.stopPropagation();
         }
-        const srtData = getTextFragment(data.infoData)
-        console.log(srtData)
-        showSaveDialog(data.title, [{ ...data, srtData }])
+        if (data.type === 'video') {
+            showSaveVideoDialog(data.title, [{ ...data }])
+        } else {
+            const srtData = getTextFragment(data.infoData)
+            console.log(srtData)
+            showSaveAudioDialog(data.title, [{ ...data, srtData }])
+        }
     }
 
-    const showSaveDialog = async (title: string, data: any[]) => {
+    const showSaveVideoDialog = async (title: string, data: any[]) => {
         const file: any = await window.AIM.openDialog('showSaveDialog', {
             defaultPath: `${title}.mp4`,
             filters: [
@@ -161,18 +158,6 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             properties: []
         })
         if (!file?.canceled) {
-            // const result = await window.AIM.temoDownload(cloneDeep(data), file.filePath);
-            // if (result === 'Successful') {
-            //     toast({
-            //         description: t('history.save success')
-            //     })
-            // } else {
-            //     toast({
-            //         variant: "destructive",
-            //         description: t('history.save fail')
-            //     })
-            // }
-            // return result;
             const curFile = data[0]
             let from = 0;
             const list: TemoFileList[] = curFile.fileList?.map((file: any) => {
@@ -214,8 +199,37 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             params.copyFiles = copyFiles
             console.log(params)
             setIsDownload(true)
+            setDownloadProgress(0.01)
             await window.AIM.renderMedia(cloneDeep(params), file.filePath)
             setIsDownload(false)
+        }
+    }
+
+    const showSaveAudioDialog = async (title: string, data: any[]) => {
+        const file: any = await window.AIM.openDialog('showSaveDialog', {
+            defaultPath: `${title}.zip`,
+            filters: [
+                {
+                    name: '',
+                    extensions: ['zip']
+                }
+            ],
+            properties: []
+        })
+        if (!file?.canceled) {
+            const result = await window.AIM.temoDownload(cloneDeep(data), file.filePath);
+            if (result === 'Successful') {
+                toast({
+                    description: t('history.save success')
+                })
+            } else {
+                toast({
+                    variant: "destructive",
+                    description: t('history.save fail')
+                })
+            }
+            setIsDownload(false)
+            return result;
         }
     }
 
@@ -310,20 +324,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             list.unshift(result)
         }
         setList(cloneDeep(list))
-        let from = 0, duration = 0;
-        const fileList: TemoFileList[] = result.fileList?.map(file => {
-            const newObj = {
-                ...file,
-                from,
-                duration: Math.ceil(file.metadata.duration)
-            }
-            from += Math.ceil(file.metadata.duration)
-            duration += newObj.duration
-            return newObj
-        })
-        result.fileDuration = duration
-        result.fileList = fileList
-        setCurrentFile(result)
+        setCurrentFile(updateTemoData(result))
     }
 
     return (
@@ -357,7 +358,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                                     </p>
                                                 </div>
                                                 {(isDownload && curTemoId === item.uuid) ? <CircularProgressBar progress={downloadProgress}></CircularProgressBar>
-                                                    : <Button title={t('history.download')} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>
+                                                    : <Button title={t('history.download')} disabled={isDownload} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>
                                                         <TbDownload size={18} />
                                                     </Button>}
                                                 <Button title={t('history.delete')} disabled={isDownload} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => deleteItem(e, item)}>
@@ -385,7 +386,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                     </div>
                                 </div>
                             </div>
-                            {!!currentFile && <div className=' h-24 flex-shrink-0'>控制条</div>}
+                            {/* {!!currentFile && <div className=' h-24 flex-shrink-0'>控制条</div>} */}
                         </div>
                     </div>
                 </div>}

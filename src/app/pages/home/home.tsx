@@ -4,7 +4,7 @@ import { Button } from '@/app/components/ui/button';
 import Tiptap from '@/app/components/business/tiptap';
 import { useCallback, useEffect, useState } from 'react';
 
-import { secondsToHMS, generateUUID } from '@/app/lib/utils';
+import { secondsToHMS, generateUUID, updateTemoData } from '@/app/lib/utils';
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from '@/app/lib/tts';
@@ -99,7 +99,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
             const result = await dataStore?.mergeTemo({ setJenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options)
             if (result) {
                 result.duration = secondsToHMS(result.metadata?.duration)
-                dataStore?.setTemoData(result)
+                dataStore?.setTemoData(updateTemoData(result))
                 editorRef?.commands.clearContent();
                 editorRef?.chain().insertContentAt(editorRef.state.selection.head, { type: 'editorCard' }).focus().run()
                 dataStore?.setEditorData("")

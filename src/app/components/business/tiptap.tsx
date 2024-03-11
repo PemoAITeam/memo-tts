@@ -51,6 +51,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     const [TTSType, setTTSType] = useState<'video' | 'audio'>('audio')
     const [voice, setVoice] = useState<string>();
     const [openDialog, setOpenDialog] = useState(false);
+    const [originalVoice, setOriginalVoice] = useState<string>()
     const { t } = useTranslation()
     const editor = useEditor({
         extensions: [
@@ -113,7 +114,17 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                 dataStore?.setTTSType(currentFile.type)
             }
             setVoice(currentFile.voiceLocalName)
-            setCurOptions(currentFile.ttsOptions)
+            if (currentFile.ttsOptions) {
+                setCurOptions(currentFile.ttsOptions)
+                const ttsOptions = currentFile.ttsOptions.ttsOptions
+                if (currentFile.ttsOptions.service === 'Edge') {
+                    setVoice(ttsOptions.voice.properties.LocalName)
+                    setOriginalVoice(ttsOptions.voice.properties.LocalName)
+                } else {
+                    setVoice(ttsOptions.voice.label)
+                    setOriginalVoice(ttsOptions.voice.label)
+                }
+            }
         } else if (dataStore?.TTSType) {
             setTTSType(dataStore.TTSType)
         }
@@ -293,7 +304,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                         <span className='synthesis-text ml-1 '>{t('tts.synthesis')}</span>
                     </Button>}
 
-                    {!!setBgm && <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+                    {TTSType === 'video' && <Dialog open={openDialog} onOpenChange={setOpenDialog}>
                         <DialogTrigger asChild>
                             <Button title={t('tts.select music')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
                                 {!bgm && <MdOutlineMusicNote size={18} />}
@@ -310,7 +321,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                         <PopoverTrigger asChild>
                             <Button title={t('tts.tts')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
                                 <MdOutlineKeyboardVoice size={18} />
-                                <span className={`text-sm ml-1 ${voice !== currentFile?.voiceLocalName ? ' text-indigo-600' : ''}`}> {voice} </span>
+                                <span className={`text-sm ml-1 ${voice !== originalVoice ? ' text-indigo-600' : ''}`}> {voice} </span>
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto">

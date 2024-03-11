@@ -271,6 +271,7 @@ class DataStore {
             }
         }
         data.setJenerating(true)
+        console.log(params)
         const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType, ttsOptions: cloneDeep({ service: data.service, speed: data.speed, target: data.target, ttsOptions: options }) });
         // if (!result) {
         //     toast({

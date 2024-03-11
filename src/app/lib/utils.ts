@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { cloneDeep } from 'lodash-es';
-import { WhisperSegments } from "@/app/interface";
+import { TemoData, TemoFileList, WhisperSegments } from "@/app/interface";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -285,4 +285,20 @@ export function formatTimestamp(timestamp: number) {
 
 export function lowercaseFirstLetter(str: string) {
   return str.charAt(0).toLowerCase() + str.slice(1);
+}
+
+export function updateTemoData(result: TemoData) {
+  let from = 0, duration = 0;
+  const fileList: TemoFileList[] = result.fileList?.map(file => {
+    const newObj = {
+      ...file,
+      from,
+      duration: Math.ceil(file.metadata.duration)
+    }
+    from += Math.ceil(file.metadata.duration)
+    duration += newObj.duration
+    return newObj
+  })
+  return { ...result, fileDuration: duration, fileList }
+
 }
