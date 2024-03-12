@@ -123,12 +123,11 @@ class DataStore {
         let temoData = await window.AIM.getTemoData() || []
         if (temoData?.length) {
             temoData = temoData.map((item: any) => {
-                let data = item;
-                if (!data.fileList) {
-                    data = patchTemoData(item);
+                if (!item.fileList) {
+                    item.fileList = patchTemoData(item);
                 }
                 let from = 0, duration = 0;
-                const fileList: TemoFileList[] = data.fileList?.map((file: TemoFileList) => {
+                const fileList: TemoFileList[] = item.fileList?.map((file: TemoFileList) => {
                     const newObj = {
                         ...file,
                         from,
@@ -138,8 +137,8 @@ class DataStore {
                     duration += newObj.duration
                     return newObj
                 })
-                data.fileList = fileList
-                return { ...data, duration: secondsToHMS(duration), fileDuration: duration }
+                item.fileList = fileList
+                return { ...item, duration: secondsToHMS(duration), fileDuration: duration }
             })
         }
         const editorData = localStorage.getItem('temo-editor') || ""
