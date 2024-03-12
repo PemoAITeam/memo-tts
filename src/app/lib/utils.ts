@@ -106,7 +106,7 @@ export function secondsToHMS(seconds: number) {
 }
 
 export function getLocalFileUrl(filePath: string) {
-  return /^https?:\/\//g.test(filePath) ? filePath : 'aim:///' + filePath.replace(/%/g, '__@5@__');
+  return filePath ? /^https?:\/\//g.test(filePath) ? filePath : 'aim:///' + filePath.replace(/%/g, '__@5@__') : '';
 }
 
 export function getData(voice: any, emotion: any) {
