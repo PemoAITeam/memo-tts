@@ -1,5 +1,5 @@
 import { BgmData, EditorData, LibraryData, TemoData, TemoFileList } from '@/app/interface';
-import { getSpeed, secondsToHMS } from '@/app/lib/utils';
+import { getSpeed, patchTemoData, secondsToHMS } from '@/app/lib/utils';
 import { cloneDeep } from 'lodash-es';
 import md5 from 'md5';
 import { makeAutoObservable, runInAction } from 'mobx'
@@ -122,10 +122,13 @@ class DataStore {
     initData = async () => {
         let temoData = await window.AIM.getTemoData() || []
         if (temoData?.length) {
-            console.log(temoData)
             temoData = temoData.map((item: any) => {
+                let data = item;
+                if (!data.fileList) {
+                    data = patchTemoData(item);
+                }
                 let from = 0, duration = 0;
-                const fileList: TemoFileList[] = item.fileList?.map((file: TemoFileList) => {
+                const fileList: TemoFileList[] = data.fileList?.map((file: TemoFileList) => {
                     const newObj = {
                         ...file,
                         from,
@@ -135,8 +138,8 @@ class DataStore {
                     duration += newObj.duration
                     return newObj
                 })
-                item.fileList = fileList
-                return { ...item, duration: secondsToHMS(duration), fileDuration: duration }
+                data.fileList = fileList
+                return { ...data, duration: secondsToHMS(duration), fileDuration: duration }
             })
         }
         const editorData = localStorage.getItem('temo-editor') || ""

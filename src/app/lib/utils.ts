@@ -302,3 +302,10 @@ export function updateTemoData(result: TemoData) {
   return { ...result, fileDuration: duration, fileList }
 
 }
+
+export function patchTemoData(data: TemoData) {
+  const fileList = (data.infoData!.order as string[]).map(item => {
+    return data.infoData![item] as TemoFileList
+  })
+  return fileList
+}
