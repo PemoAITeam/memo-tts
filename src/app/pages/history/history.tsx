@@ -26,7 +26,7 @@ import { TemoData, TemoFileList } from '@/app/interface';
 import { useTranslation } from 'react-i18next';
 import { Remotion } from '@/app/components/business/remotion';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import { PlayerRef } from '@remotion/player';
+// import { PlayerRef } from '@remotion/player';
 import CircularProgressBar from '@/app/components/business/progress';
 
 declare const window: any;
@@ -49,7 +49,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
     const { t } = useTranslation()
     const { toast } = useToast()
-    const [player, setPlayer] = useState<PlayerRef>()
+    // const [player, setPlayer] = useState<PlayerRef>()
 
     useEffect(() => {
         setList(dataStore?.temoData || [])
@@ -378,7 +378,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                             <div className='flex flex-1'>
                                 {!!currentFile && <div className='flex-1 m-3'>
                                     <div>{currentFile.title}</div>
-                                    <Remotion temoData={currentFile} getPlayer={setPlayer}></Remotion>
+                                    <Remotion temoData={currentFile}></Remotion>
                                 </div>}
                                 <div className='flex-1 px-4 pb-4 flex '>
                                     <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>

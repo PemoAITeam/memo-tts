@@ -29,7 +29,7 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
     const { t } = useTranslation()
     // const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
     // const [options, setOptions] = useState<TTSOptions>()
-    const [curOptions, setCurOptions] = useState<VoiceOptions>()
+    // const [curOptions, setCurOptions] = useState<VoiceOptions>()
     // const [speed, setSpeed] = useState<string>('1')
     // const [target, setTarget] = useState<'original' | 'translate'>('original')
     const [voice, setVoice] = useState<string>(node.attrs.voice ? `${node.attrs.voice?.voiceLocalName}(${!node.attrs.voice?.target || node.attrs.voice?.target === 'original' ? t('tts.original text') : t('tts.translate text')}-${node.attrs.voice?.speed || 1})` : '')
@@ -47,7 +47,7 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
     useEffect(() => {
         setSelectedImage(node.attrs.picture ? node.attrs.picture.path : null)
         if (node.attrs.voice) {
-            setCurOptions(node.attrs.voice.ttsOptions)
+            // setCurOptions(node.attrs.voice.ttsOptions)
             // setOptions(node.attrs.voice.ttsOptions.ttsOptions)
         }
     }, [node.attrs])
@@ -130,7 +130,7 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
                         ttsOptions: data,
                     }
                 }
-                setCurOptions(data)
+                // setCurOptions(data)
                 setVoice(`${curItem.attrs.voice.voiceLocalName}(${target === 'original' ? t('tts.original text') : t('tts.translate text')}-${speed})`)
                 editor.chain().setContent(jsonData, true).focus().run()
                 setOpenMenu(false)

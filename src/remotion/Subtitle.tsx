@@ -35,19 +35,19 @@ export const Subtitle: React.FC<SubtitleProps> = ({
 	const frame = useCurrentFrame();
 	const opacity = interpolate(frame, [0, 30], [0, 1]);
 	const [lineOffset, setLineOffset] = useState(0);
-	const [containerHeight, setContainerHeight] = useState(0);
+	// const [containerHeight, setContainerHeight] = useState(0);
 	const [handle] = useState(() => delayRender());
 	const windowRef = useRef<HTMLDivElement>(null);
 	// const zoomMeasurer = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		const cHeight = subtitlesSize * subtitlesLineHeight * linesPerPage;
+		// const cHeight = subtitlesSize * subtitlesLineHeight * linesPerPage;
 		const linesRendered =
 			(windowRef.current?.getBoundingClientRect().height as number) /
 			(subtitlesLineHeight * subtitlesSize);
 		const linesToOffset = Math.max(0, linesRendered - linesPerPage);
 		setLineOffset(linesToOffset);
-		setContainerHeight(cHeight)
+		// setContainerHeight(cHeight)
 		continueRender(handle);
 	}, [
 		frame,
