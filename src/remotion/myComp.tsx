@@ -43,7 +43,7 @@ export const MyComp: React.FC<z.infer<typeof myCompSchema>> = ({
             <Sequence from={0} durationInFrames={duration}>
                 {!!bgm && <Audio volume={0.3} src={bgm} />}
                 <Audio volume={0.8} src={audioFileName} />
-                {type !== 'video' && <Img className="cover w-full h-full object-cover" src={staticFile('cd.png')} />}
+                {type !== 'video' && <Img className="cd-player-icon" src={staticFile('cd.png')} />}
                 {type === 'video' && fileList.map((file: TemoFileList, index: number) => (
                     <Sequence key={index} from={30 * file.from!} durationInFrames={30 * file.duration!}>
                         {file.pic && <div className="w-full">
