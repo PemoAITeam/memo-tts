@@ -374,14 +374,14 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
 
                             </div>
                         </div>
-                        <div className='flex-1 flex flex-col temo-no-draggable'>
-                            <div className='flex flex-1'>
-                                {!!currentFile && <div className='flex-1 m-3'>
+                        <div className='flex flex-col h-full temo-no-draggable'>
+                            <div className='flex flex-1 overflow-hidden'>
+                                {!!currentFile && <div className='my-3 flex-1'>
                                     <div>{currentFile.title}</div>
                                     <Remotion temoData={currentFile}></Remotion>
                                 </div>}
-                                {!!curEditorData && <div className='flex-1 px-4 pb-4 flex '>
-                                    <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
+                                {!!curEditorData && <div className=' px-4 pb-4 flex flex-1'>
+                                    <div className='flex  flex-col  border h-full p-3 pr-0 rounded-md'>
                                         <Tiptap updateList={generateAudio} content={curEditorData} currentFile={currentFile} bgmData={currentFile?.bgm} />
                                     </div>
                                 </div>}

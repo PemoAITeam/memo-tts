@@ -75,13 +75,13 @@ const TTSDialog = inject('dataStore')(observer(({ selectImage, dataStore, fileTy
                     <TabsTrigger className='px-1' value="favorate" onClick={() => setType('favorate')}>{t('tts.favorate')}</TabsTrigger>
                 </TabsList>
             </Tabs>
-            {type === 'myLibrary' && <div className=" mt-4 flex items-center">
-                <Button variant='ghost' onClick={selectBgPic} className=" border h-auto w-auto p-0 text-gray-300">
+            {type === 'myLibrary' && <div className=" mt-4 flex items-center flex-wrap">
+                <Button variant='ghost' onClick={selectBgPic} className=" border mr-4 h-auto w-auto mt-4 p-0 text-gray-300">
                     <GoPlus size={fileType === 'pic' ? 128 : 86} />
                 </Button>
                 {!!list?.length &&
                     list.map(item => (
-                        fileType == 'pic' ? <div key={item.name} className="border rounded-md ml-4 w-32 h-32 cursor-pointer" onClick={() => selectImage(item.path)}>
+                        fileType == 'pic' ? <div key={item.name} className="border rounded-md mr-4 w-32 h-32 mt-4 cursor-pointer" onClick={() => selectImage(item.path)}>
                             <img className="cover w-full h-full object-cover" src={getLocalFileUrl(item.path)} />
                         </div> : <div key={item.name} className="flex justify-center flex-col border p-4 rounded-md ml-4 cursor-pointer" onClick={() => selectImage(item.path)}>
                             <div className="flex items-center">

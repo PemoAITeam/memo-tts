@@ -28,6 +28,7 @@ import AppStore from '@/app/stores/appStore'
 import { PiMagicWandLight } from "react-icons/pi";
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
 import TTSDialog from './tts-dialog'
+import { IoIosClose } from 'react-icons/io'
 
 interface TiptapProps {
     setEditor?: (editor: Editor) => void,
@@ -288,6 +289,13 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         setCurOptions(data)
     }
 
+    const deleteBgm = (event?: any) => {
+        if (event) {
+            event.stopPropagation();
+        }
+        setBgm(undefined)
+    }
+
     return (
         <>
             <div className='flex items-center flex-shrink-0 justify-between mb-4 pr-3'>
@@ -311,6 +319,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                                 {(bgm && isPlaying) && <BsPause onClick={playBgm} size={18} />}
                                 {(bgm && !isPlaying) && <BsPlay onClick={playBgm} size={18} />}
                                 <span className={`text-sm ml-1 ${selectedBgm ? ' text-indigo-600' : ''}`}>{bgm ? bgm.name : t('tts.select music')}</span>
+                                {!!bgm && <IoIosClose size={16} className=" absolute -top-2 -right-3" onClick={deleteBgm} />}
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="pic-dialog w-2/3 h-2/3 max-w-none">
