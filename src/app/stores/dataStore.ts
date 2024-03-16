@@ -1,5 +1,5 @@
-import { BgmData, EditorData, LibraryData, TemoData, TemoFileList } from '@/app/interface';
-import { getSpeed, patchTemoData, secondsToHMS, splitString } from '@/app/lib/utils';
+import { BgmData, EditorData, LibraryData, TemoData } from '@/app/interface';
+import { getSpeed, patchTemoData, splitString, updateTemoData } from '@/app/lib/utils';
 import { cloneDeep } from 'lodash-es';
 import md5 from 'md5';
 import { makeAutoObservable, runInAction } from 'mobx'
@@ -122,23 +122,11 @@ class DataStore {
     initData = async () => {
         let temoData = await window.AIM.getTemoData() || []
         if (temoData?.length) {
-            temoData = temoData.map((item: any) => {
+            temoData = temoData.map((item: TemoData) => {
                 if (!item.fileList) {
                     item.fileList = patchTemoData(item);
                 }
-                let from = 0, duration = 0;
-                const fileList: TemoFileList[] = item.fileList?.map((file: TemoFileList) => {
-                    const newObj = {
-                        ...file,
-                        from,
-                        duration: Math.ceil(file.metadata.duration)
-                    }
-                    from += Math.ceil(file.metadata.duration)
-                    duration += newObj.duration
-                    return newObj
-                })
-                item.fileList = fileList
-                return { ...item, duration: secondsToHMS(duration), fileDuration: duration }
+                return updateTemoData(item)
             })
         }
         const editorData = localStorage.getItem('temo-editor') || ""
@@ -207,7 +195,7 @@ class DataStore {
                     if (textData) {
                         data.text = textData.text.replace(/<br \/>/g, '');
                         data.picture = item.attrs?.picture
-                        data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text.substring(0, 30))
+                        data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
                         }

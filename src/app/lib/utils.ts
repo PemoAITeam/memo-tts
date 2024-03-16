@@ -299,7 +299,7 @@ export function updateTemoData(result: TemoData) {
     duration += newObj.duration
     return newObj
   })
-  return { ...result, fileDuration: duration, fileList }
+  return { ...result, duration: secondsToHMS(duration), fileDuration: duration, fileList }
 
 }
 

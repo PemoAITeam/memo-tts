@@ -5,7 +5,7 @@ import { EditorCard } from '../extensions/editor-card'
 import { useEffect, useRef, useState } from 'react'
 import { EventHandler } from '../extensions/paste-plugin'
 import { TranslateCard } from '../extensions/translate-card'
-import { generateUUID, getLocalFileUrl, mergeTranslate, secondsToHMS } from '@/app/lib/utils'
+import { generateUUID, getLocalFileUrl, mergeTranslate, secondsToHMS, updateTemoData } from '@/app/lib/utils'
 import { Button } from '../ui/button'
 import { AiOutlineClear, AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
@@ -267,10 +267,10 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
 
     const generateAudio = async () => {
         try {
-            const result = await dataStore?.mergeTemo({ setJenerating: setSynthesising, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
+            const result: TemoData = await dataStore?.mergeTemo({ setJenerating: setSynthesising, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
             if (result) {
-                result.duration = secondsToHMS(result.metadata?.duration)
-                updateList && updateList(result)
+                console.log(result)
+                updateList && updateList(updateTemoData(result))
             }
         } catch (error) {
             setSynthesising(false);

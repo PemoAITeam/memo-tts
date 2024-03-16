@@ -323,7 +323,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             list.unshift(result)
         }
         setList(cloneDeep(list))
-        setCurrentFile(updateTemoData(result))
+        setCurrentFile(result)
     }
 
     return (
