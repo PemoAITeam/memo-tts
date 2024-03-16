@@ -5,7 +5,7 @@ import { EditorCard } from '../extensions/editor-card'
 import { useEffect, useRef, useState } from 'react'
 import { EventHandler } from '../extensions/paste-plugin'
 import { TranslateCard } from '../extensions/translate-card'
-import { generateUUID, getLocalFileUrl, mergeTranslate, secondsToHMS } from '@/app/lib/utils'
+import { generateUUID, getLocalFileUrl, mergeTranslate, secondsToHMS, updateTemoData } from '@/app/lib/utils'
 import { Button } from '../ui/button'
 import { AiOutlineClear, AiOutlineLoading3Quarters } from 'react-icons/ai'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
@@ -28,6 +28,7 @@ import AppStore from '@/app/stores/appStore'
 import { PiMagicWandLight } from "react-icons/pi";
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
 import TTSDialog from './tts-dialog'
+import { IoIosClose } from 'react-icons/io'
 
 interface TiptapProps {
     setEditor?: (editor: Editor) => void,
@@ -266,10 +267,10 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
 
     const generateAudio = async () => {
         try {
-            const result = await dataStore?.mergeTemo({ setJenerating: setSynthesising, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
+            const result: TemoData = await dataStore?.mergeTemo({ setJenerating: setSynthesising, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
             if (result) {
-                result.duration = secondsToHMS(result.metadata?.duration)
-                updateList && updateList(result)
+                console.log(result)
+                updateList && updateList(updateTemoData(result))
             }
         } catch (error) {
             setSynthesising(false);
@@ -286,6 +287,13 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
             setVoice(ttsOptions?.voice.label)
         }
         setCurOptions(data)
+    }
+
+    const deleteBgm = (event?: any) => {
+        if (event) {
+            event.stopPropagation();
+        }
+        setBgm(undefined)
     }
 
     return (
@@ -311,6 +319,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                                 {(bgm && isPlaying) && <BsPause onClick={playBgm} size={18} />}
                                 {(bgm && !isPlaying) && <BsPlay onClick={playBgm} size={18} />}
                                 <span className={`text-sm ml-1 ${selectedBgm ? ' text-indigo-600' : ''}`}>{bgm ? bgm.name : t('tts.select music')}</span>
+                                {!!bgm && <IoIosClose size={16} className=" absolute -top-2 -right-3" onClick={deleteBgm} />}
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="pic-dialog w-2/3 h-2/3 max-w-none">
