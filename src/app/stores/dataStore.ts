@@ -1,5 +1,5 @@
 import { BgmData, EditorData, LibraryData, TemoData, TemoFileList } from '@/app/interface';
-import { getSpeed, patchTemoData, secondsToHMS } from '@/app/lib/utils';
+import { getSpeed, patchTemoData, secondsToHMS, splitString } from '@/app/lib/utils';
 import { cloneDeep } from 'lodash-es';
 import md5 from 'md5';
 import { makeAutoObservable, runInAction } from 'mobx'
@@ -207,9 +207,12 @@ class DataStore {
                     if (textData) {
                         data.text = textData.text.replace(/<br \/>/g, '');
                         data.picture = item.attrs?.picture
-                        data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
+                        data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text.substring(0, 30))
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
+                        }
+                        if (data.text.length > 1000) {
+                            data.textChunks = splitString(data.text, 1000)
                         }
                     }
                     return data
@@ -239,6 +242,9 @@ class DataStore {
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
                         }
+                        if (data.text.length > 1000) {
+                            data.textChunks = splitString(data.text, 1000)
+                        }
                     }
                     return data
                 })
@@ -266,6 +272,9 @@ class DataStore {
                         data.md5 = md5(data.speed + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
+                        }
+                        if (data.text.length > 1000) {
+                            data.textChunks = splitString(data.text, 1000)
                         }
                     }
                     return data

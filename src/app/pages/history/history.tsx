@@ -66,7 +66,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             setCurrentFile(data)
             setCurEditorData(curData.editorData)
         }
-    }, [curTemoId])
+    }, [curTemoId, dataStore?.temoData])
 
     useEffect(() => {
         if (id) {
@@ -285,10 +285,6 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         }
         let items: any = [];
         if (data) {
-            if (data.uuid === curTemoId) {
-                setCurTemoId("")
-                setCurEditorData("")
-            }
             items.push(data)
         } else {
             items = list.filter(item => item.selected);
@@ -300,8 +296,11 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                 return;
             }
         }
-        console.log(items)
         dataStore?.setTrashData(items)
+        setList(dataStore?.temoData || [])
+        if (data?.uuid === curTemoId && dataStore?.temoData.length) {
+            setCurTemoId(dataStore.temoData[0].uuid)
+        }
     }
 
     const filterTTS = (type: 'audio' | 'video' | 'all') => {
@@ -374,14 +373,14 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
 
                             </div>
                         </div>
-                        <div className='flex flex-col h-full temo-no-draggable'>
+                        <div className='flex flex-col h-full flex-1 temo-no-draggable'>
                             <div className='flex flex-1 overflow-hidden'>
                                 {!!currentFile && <div className='my-3 flex-1'>
                                     <div>{currentFile.title}</div>
                                     <Remotion temoData={currentFile}></Remotion>
                                 </div>}
                                 {!!curEditorData && <div className=' px-4 pb-4 flex flex-1'>
-                                    <div className='flex  flex-col  border h-full p-3 pr-0 rounded-md'>
+                                    <div className='flex flex-1  flex-col  border h-full p-3 pr-0 rounded-md'>
                                         <Tiptap updateList={generateAudio} content={curEditorData} currentFile={currentFile} bgmData={currentFile?.bgm} />
                                     </div>
                                 </div>}
@@ -390,9 +389,9 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                         </div>
                     </div>
                 </div>}
-            {/* {!list.length && <div className='flex items-center justify-center h-full'>
+            {!dataStore?.temoData.length && <div className='flex items-center justify-center h-full'>
                 {t('tts.no results')}
-            </div>} */}
+            </div>}
         </>
     )
 }))

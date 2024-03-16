@@ -98,11 +98,11 @@ export function secondsToHMS(seconds: number) {
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainingSeconds = Math.ceil(seconds % 60);
 
-  const formattedHours = hours > 0 ? `${hours}时` : '';
-  const formattedMinutes = minutes > 0 ? `${minutes}分` : '';
-  const formattedSeconds = `${remainingSeconds}秒`;
+  const formattedHours = hours > 0 ? pad(hours, 2) : '';
+  const formattedMinutes = minutes > 0 ? pad(minutes, 2) : '00';
+  const formattedSeconds = pad(remainingSeconds, 2);
 
-  return `${formattedHours}${formattedMinutes}${formattedSeconds}`;
+  return `${formattedHours ? formattedHours + ':' : ''}${formattedMinutes}:${formattedSeconds}`;
 }
 
 export function getLocalFileUrl(filePath: string) {
@@ -308,4 +308,12 @@ export function patchTemoData(data: TemoData) {
     return data.infoData![item] as TemoFileList
   })
   return fileList
+}
+
+export function splitString(str: string, chunkSize: number) {
+  const result = [];
+  for (let i = 0; i < str.length; i += chunkSize) {
+    result.push(str.slice(i, i + chunkSize));
+  }
+  return result;
 }
