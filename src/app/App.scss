@@ -49,6 +49,6 @@
 
 .tts-remotion-player {
     &>div:last-child {
-        display: none;
+        opacity: 1 !important;
     }
 }

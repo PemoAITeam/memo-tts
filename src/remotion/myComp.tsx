@@ -54,7 +54,7 @@ export const MyComp: React.FC<z.infer<typeof myCompSchema>> = ({
                         </div>}
                     </Sequence>
                 ))}
-                {type !== 'video' && fileList.map((file: TemoFileList, index: number) => (
+                {/* {type !== 'video' && fileList.map((file: TemoFileList, index: number) => (
                     <Sequence key={index} from={30 * file.from!} durationInFrames={30 * file.duration!}>
                         <div className="w-full">
 
@@ -62,7 +62,7 @@ export const MyComp: React.FC<z.infer<typeof myCompSchema>> = ({
                                 subtitlesLineHeight={subtitlesLineHeight} text={file.text} />
                         </div>
                     </Sequence>
-                ))}
+                ))} */}
             </Sequence>
         </AbsoluteFill>
     );
