@@ -47,8 +47,8 @@ class SettingStore {
   }
 
   handleMessage = async (e: any) => {
-    if (e && e.icpData) {
-      const msg = e.icpData as SettingChange
+    if (e && e.ipcData) {
+      const msg = e.ipcData as SettingChange
       if (msg.type === 'setting:change') {
         this.settings = msg.data
       }
@@ -77,10 +77,6 @@ class SettingStore {
   showPanel = false
   setShowPanel = (val: boolean) => {
     this.showPanel = val
-  }
-
-  changeTheme = (value: 'system' | 'light' | 'dark') => {
-    window.AIM.changeTheme(value)
   }
 }
 

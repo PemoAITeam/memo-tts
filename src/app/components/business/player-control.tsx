@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { TemoFileList } from "@/app/interface";
 import DataStore from "@/app/stores/dataStore";
 import { PlayerRef } from "@remotion/player";
@@ -10,7 +11,7 @@ interface PlayerControlProps {
     dataStore?: DataStore
     fileList: TemoFileList[]
 }
-
+// @ts-expect-error no-unused-vars
 const PlayerControl = inject('dataStore')(observer(({ playerRef, dataStore, fileList }: PlayerControlProps) => {
     const [list, setList] = useState<TemoFileList[]>()
 
