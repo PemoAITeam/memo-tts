@@ -142,7 +142,7 @@ class DataStore {
         })
     }
 
-    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano', target: string, speed: string, uuid: string, editorData: any, bgm?: BgmData, setJenerating: (params: boolean) => void }, options: any) => {
+    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano', target: string, speed: string, uuid: string, editorData: any, bgm?: BgmData, setGenerating: (params: boolean) => void }, options: any) => {
         const editorContent = data.editorData.content;
         if (editorContent?.length) {
             editorContent.forEach((item: { type: string; attrs: { voice: any, picture: any }; }, index: number) => {
@@ -269,7 +269,7 @@ class DataStore {
                 })
             }
         }
-        data.setJenerating(true)
+        data.setGenerating(true)
         console.log(params)
         const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType, ttsOptions: cloneDeep({ service: data.service, speed: data.speed, target: data.target, ttsOptions: options }) });
         // if (!result) {
@@ -279,7 +279,7 @@ class DataStore {
         //     })
         // }
         console.log(result)
-        data.setJenerating(false)
+        data.setGenerating(false)
         return result
     }
 

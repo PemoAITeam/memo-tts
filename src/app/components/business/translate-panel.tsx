@@ -216,7 +216,7 @@ const TranslatePanel = inject('settingStore')(observer(({ settingStore, closePan
                 </Select>
             </div>
             <Button className="w-full" onClick={addTranslate}>
-                {translating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
+                {translating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} />}
                 <span>{t('translate.translate')}</span>
             </Button>
         </>

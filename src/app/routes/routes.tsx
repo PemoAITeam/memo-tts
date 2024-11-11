@@ -119,7 +119,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
                     {sidebarItems.map((section) => (
                         <div key={section.id}>
                             <Button variant={selectedId === section.id ? "default" : "ghost"} onClick={() => changeTab(section)} className={`cursor-pointer w-full justify-start mb-1`}>
-                                <section.icon size='20' className="mr-2" />
+                                <section.icon size='20' />
                                 <span>{section.label}</span>
                             </Button>
                         </div>

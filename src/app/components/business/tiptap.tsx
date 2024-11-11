@@ -46,7 +46,7 @@ interface TiptapProps {
 const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore, updateList, getBgm, bgmData, currentFile }: TiptapProps) => {
     const [openTranslate, setOpenTranslate] = useState(false)
     const [translating, setTranslating] = useState<boolean>(false)
-    const [synthesising, setSynthesising] = useState<boolean>(false)
+    const [synthesizing, setSynthesizing] = useState<boolean>(false)
     const [openSynthesis, setOpenSynthesis] = useState<boolean>(false)
     const [curOptions, setCurOptions] = useState<VoiceOptions>()
     const [TTSType, setTTSType] = useState<'video' | 'audio'>('audio')
@@ -267,13 +267,13 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
 
     const generateAudio = async () => {
         try {
-            const result: TemoData = await dataStore?.mergeTemo({ setJenerating: setSynthesising, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
+            const result: TemoData = await dataStore?.mergeTemo({ setGenerating: setSynthesizing, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
             if (result) {
                 console.log(result)
                 updateList && updateList(updateTemoData(result))
             }
         } catch (error) {
-            setSynthesising(false);
+            setSynthesizing(false);
             console.log(error)
         }
     }
@@ -300,16 +300,16 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         <>
             <div className='flex items-center flex-shrink-0 justify-between mb-4 pr-3'>
                 {from === 'home' && <Tabs value={TTSType}>
-                    <TabsList className="grid grid-cols-2">
-                        <TabsTrigger className='px-1' value="audio" onClick={() => switchTTSType('audio')}>{t('tts.audio')}</TabsTrigger>
-                        <TabsTrigger className='px-1' value="video" onClick={() => switchTTSType('video')}>{t('tts.video')}</TabsTrigger>
+                    <TabsList>
+                        <TabsTrigger value="audio" onClick={() => switchTTSType('audio')}>{t('tts.audio')}</TabsTrigger>
+                        <TabsTrigger value="video" onClick={() => switchTTSType('video')}>{t('tts.video')}</TabsTrigger>
                     </TabsList>
                 </Tabs>}
                 <div className='flex items-center flex-shrink-0'>
-                    {from != 'home' && <Button title={t('tts.synthesis')} variant={'ghost'} className=" hover:text-indigo-600 flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" size="lg" disabled={synthesising} onClick={generateAudio}>
-                        {synthesising && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} />}
-                        {!synthesising && <PiMagicWandLight size={16} />}
-                        <span className='synthesis-text ml-1 '>{t('tts.synthesis')}</span>
+                    {from != 'home' && <Button title={t('tts.synthesis')} variant={'ghost'} className=" hover:text-indigo-600 flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" size="lg" disabled={synthesizing} onClick={generateAudio}>
+                        {synthesizing && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} />}
+                        {!synthesizing && <PiMagicWandLight size={16} />}
+                        <span className='synthesis-text'>{t('tts.synthesis')}</span>
                     </Button>}
 
                     {TTSType === 'video' && <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -330,7 +330,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                         <PopoverTrigger asChild>
                             <Button title={t('tts.tts')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
                                 <MdOutlineKeyboardVoice size={18} />
-                                <span className={`text-sm ml-1 ${voice !== originalVoice ? ' text-indigo-600' : ''}`}> {voice} </span>
+                                <span className={`text-sm ${voice !== originalVoice ? ' text-indigo-600' : ''}`}> {voice} </span>
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto">
@@ -345,7 +345,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                         <PopoverTrigger asChild>
                             <Button title={t('app.translate')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4">
                                 {translating ? <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} /> : <TbArrowsDownUp size={18} />}
-                                <span className=" text-sm ml-1">{t('app.translate')}</span>
+                                <span className="text-sm">{t('app.translate')}</span>
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto">
@@ -354,7 +354,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                     </Popover>
                     <Button title={t('app.clear')} variant={'ghost'} className="flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" onClick={() => clear()}>
                         <AiOutlineClear size={18} />
-                        <span className=" text-sm ml-1">{t('app.clear')}</span>
+                        <span className="text-sm">{t('app.clear')}</span>
                     </Button>
                 </div>
             </div>

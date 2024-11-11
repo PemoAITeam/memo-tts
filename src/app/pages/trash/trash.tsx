@@ -140,7 +140,7 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             {t('trash.title')}
-            <CaretSortIcon className="ml-2 h-4 w-4" />
+            <CaretSortIcon className="h-4 w-4" />
           </Button>
         )
       },

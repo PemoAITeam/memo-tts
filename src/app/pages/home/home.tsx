@@ -1,5 +1,4 @@
 /* eslint-disable no-case-declarations */
-import './home.scss'
 import { Button } from '@/app/components/ui/button';
 import Tiptap from '@/app/components/business/tiptap';
 import { useCallback, useEffect, useState } from 'react';
@@ -31,7 +30,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     const [curEditorData, setCurEditorData] = useState<any>()
     const [speed, setSpeed] = useState<string>('1')
     const [target, setTarget] = useState<'original' | 'translate'>('original')
-    const [jenerating, setJenerating] = useState(false)
+    const [generating, setGenerating] = useState(false)
     const [editorRef, setEditorRef] = useState<Editor>();
     const [options, setOptions] = useState<TTSOptions>()
     // const [currentFile, setCurrentFile] = useState<TemoData>();
@@ -96,7 +95,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
 
     const generateAudio = async () => {
         try {
-            const result = await dataStore?.mergeTemo({ setJenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options)
+            const result = await dataStore?.mergeTemo({ setGenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options)
             if (result) {
                 result.duration = secondsToHMS(result.metadata?.duration)
                 dataStore?.setTemoData(updateTemoData(result))
@@ -110,7 +109,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                 navigate(`/history/${result.uuid}`)
             }
         } catch (error) {
-            setJenerating(false);
+            setGenerating(false);
             console.log(error)
         }
     }
@@ -129,8 +128,8 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                         </div>
                         <div className='px-4 flex-shrink-0 tts-service-panel'>
                             <TTSPanel getSpeed={setSpeed} getTarget={setTarget} getOptions={setOptions} getService={setService}></TTSPanel>
-                            <Button className=' mt-6 w-full' size="lg" disabled={jenerating} onClick={generateAudio}>
-                                {jenerating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin mr-2' size={16} />}
+                            <Button className=' mt-6 w-full' size="lg" disabled={generating} onClick={generateAudio}>
+                                {generating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} />}
                                 <span>{t('tts.synthesis')}</span>
                             </Button>
                         </div>

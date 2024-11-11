@@ -334,10 +334,10 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
 
                         <div className='pl-4 flex flex-col temo-list flex-shrink-0'>
                             <Tabs value={TTSType} className='temo-no-draggable flex-shrink-0'>
-                                <TabsList className="grid grid-cols-3 mb-4 w-2/4">
-                                    <TabsTrigger className='px-1' value="all" onClick={() => filterTTS('all')}>{t('tts.all')}</TabsTrigger>
-                                    <TabsTrigger className='px-1' value="audio" onClick={() => filterTTS('audio')}>{t('tts.audio')}</TabsTrigger>
-                                    <TabsTrigger className='px-1' value="video" onClick={() => filterTTS('video')}>{t('tts.video')}</TabsTrigger>
+                                <TabsList>
+                                    <TabsTrigger value="all" onClick={() => filterTTS('all')}>{t('tts.all')}</TabsTrigger>
+                                    <TabsTrigger value="audio" onClick={() => filterTTS('audio')}>{t('tts.audio')}</TabsTrigger>
+                                    <TabsTrigger value="video" onClick={() => filterTTS('video')}>{t('tts.video')}</TabsTrigger>
                                 </TabsList>
                             </Tabs>
                             <div className='temo-no-draggable list-scroll-area'>
