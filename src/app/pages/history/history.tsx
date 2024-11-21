@@ -200,7 +200,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             console.log(params)
             setIsDownload(true)
             setDownloadProgress(0.01)
-            await window.AIM.renderMedia(cloneDeep(params), file.filePath)
+            await window.AIM.tts.renderMedia(cloneDeep(params), file.filePath)
             setIsDownload(false)
         }
     }
@@ -217,7 +217,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             properties: []
         })
         if (!file?.canceled) {
-            const result = await window.AIM.temoDownload(cloneDeep(data), file.filePath);
+            const result = await window.AIM.tts.temoDownload(cloneDeep(data), file.filePath);
             if (result === 'Successful') {
                 toast({
                     description: t('history.save success')

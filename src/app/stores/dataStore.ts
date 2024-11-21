@@ -66,7 +66,7 @@ class DataStore {
 
     setTrashData = (data: TemoData[]) => {
         this.trashData = data.concat(this.trashData)
-        window.AIM.saveTemoTrash(cloneDeep(this.trashData))
+        window.AIM.tts.saveTemoTrash(cloneDeep(this.trashData))
         data.forEach(info => {
             const index = this.temoData.findIndex(item => item.uuid === info.uuid)
             if (index > -1) {
@@ -75,7 +75,7 @@ class DataStore {
                 this.temoData = newData
             }
         })
-        window.AIM.updateTemoData(cloneDeep(this.temoData))
+        window.AIM.tts.updateTemoData(cloneDeep(this.temoData))
     }
 
     deleteTrashData = (data: TemoData[], isDelete?: boolean) => {
@@ -90,14 +90,14 @@ class DataStore {
             })
             if (!isDelete) {
                 this.temoData = data.concat(this.temoData)
-                window.AIM.updateTemoData(cloneDeep(this.temoData))
+                window.AIM.tts.updateTemoData(cloneDeep(this.temoData))
             }
-            window.AIM.saveTemoTrash(cloneDeep(this.trashData), isDelete ? data.map(item => item.uuid) : null)
+            window.AIM.tts.saveTemoTrash(cloneDeep(this.trashData), isDelete ? data.map(item => item.uuid) : null)
         }
     }
 
     getTrashData = async () => {
-        const trashData = await window.AIM.getTemoTrash() || []
+        const trashData = await window.AIM.tts.getTemoTrash() || []
         runInAction(() => {
             this.trashData = trashData
         })
@@ -106,12 +106,12 @@ class DataStore {
 
     setLibraryData = (data: LibraryData[]) => {
         this.libraryData = data.concat(this.libraryData)
-        window.AIM.saveTemoLibrary(cloneDeep(this.libraryData))
+        window.AIM.tts.saveTemoLibrary(cloneDeep(this.libraryData))
         console.log(data)
     }
 
     copyLibraryFile = async (path: string, type: 'pic' | 'media', duration?: string) => {
-        const data = await window.AIM.copyTemoFile(path, 'library')
+        const data = await window.AIM.tts.copyTemoFile(path, 'library')
         if (!data.exist) {
             data.type = type
             data.duration = duration
@@ -120,7 +120,7 @@ class DataStore {
     }
 
     initData = async () => {
-        let temoData = await window.AIM.getTemoData() || []
+        let temoData = await window.AIM.tts.getTemoData() || []
         if (temoData?.length) {
             temoData = temoData.map((item: TemoData) => {
                 if (!item.fileList) {
@@ -132,7 +132,7 @@ class DataStore {
         const editorData = localStorage.getItem('temo-editor') || ""
         const ttsType = localStorage.getItem('temo-tts-type') || 'audio'
         const bgm = localStorage.getItem('temo-tts-bgm')
-        const libraryData = await window.AIM.getTemoLibrary() || []
+        const libraryData = await window.AIM.tts.getTemoLibrary() || []
         runInAction(() => {
             this.temoData = temoData
             this.editorData = editorData ? JSON.parse(editorData) : ''
@@ -271,7 +271,7 @@ class DataStore {
         }
         data.setGenerating(true)
         console.log(params)
-        const result = await window.AIM.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType, ttsOptions: cloneDeep({ service: data.service, speed: data.speed, target: data.target, ttsOptions: options }) });
+        const result = await window.AIM.tts.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType, ttsOptions: cloneDeep({ service: data.service, speed: data.speed, target: data.target, ttsOptions: options }) });
         // if (!result) {
         //     toast({
         //         variant: "destructive",

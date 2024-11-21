@@ -91,7 +91,7 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, showButton, vo
         } else if (params.type === 'OpenAI') {
             params.speed = speed || 0
         }
-        const fileUrl = await window.AIM.getTemoAudition(params, uuid);
+        const fileUrl = await window.AIM.tts.getTemoAudition(params, uuid);
         if (fileUrl) {
             playAudio({ fileUrl }, true)
         }
