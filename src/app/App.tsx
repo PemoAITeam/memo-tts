@@ -6,6 +6,7 @@ import SettingStore from "@/app/stores/settingStore";
 import DataStore from "@/app/stores/dataStore";
 import { Toaster } from "@/app/components/ui/toaster";
 import Routers from "@/app/routes/routes";
+import stores from "./stores";
 
 interface AppProps {
   settingStore?: SettingStore
@@ -19,7 +20,13 @@ const App = inject('settingStore', 'dataStore')(observer(({ settingStore, dataSt
     dataStore?.initData().then(() => {
       setReady(true)
     })
-    settingStore?.initSetting()
+    settingStore?.initSetting().then(() => {
+      // 注册监听
+      console.log("注册监听");
+      stores.appStore?.handleMessage();
+      stores.pluginStore?.handlePluginMessage();
+      setReady(true);
+    });
 
   }, [dataStore, settingStore]);
 
