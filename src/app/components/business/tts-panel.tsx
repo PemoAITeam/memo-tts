@@ -63,7 +63,7 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
         if (ttsProviders.length > 0 && provider === "") {
             setProvider(ttsProviders[0].value);
         }
-    }, [ttsProviders])
+    }, [provider, ttsProviders])
 
     useEffect(() => {
         if (voiceOptions) {
@@ -181,7 +181,7 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
     const handleProviderChange = useCallback((value: string) => {
         setProvider(value);
         !showConfirmButton && onProviderChange?.(value)
-    }, []);
+    }, [onProviderChange, showConfirmButton]);
 
     return (
         <>

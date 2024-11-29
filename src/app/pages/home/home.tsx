@@ -94,6 +94,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     }, [handler]) // handler更新时重新注册事件
 
     const generateAudio = async () => {
+        console.log({ setGenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options);
         try {
             const result = await dataStore?.mergeTemo({ setGenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options)
             if (result) {
@@ -128,7 +129,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                         </div>
                         <div className='px-4 flex-shrink-0 tts-service-panel'>
                             <TTSPanel getSpeed={setSpeed} getTarget={setTarget} getOptions={setOptions} onProviderChange={setService}></TTSPanel>
-                            <Button className=' mt-6 w-full' size="lg" disabled={generating} onClick={generateAudio}>
+                            <Button className='mt-6 w-full' size="lg" disabled={generating} onClick={generateAudio}>
                                 {generating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} />}
                                 <span>{t('tts.synthesis')}</span>
                             </Button>

@@ -8,6 +8,39 @@ import { settingStore } from '.';
 import { toast } from '@/app/components/ui/use-toast';
 import i18n from 'i18next'
 
+function getJSONDataFromEditorContents(editorContent: any, target: string) {
+    const jsonData: any[] = [];
+    if (editorContent?.length) {
+        editorContent.forEach((item: { type: string; attrs: { voice: any, picture: any }; }, index: number) => {
+            if (item.type == 'editorCard' && editorContent[index + 1]?.type == 'translateCard') {
+                if (item.attrs?.voice) {
+                    editorContent[index + 1].attrs!.voice = item.attrs.voice
+                } else {
+                    delete editorContent[index + 1].attrs!.voice
+                }
+                if (item.attrs?.picture) {
+                    editorContent[index + 1].attrs!.picture = item.attrs.picture
+                } else {
+                    delete editorContent[index + 1].attrs!.picture
+                }
+            }
+        })
+    }
+    editorContent.forEach((item: { attrs: { id: string, voice?: any, picture?: any }, content: string | any[]; type: string; }) => {
+        if (item.content?.length && item.content[0].text && (item.type === 'editorCard' || item.type === 'translateCard')) {
+            if (item.attrs.voice && (item.attrs.voice?.target === 'original' && item.type === 'editorCard' || (item.attrs.voice?.target !== 'original' && item.type === 'translateCard'))) {
+                jsonData.push(item)
+            } else if (!item.attrs.voice && (target === 'original' && item.type === 'editorCard' || (target !== 'original' && item.type === 'translateCard'))) {
+                jsonData.push(item)
+
+            }
+        }
+    })
+    console.log(jsonData)
+
+    return jsonData
+}
+
 class DataStore {
     constructor() {
         makeAutoObservable(this)
@@ -141,36 +174,27 @@ class DataStore {
             this.libraryData = libraryData
         })
     }
-
-    mergeTemo = async (data: { service: 'Edge' | 'OpenAI' | 'Volcano', target: string, speed: string, uuid: string, editorData: any, bgm?: BgmData, setGenerating: (params: boolean) => void }, options: any) => {
-        const editorContent = data.editorData.content;
-        if (editorContent?.length) {
-            editorContent.forEach((item: { type: string; attrs: { voice: any, picture: any }; }, index: number) => {
-                if (item.type == 'editorCard' && editorContent[index + 1]?.type == 'translateCard') {
-                    if (item.attrs?.voice) {
-                        editorContent[index + 1].attrs!.voice = item.attrs.voice
-                    } else {
-                        delete editorContent[index + 1].attrs!.voice
-                    }
-                    if (item.attrs?.picture) {
-                        editorContent[index + 1].attrs!.picture = item.attrs.picture
-                    } else {
-                        delete editorContent[index + 1].attrs!.picture
-                    }
-                }
-            })
-        }
-        const jsonData: any[] = [];
-        editorContent.forEach((item: { attrs: { id: string, voice?: any, picture?: any }, content: string | any[]; type: string; }) => {
-            if (item.content?.length && item.content[0].text && (item.type === 'editorCard' || item.type === 'translateCard')) {
-                if (item.attrs.voice && (item.attrs.voice?.target === 'original' && item.type === 'editorCard' || (item.attrs.voice?.target !== 'original' && item.type === 'translateCard'))) {
-                    jsonData.push(item)
-                } else if (!item.attrs.voice && (data.target === 'original' && item.type === 'editorCard' || (data.target !== 'original' && item.type === 'translateCard'))) {
-                    jsonData.push(item)
-
-                }
-            }
-        })
+    // export interface TTSParams {
+    //     data: TTSOptions,
+    //     file: ITranscriptFile,
+    //     ogText?: boolean,
+    //     exportPath?: string
+    //     provider?: string
+    //     md5Prefix?: string
+    // }
+    mergeTemo = async (
+        data: {
+            service: 'Edge' | 'OpenAI' | 'Volcano',
+            target: string,
+            speed: string,
+            uuid: string,
+            editorData: any,
+            bgm?: BgmData,
+            setGenerating: (params: boolean) => void
+        },
+        options: any
+    ) => {
+        const jsonData: any[] = getJSONDataFromEditorContents(data.editorData.content, data.target);
         console.log(jsonData)
         if (!jsonData?.length) {
             toast({
