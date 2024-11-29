@@ -178,8 +178,8 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent side="right" sideOffset={10} className="w-auto editor-card-tts">
-                        <TTSPanel getVoiceOptions={addVoice} showButton={true}></TTSPanel>
-                        {/* <TTSPanel getOptions={setOptions} getSpeed={setSpeed} getTarget={setTarget} getService={setService}></TTSPanel>
+                        <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
+                        {/* <TTSPanel getOptions={setOptions} getSpeed={setSpeed} getTarget={setTarget} onProviderChange={setService}></TTSPanel>
                         <Button className="w-full mt-2" onClick={addVoice}>
                             <span>{t('app.sure')}</span>
                         </Button> */}
@@ -200,7 +200,7 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent className=" p-3 editor-card-tts">
-                                    <TTSPanel getVoiceOptions={addVoice} showButton={true}></TTSPanel>
+                                    <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
                                     {/* <Button className="w-full mt-2" onClick={addVoice}>
                                         <span>{t('app.sure')}</span>
                                     </Button> */}

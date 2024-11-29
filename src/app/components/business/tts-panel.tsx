@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import EdgeConfig from "./edge-config"
 import OpenAIConfig from "./openAI-config"
@@ -10,6 +10,8 @@ import { useTranslation } from "react-i18next"
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
 import { TTSOptions } from "@/app/lib/tts"
 import { Button } from "../ui/button"
+import PluginStore from "@/app/stores/pluginStore"
+import { type AimForm, createExposedLayout, FormRenderer, type FormRendererHandle } from "memo-form-renderer";
 export interface VoiceOptions {
     ttsOptions?: TTSOptions
     service?: 'Edge' | 'OpenAI' | 'Volcano',
@@ -19,8 +21,9 @@ export interface VoiceOptions {
 
 interface TTSPanelProps {
     settingStore?: SettingStore,
+    pluginStore?: PluginStore,
     getOptions?: (data: any) => void
-    getService?: (service: "Edge" | "OpenAI" | "Volcano") => void;
+    onProviderChange?: (provider: string) => void;
     getSpeed?: (speed: string) => void
     getTarget?: (target: 'original' | 'translate') => void
     voiceOptions?: VoiceOptions
@@ -28,18 +31,39 @@ interface TTSPanelProps {
     // voiceService?: 'Edge' | 'OpenAI' | 'Volcano'
     // voiceSpeed?: string
     // voiceTarget?: 'original' | 'translate'
-    showButton?: boolean
+    showConfirmButton?: boolean
 }
 
-const TTSPanel = inject('settingStore')(observer(({ settingStore, showButton, voiceOptions, getVoiceOptions, getOptions, getService, getSpeed, getTarget }: TTSPanelProps) => {
+const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore, pluginStore, showConfirmButton, voiceOptions, getVoiceOptions, getOptions, onProviderChange, getSpeed, getTarget }: TTSPanelProps) => {
 
     const { settings } = settingStore!
-    const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>(voiceOptions?.service || 'Edge')
     const [curPlay, setCurPlay] = useState<any>();
     const [speed, setSpeed] = useState<string>(voiceOptions?.speed || '1')
     const [target, setTarget] = useState<'original' | 'translate'>(voiceOptions?.target || 'original')
     const [options, setOptions] = useState<TTSOptions>()
     const { t } = useTranslation()
+    const [ttsProviders, setTtsProviders] = useState<any[]>([])
+    const [provider, setProvider] = useState<string>('')
+    const [layout, setLayout] = useState<AimForm<Record<string, any>>>();
+    const [showExposed, setShowExposed] = useState(false);
+
+    const formRef = useRef<FormRendererHandle>(null);
+
+    const { memoPlugins } = pluginStore!
+
+    // 从插件中过滤出 TTS 插件
+    useEffect(() => {
+        if (memoPlugins?.pluginProviders) {
+            setTtsProviders((memoPlugins?.pluginProviders || []).filter(item => item.type === "tts"));
+        }
+    }, [memoPlugins?.pluginProviders])
+
+    // 如果有 TTS 插件提供 providers，保证默认选中一个 provider
+    useEffect(() => {
+        if (ttsProviders.length > 0 && provider === "") {
+            setProvider(ttsProviders[0].value);
+        }
+    }, [ttsProviders])
 
     useEffect(() => {
         if (voiceOptions) {
@@ -48,10 +72,10 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, showButton, vo
     }, [voiceOptions])
 
     useEffect(() => {
-        if (!showButton) {
+        if (!showConfirmButton) {
             getOptions && getOptions(options)
         }
-    }, [options, showButton, getOptions])
+    }, [options, showConfirmButton, getOptions])
 
     let audioPlayer: HTMLAudioElement | null;
     const playAudio = (item: any, isAudition?: boolean, event?: any) => {
@@ -97,42 +121,80 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, showButton, vo
         }
     }
 
-    const handleService = (e: 'Edge' | 'OpenAI' | 'Volcano') => {
-        setService(e)
-        if (!showButton) {
-            getService && getService(e)
-        }
-    }
     const switchSpeed = (speed: string) => {
         setSpeed(speed)
-        if (!showButton) {
+        if (!showConfirmButton) {
             getSpeed && getSpeed(speed)
         }
     }
 
     const switchTarget = (target: 'original' | 'translate') => {
         setTarget(target)
-        if (!showButton) {
+        if (!showConfirmButton) {
             getTarget && getTarget(target)
         }
     }
 
     const addVoice = () => {
-        // getService(service)
+        // onProviderChange(service)
         // getSpeed(speed)
         // getTarget(target)
         // getOptions(options)
-        getVoiceOptions && getVoiceOptions({ ttsOptions: options, service, speed, target })
+        getVoiceOptions && getVoiceOptions({ ttsOptions: options, service: provider, speed, target })
     }
+
+    const currentTTSProviders = ttsProviders.find(item => item.value === provider);
+
+    const handleSelectOpenChange = (value: boolean) => {
+    };
+
+
+    // 当表单变更时，判断当前插件的是否必填项已经填写，控制能否提交TTS
+    const handlePluginConfigChange = (data: Record<string, any>) => {
+
+    };
+
+    useEffect(() => {
+        if (memoPlugins) {
+            console.log(memoPlugins);
+            
+            const { installedPluginsManifests, pluginsConfigurations, localPlugins: { versions } } = memoPlugins;
+            if (currentTTSProviders && currentTTSProviders.pluginId) {
+                const version = versions[currentTTSProviders.pluginId];
+                const manifest = installedPluginsManifests[currentTTSProviders.pluginId];
+                const pluginConfig = pluginsConfigurations[`${currentTTSProviders.pluginId}@${version}`] || {};
+                const plugin = memoPlugins?.installedPlugins[`${currentTTSProviders.pluginId}`];
+                if (manifest?.configurationExposed?.length) {
+                    setLayout(createExposedLayout(manifest, pluginConfig, currentTTSProviders.pluginId, plugin?.file));
+                    setShowExposed(true);
+                    // TODO: 检查必填项
+
+                    return;
+                }
+            }
+            setLayout(undefined);
+            // setRequiredConfig(false);
+            setShowExposed(false);
+        }
+    }, [currentTTSProviders, memoPlugins]);
+
+    const handleProviderChange = useCallback((value: string) => {
+        setProvider(value);
+        !showConfirmButton && onProviderChange?.(value)
+    }, []);
 
     return (
         <>
             <div className="mb-1 text-sm">{t('tts.provider')}</div>
-            <Select defaultValue={service} onValueChange={handleService}>
-                <SelectTrigger className=" w-auto min-w-36 mr-4">
-                    <SelectValue placeholder={service} />
+            <Select value={provider} onValueChange={handleProviderChange}>
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder="TTS provider" />
                 </SelectTrigger>
                 <SelectContent>
+                    {
+                        ttsProviders.map(option => <SelectItem disabled={option.disabled} key={option.value} value={option.value}>{t((option.pluginId ? (option.pluginId + ".") : "") + option.label)}</SelectItem>)
+                    }
+                    {/* <Button size={"sm"} variant={"ghost"} className='w-full' key={"view"}>{t("translate.view plugins")}</Button> */}
                     <SelectItem value='OpenAI'>
                         Open AI {!settings.openAI?.apiKey && t('tts.unset')}
                     </SelectItem>
@@ -144,9 +206,14 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, showButton, vo
                     </SelectItem>
                 </SelectContent>
             </Select>
-            {service === 'Edge' && <EdgeConfig options={voiceOptions?.service === 'Edge' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
-            {service === 'OpenAI' && <OpenAIConfig options={voiceOptions?.service === 'OpenAI' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
-            {service === 'Volcano' && <VolcanoConfig options={voiceOptions?.service === 'Volcano' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
+            {
+                showExposed && <div>
+                    {layout && <FormRenderer onOpenChange={handleSelectOpenChange} className='pb-2' ref={formRef} onDataReady={handlePluginConfigChange} onChange={handlePluginConfigChange} layout={layout} />}
+                </div>
+            }
+            {provider === 'Edge' && <EdgeConfig options={voiceOptions?.service === 'Edge' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
+            {provider === 'OpenAI' && <OpenAIConfig options={voiceOptions?.service === 'OpenAI' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
+            {provider === 'Volcano' && <VolcanoConfig options={voiceOptions?.service === 'Volcano' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
             <div className="relative mt-4 mb-2">
                 <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
@@ -158,7 +225,7 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, showButton, vo
                 </div>
             </div>
             {
-                service !== 'Volcano' &&
+                provider !== 'Volcano' &&
                 <>
                     <div className="mb-1 text-sm">{t('tts.speed')}</div>
                     <Tabs value={speed}>
@@ -181,7 +248,7 @@ const TTSPanel = inject('settingStore')(observer(({ settingStore, showButton, vo
                     <TabsTrigger className='px-1' value="translate" onClick={() => switchTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
                 </TabsList>
             </Tabs>
-            {showButton && <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
+            {showConfirmButton && <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
                 <span>{t('app.sure')}</span>
             </Button>}
 

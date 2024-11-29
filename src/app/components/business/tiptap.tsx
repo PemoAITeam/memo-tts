@@ -334,7 +334,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto">
-                            <TTSPanel showButton={true} getVoiceOptions={addVoice}></TTSPanel>
+                            <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
                             {/* <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
                                 <span>{t('app.sure')}</span>
                             </Button> */}
