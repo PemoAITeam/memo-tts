@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { TemoFileList } from '@/app/interface';
 import { getLocalFileUrl } from '@/app/lib/utils';
 import { Subtitle } from './Subtitle';
+import { imgData } from './img';
 
 export const fps = 30;
 export const myCompSchema = z.object({
@@ -43,7 +44,7 @@ export const MyComp: React.FC<z.infer<typeof myCompSchema>> = ({
             <Sequence from={0} durationInFrames={duration}>
                 {!!bgm && <Audio volume={0.3} src={bgm} />}
                 <Audio volume={0.8} src={audioFileName} />
-                {type !== 'video' && <Img className="cd-player-icon" src={staticFile('cd.png')} />}
+                {type !== 'video' && <Img className="cd-player-icon" src={imgData} />}
                 {type === 'video' && fileList.map((file: TemoFileList, index: number) => (
                     <Sequence key={index} from={30 * file.from!} durationInFrames={30 * file.duration!}>
                         {file.pic && <div className="w-full">
