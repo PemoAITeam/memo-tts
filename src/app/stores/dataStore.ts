@@ -36,8 +36,6 @@ function getJSONDataFromEditorContents(editorContent: any, target: string) {
             }
         }
     })
-    console.log(jsonData)
-
     return jsonData
 }
 

@@ -34,23 +34,35 @@ interface TTSPanelProps {
     showConfirmButton?: boolean
 }
 
+const localPlugins = [{
+    key: 'Edge',
+    component: EdgeConfig
+}, {
+    key: 'OpenAI',
+    component: OpenAIConfig
+}, {
+    key: 'Volcano',
+    component: VolcanoConfig
+}]
+
 const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore, pluginStore, showConfirmButton, voiceOptions, getVoiceOptions, getOptions, onProviderChange, getSpeed, getTarget }: TTSPanelProps) => {
 
     const { settings } = settingStore!
+    const { memoPlugins } = pluginStore!
+
     const [curPlay, setCurPlay] = useState<any>();
     const [speed, setSpeed] = useState<string>(voiceOptions?.speed || '1')
     const [target, setTarget] = useState<'original' | 'translate'>(voiceOptions?.target || 'original')
     const [options, setOptions] = useState<TTSOptions>()
     const { t } = useTranslation()
     const [ttsProviders, setTtsProviders] = useState<any[]>([])
-    const [provider, setProvider] = useState<string>('')
+    const [provider, setProvider] = useState<string>('Edge')
     const [layout, setLayout] = useState<AimForm<Record<string, any>>>();
     const [showExposed, setShowExposed] = useState(false);
 
     const formRef = useRef<FormRendererHandle>(null);
 
-    const { memoPlugins } = pluginStore!
-
+    const usePlugin = useRef(false);
     // 从插件中过滤出 TTS 插件
     useEffect(() => {
         if (memoPlugins?.pluginProviders) {
@@ -60,7 +72,7 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
 
     // 如果有 TTS 插件提供 providers，保证默认选中一个 provider
     useEffect(() => {
-        if (ttsProviders.length > 0 && provider === "") {
+        if (ttsProviders.length > 0 && provider === "" && usePlugin.current) {
             setProvider(ttsProviders[0].value);
         }
     }, [provider, ttsProviders])
@@ -157,7 +169,7 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
     useEffect(() => {
         if (memoPlugins) {
             console.log(memoPlugins);
-            
+
             const { installedPluginsManifests, pluginsConfigurations, localPlugins: { versions } } = memoPlugins;
             if (currentTTSProviders && currentTTSProviders.pluginId) {
                 const version = versions[currentTTSProviders.pluginId];
@@ -192,7 +204,7 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
                 </SelectTrigger>
                 <SelectContent>
                     {
-                        ttsProviders.map(option => <SelectItem disabled={option.disabled} key={option.value} value={option.value}>{t((option.pluginId ? (option.pluginId + ".") : "") + option.label)}</SelectItem>)
+                        usePlugin.current && ttsProviders.map(option => <SelectItem disabled={option.disabled} key={option.value} value={option.value}>{t((option.pluginId ? (option.pluginId + ".") : "") + option.label)}</SelectItem>)
                     }
                     {/* <Button size={"sm"} variant={"ghost"} className='w-full' key={"view"}>{t("translate.view plugins")}</Button> */}
                     <SelectItem value='OpenAI'>
@@ -207,13 +219,18 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
                 </SelectContent>
             </Select>
             {
-                showExposed && <div>
+                usePlugin.current && showExposed && <div>
                     {layout && <FormRenderer onOpenChange={handleSelectOpenChange} className='pb-2' ref={formRef} onDataReady={handlePluginConfigChange} onChange={handlePluginConfigChange} layout={layout} />}
                 </div>
             }
-            {provider === 'Edge' && <EdgeConfig options={voiceOptions?.service === 'Edge' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
-            {provider === 'OpenAI' && <OpenAIConfig options={voiceOptions?.service === 'OpenAI' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
-            {provider === 'Volcano' && <VolcanoConfig options={voiceOptions?.service === 'Volcano' ? options : undefined} setOptions={setOptions} getAudition={audition} />}
+            {
+                localPlugins.map((item) => provider === item.key && <item.component
+                    key={item.key}
+                    options={voiceOptions?.service === item.key ? options : undefined}
+                    setOptions={setOptions}
+                    getAudition={audition}
+                />)
+            }
             <div className="relative mt-4 mb-2">
                 <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />

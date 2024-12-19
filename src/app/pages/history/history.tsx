@@ -39,6 +39,7 @@ interface HomePageProps {
 
 const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dataStore }: HomePageProps) => {
     const { id } = useParams()
+    const { temoData = [] } = dataStore!
     const [curTemoId, setCurTemoId] = useState<string>('');
     const [curEditorData, setCurEditorData] = useState<any>()
     const [currentFile, setCurrentFile] = useState<TemoData>();
@@ -52,33 +53,28 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     // const [player, setPlayer] = useState<PlayerRef>()
 
     useEffect(() => {
-        setList(dataStore?.temoData || [])
-        if (dataStore?.temoData.length) {
-            setCurTemoId(id || dataStore.temoData[0].uuid)
-        }
-
-    }, []);
-
-    useEffect(() => {
-        const curData = dataStore?.temoData.find(item => item.uuid === curTemoId)
-        if (curData) {
-            const data = updateTemoData(curData)
-            setCurrentFile(data)
-            setCurEditorData(curData.editorData)
-        }
-    }, [curTemoId, dataStore?.temoData])
-
-    useEffect(() => {
+        setList(temoData)
         if (id) {
             setCurTemoId(id)
+        } else if (temoData.length) {
+            setCurTemoId(temoData[0].uuid)
         }
-
         return () => {
             setCurTemoId("")
             setList([])
             setCurEditorData("")
         }
-    }, [id])
+    }, [temoData, id])
+
+    useEffect(() => {
+        const curData = temoData.find(item => item.uuid === curTemoId)
+        if (curData) {
+            const data = updateTemoData(curData)
+            setCurrentFile(data)
+            setCurEditorData(curData.editorData)
+        }
+    }, [curTemoId, temoData])
+
 
     const handler = useCallback((_event: any, messageData: any) => {
         switch (messageData.type) {
@@ -297,21 +293,21 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             }
         }
         dataStore?.setTrashData(items)
-        setList(dataStore?.temoData || [])
-        if (data?.uuid === curTemoId && dataStore?.temoData.length) {
-            setCurTemoId(dataStore.temoData[0].uuid)
+        setList(temoData || [])
+        if (data?.uuid === curTemoId && temoData.length) {
+            setCurTemoId(temoData[0].uuid)
         }
     }
 
     const filterTTS = (type: 'audio' | 'video' | 'all') => {
         setTTSType(type)
         if (type == 'all') {
-            setList(dataStore?.temoData || [])
+            setList(temoData || [])
         } else if (type == 'audio') {
-            const data = dataStore?.temoData.filter(item => item.type === 'audio')
+            const data = temoData.filter(item => item.type === 'audio')
             setList(data || [])
         } else if (type == 'video') {
-            const data = dataStore?.temoData.filter(item => item.type === 'video')
+            const data = temoData.filter(item => item.type === 'video')
             setList(data || [])
         }
     }
@@ -326,9 +322,11 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         setCurrentFile(result)
     }
 
+    console.log(currentFile);
+
     return (
         <>
-            {!!dataStore?.temoData.length &&
+            {!!temoData.length &&
                 <div className="flex flex-col h-full">
                     <div className='flex flex-1 temo-draggable temo-content pt-12'>
 
@@ -389,7 +387,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                         </div>
                     </div>
                 </div>}
-            {!dataStore?.temoData.length && <div className='flex items-center justify-center h-full'>
+            {!temoData.length && <div className='flex items-center justify-center h-full'>
                 {t('tts.no results')}
             </div>}
         </>
