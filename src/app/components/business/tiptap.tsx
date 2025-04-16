@@ -54,6 +54,8 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     const [openDialog, setOpenDialog] = useState(false);
     const [originalVoice, setOriginalVoice] = useState<string>()
     const { t } = useTranslation()
+    
+    // 创建编辑器
     const editor = useEditor({
         extensions: [
             StarterKit,

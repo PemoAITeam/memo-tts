@@ -1,7 +1,5 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { GoPlus } from "react-icons/go";
-import { MdOutlineKeyboardVoice } from "react-icons/md";
-import { TbArrowsDownUp, TbMicrophone, TbX } from "react-icons/tb";
+import { TbArrowsDownUp, TbMicrophone, TbPlus, TbX } from "react-icons/tb";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { generateUUID, getLocalFileUrl, getSpeed } from "@/app/lib/utils";
 import TranslatePanel from "./translate-panel";
@@ -196,9 +194,9 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
                             variant={'ghost'}
                             size={"sm"}
                             style={{ color: backgroundColor, backgroundColor: textColor }}
-                            className="group relative h-6 mb-1 bg-accent text-accent-foreground"
+                            className="group relative h-6 px-2 bg-accent text-accent-foreground"
                         >
-                            <TbMicrophone size={16} />
+                            <TbMicrophone />
                             {voice}
                             <Button
                                 size={"icon"}
@@ -223,13 +221,12 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
             <div className="flex items-start">
                 <DropdownMenu open={openMenu} onOpenChange={setOpenMenu}>
                     <DropdownMenuTrigger title={t('app.option')} className='flex-shrink-0 p-0 border-none'>
-                        <GoPlus size='20' />
+                        <TbPlus size='20' />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
-                                <MdOutlineKeyboardVoice className="mr-2" size={16} />
-                                <span className=" text-sm">{t('app.add voice')}</span>
+                                <TbMicrophone className="mr-2" size={16} /> {t('app.add voice')}
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent className=" p-3 editor-card-tts">
@@ -242,8 +239,7 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
                         </DropdownMenuSub>
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger disabled={node.content.size == 0} className={`${node.content.size == 0 ? 'text-gray-500' : ''}`}>
-                                <TbArrowsDownUp className="mr-2" size={16} />
-                                <span className=" text-sm">{t('app.translate')}</span>
+                                <TbArrowsDownUp className="mr-2" size={16} /> {t('app.translate')}
                             </DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent className=" p-3">
