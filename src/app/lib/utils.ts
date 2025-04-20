@@ -310,10 +310,58 @@ export function patchTemoData(data: TemoData) {
   return fileList
 }
 
-export function splitString(str: string, chunkSize: number) {
-  const result = [];
-  for (let i = 0; i < str.length; i += chunkSize) {
-    result.push(str.slice(i, i + chunkSize));
-  }
+// export function splitString(str: string, chunkSize: number) {
+//   // 在达到字数限制时寻找最近的标点符号
+
+//   const result = [];
+//   for (let i = 0; i < str.length; i += chunkSize) {
+//     result.push(str.slice(i, i + chunkSize));
+//   }
+//   return result;
+// }
+
+// const text = "这是第一行。\n这是一个很长的第二行，需要被分割。这里有标点符号。\n这是第三行";
+// const chunks = splitString(text, 10);
+export function splitString(str: string, chunkSize: number = 1000) {
+  // 首先按换行符分割
+  const lines = str.split(/\r\n|\n/).filter(line => line.trim() !== '');
+  const result: string[] = [];
+  
+  // 处理每一行文本
+  lines.forEach(line => {
+    // 如果单行长度小于限制，直接添加
+    if (line.length <= chunkSize) {
+      result.push(line);
+      return;
+    }
+    
+    // 如果超过长度限制，尝试按标点符号分割
+    let remainingText = line;
+    while (remainingText.length > chunkSize) {
+      // 在限制长度内查找最后一个标点符号
+      let sliceIndex = -1;
+      for (let i = chunkSize; i >= 0; i--) {
+        if (/[。.!?！？]/.test(remainingText[i])) {
+          sliceIndex = i + 1;
+          break;
+        }
+      }
+      
+      // 如果找不到标点符号，则强制按长度分割
+      if (sliceIndex === -1) {
+        sliceIndex = chunkSize;
+      }
+      
+      // 添加分割后的文本
+      result.push(remainingText.slice(0, sliceIndex));
+      remainingText = remainingText.slice(sliceIndex).trim();
+    }
+    
+    // 添加剩余文本（如果有）
+    if (remainingText.length > 0) {
+      result.push(remainingText);
+    }
+  });
+  
   return result;
 }

@@ -222,7 +222,7 @@ class DataStore {
                             data.options = item.attrs.voice
                         }
                         if (data.text.length > 1000) {
-                            data.textChunks = splitString(data.text, 1000)
+                            data.textChunks = splitString(data.text)
                         }
                     }
                     return data
@@ -253,7 +253,7 @@ class DataStore {
                             data.options = item.attrs.voice
                         }
                         if (data.text.length > 1000) {
-                            data.textChunks = splitString(data.text, 1000)
+                            data.textChunks = splitString(data.text)
                         }
                     }
                     return data
@@ -284,7 +284,7 @@ class DataStore {
                             data.options = item.attrs.voice
                         }
                         if (data.text.length > 1000) {
-                            data.textChunks = splitString(data.text, 1000)
+                            data.textChunks = splitString(data.text)
                         }
                     }
                     return data
