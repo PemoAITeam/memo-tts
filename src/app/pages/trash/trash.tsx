@@ -215,7 +215,7 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
   })
 
   return (
-    <div className="h-full temo-draggable pt-8 pb-4 px-4">
+    <div className="h-full temo-draggable pb-4 px-4">
       <div className="h-full temo-no-draggable">
         <div className="flex items-center py-4">
           <Input

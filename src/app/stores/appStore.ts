@@ -5,7 +5,6 @@ import { makePersistable } from 'mobx-persist-store'
 
 class AppStore {
 
-    hideBar = false;
     temoId = '';
 
     constructor() {
@@ -13,16 +12,9 @@ class AppStore {
         makePersistable(this, {
             name: 'appStore',
             properties: [
-                'hideBar',
                 'temoId',
             ],
         });
-    }
-
-
-
-    setHideBar = () => {
-        this.hideBar = !this.hideBar
     }
 
     setTemoId = (id: string) => {

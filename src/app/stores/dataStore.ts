@@ -217,7 +217,7 @@ class DataStore {
                     if (textData) {
                         data.text = textData.text.replace(/<br \/>/g, '');
                         data.picture = item.attrs?.picture
-                        data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text.substring(0, 30))
+                        data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
                         if (item.attrs?.voice) {
                             data.options = item.attrs.voice
                         }

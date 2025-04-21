@@ -44,7 +44,6 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     const [curEditorData, setCurEditorData] = useState<any>()
     const [currentFile, setCurrentFile] = useState<TemoData>();
     const [list, setList] = useState<any[]>([])
-    const [TTSType, setTTSType] = useState<'video' | 'audio' | 'all'>('all')
     const [batchDownload] = useState<boolean>(false);
     const [isDownload, setIsDownload] = useState<boolean>(false);
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
@@ -299,19 +298,6 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         }
     }
 
-    const filterTTS = (type: 'audio' | 'video' | 'all') => {
-        setTTSType(type)
-        if (type == 'all') {
-            setList(temoData || [])
-        } else if (type == 'audio') {
-            const data = temoData.filter(item => item.type === 'audio')
-            setList(data || [])
-        } else if (type == 'video') {
-            const data = temoData.filter(item => item.type === 'video')
-            setList(data || [])
-        }
-    }
-
     const generateAudio = (result: TemoData) => {
         const index = list.findIndex(item => item.uuid === result.uuid)
         if (index > -1) {
@@ -328,16 +314,9 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
         <>
             {!!temoData.length &&
                 <div className="flex flex-col h-full">
-                    <div className='flex flex-1 temo-draggable temo-content pt-12'>
+                    <div className='flex flex-1 temo-draggable temo-content pt-4'>
 
                         <div className='pl-4 flex flex-col temo-list flex-shrink-0'>
-                            <Tabs value={TTSType} className='temo-no-draggable flex-shrink-0'>
-                                <TabsList>
-                                    <TabsTrigger value="all" onClick={() => filterTTS('all')}>{t('tts.all')}</TabsTrigger>
-                                    <TabsTrigger value="audio" onClick={() => filterTTS('audio')}>{t('tts.audio')}</TabsTrigger>
-                                    <TabsTrigger value="video" onClick={() => filterTTS('video')}>{t('tts.video')}</TabsTrigger>
-                                </TabsList>
-                            </Tabs>
                             <div className='temo-no-draggable list-scroll-area'>
                                 {!!list.length &&
                                     <ScrollArea className='pr-3'> {list.map(item => (

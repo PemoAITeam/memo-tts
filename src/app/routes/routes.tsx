@@ -1,8 +1,5 @@
 import { inject, observer } from 'mobx-react'
 import { useEffect, useState } from 'react'
-import {
-    TbLayoutSidebarLeftCollapse, TbLayoutSidebarRightCollapse,
-} from "react-icons/tb"
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 // import SystemUsage from '@/app/components/SystemUsage'
@@ -16,21 +13,6 @@ import { TbHome, TbTrash, TbPlaylist } from "react-icons/tb";
 import HistoryPage from '@/app/pages/history/history'
 import TrashPage from '@/app/pages/trash/trash'
 import { useTranslation } from 'react-i18next'
-
-const hideTabs = [
-    /\/details/g,
-    /\/edit/g,
-    /\/subtitle/g
-]
-
-function checkHideTabs(str: string): boolean {
-    let hide = false
-    hideTabs.forEach(reg => {
-        hide = hide || reg.test(str)
-    })
-
-    return hide
-}
 
 interface Routers {
     id: string,
@@ -48,7 +30,6 @@ interface RouterPageProps {
 const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPageProps) => {
     const location = useLocation()
     const navigate = useNavigate()
-    const { hideBar, setHideBar } = appStore!
     const [selectedId, setSelectedId] = useState('home')
     const { t } = useTranslation()
     const [sidebarItems] = useState<Routers[]>([
@@ -106,14 +87,10 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
     }
 
     return <>
-        <div className={`App-title h-12 ${(checkHideTabs(location.pathname) || hideBar) ? ' page-left-tabs__hide' : ''}`}>
-            <Button className='temo-no-draggable rounded-full' onClick={() => setHideBar()} style={{ margin: '6px' }} variant={'ghost'} size={'icon'}>
-                {!hideBar && <TbLayoutSidebarLeftCollapse size={20} />}
-                {hideBar && <TbLayoutSidebarRightCollapse size={20} />}
-            </Button>
+        <div className={`App-title h-12`}>
         </div>
         <div className='flex h-full'>
-            <div className={` px-4 flex-shrink-0 h-full bg-background border-r page-left-tabs ${(checkHideTabs(location.pathname) || hideBar) ? ' page-left-tabs__hide' : ''}`}>
+            <div className={` px-4 flex-shrink-0 h-full bg-background border-r page-left-tabs`}>
                 <div className='h-12 p-4'></div>
                 <div className='temo-no-draggable mt-8'>
                     {sidebarItems.map((section) => (
@@ -126,7 +103,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
                     ))}
                 </div>
             </div>
-            <div className={`flex-1 overflow-x-hidden h-full bg-background page-right-content ${(checkHideTabs(location.pathname) || hideBar) ? ' page-left-tabs__hide' : ''}`}>
+            <div className={`flex-1 overflow-x-hidden h-full bg-background page-right-content`}>
                 <Routes>
                     <Route path="/" element={<Navigate to="/home" replace />} />
                     <Route path="/home" element={<HomePage />}></Route>

@@ -118,7 +118,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     return (
         <>
             <div className="flex flex-col h-full">
-                <div className='flex flex-1 temo-draggable pt-12 overflow-hidden'>
+                <div className='flex flex-1 temo-draggable pt-4 overflow-hidden'>
                     <div className='flex-1 pl-4 pb-4 flex temo-no-draggable'>
                         {/* {!!currentFile && <div className=' flex-shrink-0 tts-remotion mt-3 mb-3 mr-3'>
                             <div>{currentFile.title}</div>

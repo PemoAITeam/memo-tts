@@ -3,12 +3,6 @@
     box-sizing: border-box;
     position: relative;
     flex-shrink: 0;
-    &.page-left-tabs__hide {
-        transform: translate3d(-100%, 0, 0);
-        width: 0;
-        overflow: hidden;
-    }
-
 }
 .App-title {
     position: absolute;
@@ -17,12 +11,5 @@
     left: 0;
     top: 0;
     z-index: 10;
-    &.page-left-tabs__hide {
-        text-align: left;
-        width: 50px;
-    }
-}
 
-.mac .App-title.page-left-tabs__hide {
-    left: 65px;
 }

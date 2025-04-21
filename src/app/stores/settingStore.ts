@@ -70,10 +70,6 @@ class SettingStore {
   //   eventBus.off(customEvents.RendererMessage, this.handleMessage)
   // }
 
-  hideBar = false
-  setHideBar = (val: boolean) => {
-    this.hideBar = val
-  }
   showPanel = false
   setShowPanel = (val: boolean) => {
     this.showPanel = val
