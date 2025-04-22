@@ -54,7 +54,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     const [openDialog, setOpenDialog] = useState(false);
     const [originalVoice, setOriginalVoice] = useState<string>()
     const { t } = useTranslation()
-    
+
     // 创建编辑器
     const editor = useEditor({
         extensions: [
@@ -301,12 +301,15 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     return (
         <>
             <div className='flex items-center flex-shrink-0 justify-between mb-4 pr-3'>
-                {from === 'home' && <Tabs value={TTSType}>
-                    <TabsList>
-                        <TabsTrigger value="audio" onClick={() => switchTTSType('audio')}>{t('tts.audio')}</TabsTrigger>
-                        <TabsTrigger value="video" onClick={() => switchTTSType('video')}>{t('tts.video')}</TabsTrigger>
-                    </TabsList>
-                </Tabs>}
+                {
+                    // from === 'home' && <Tabs value={TTSType}>
+                    //     <TabsList>
+                    //         <TabsTrigger value="audio" onClick={() => switchTTSType('audio')}>{t('tts.audio')}</TabsTrigger>
+                    //         <TabsTrigger value="video" onClick={() => switchTTSType('video')}>{t('tts.video')}</TabsTrigger>
+                    //     </TabsList>
+                    // </Tabs>
+                    <div></div>
+                }
                 <div className='flex items-center flex-shrink-0'>
                     {from != 'home' && <Button title={t('tts.synthesis')} variant={'ghost'} className=" hover:text-indigo-600 flex items-center relative p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent ml-4" size="lg" disabled={synthesizing} onClick={generateAudio}>
                         {synthesizing && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} />}

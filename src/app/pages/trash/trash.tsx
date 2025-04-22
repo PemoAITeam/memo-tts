@@ -226,8 +226,8 @@ const TrashPage = inject('dataStore', 'appStore')(observer(({ dataStore }: Trash
             }
             className="max-w-sm"
           />
-          {table.getFilteredSelectedRowModel().rows.length > 0 && <Button className="ml-2 px-2 h-7 bg-red-500 hover:bg-red-500/90" onClick={() => handleDelete()} >{t('trash.permanently delete')}</Button>}
-          {table.getFilteredSelectedRowModel().rows.length > 0 && <Button className="ml-2 px-2 h-7" onClick={() => handleRecover()}>{t('trash.revoke')}</Button>}
+          {table.getFilteredSelectedRowModel().rows.length > 0 && <Button className="ml-2 bg-red-500 hover:bg-red-500/90" onClick={() => handleDelete()} >{t('trash.permanently delete')}</Button>}
+          {table.getFilteredSelectedRowModel().rows.length > 0 && <Button className="ml-2" onClick={() => handleRecover()}>{t('trash.revoke')}</Button>}
         </div>
         <div className="rounded-md border">
           <Table>
