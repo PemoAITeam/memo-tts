@@ -55,6 +55,8 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     const [originalVoice, setOriginalVoice] = useState<string>()
     const { t } = useTranslation()
 
+    const { mergeTemo } = dataStore!
+
     // 创建编辑器
     const editor = useEditor({
         extensions: [
@@ -269,7 +271,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
 
     const generateAudio = async () => {
         try {
-            const result: TemoData = await dataStore?.mergeTemo({ setGenerating: setSynthesizing, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
+            const result: TemoData = await mergeTemo({ setGenerating: setSynthesizing, target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
             if (result) {
                 console.log(result)
                 updateList && updateList(updateTemoData(result))

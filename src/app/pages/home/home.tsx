@@ -4,7 +4,6 @@ import Tiptap from '@/app/components/business/tiptap';
 import { useCallback, useEffect, useState } from 'react';
 
 import { secondsToHMS, generateUUID, updateTemoData } from '@/app/lib/utils';
-import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import { Editor } from '@tiptap/react';
 import { TTSOptions } from '@/app/lib/tts';
 import { inject, observer } from 'mobx-react';
@@ -17,6 +16,7 @@ import { useToast } from '@/app/components/ui/use-toast';
 import { BgmData } from '@/app/interface';
 // import { Remotion } from '@/app/components/business/remotion';
 import { useNavigate } from 'react-router-dom';
+import { TbLoader } from 'react-icons/tb';
 
 interface HomePageProps {
     settingStore?: SettingStore
@@ -39,6 +39,8 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     const navigate = useNavigate()
     const { t } = useTranslation()
     const { toast } = useToast()
+
+    const { currentTTSProgress, currentTTSUUID, mergeTemo } = dataStore!
 
     useEffect(() => {
         if (dataStore?.editorData) {
@@ -96,7 +98,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     const generateAudio = async () => {
         console.log({ setGenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options);
         try {
-            const result = await dataStore?.mergeTemo({ setGenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options)
+            const result = await mergeTemo({ setGenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options)
             if (result) {
                 result.duration = secondsToHMS(result.metadata?.duration)
                 dataStore?.setTemoData(updateTemoData(result))
@@ -130,8 +132,9 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                         <div className='px-4 flex-shrink-0 tts-service-panel'>
                             <TTSPanel getSpeed={setSpeed} getTarget={setTarget} getOptions={setOptions} onProviderChange={setService}></TTSPanel>
                             <Button className='mt-6 w-full' size="lg" disabled={generating} onClick={generateAudio}>
-                                {generating && <AiOutlineLoading3Quarters className='transition-colors ease-linear animate-spin' size={16} />}
-                                <span>{t('tts.synthesis')}</span>
+                                {generating && <TbLoader className='transition-colors ease-linear animate-spin' size={16} />}
+                                {t('tts.synthesis')}
+                                {currentTTSUUID ? `${currentTTSProgress}%` : ""}
                             </Button>
                         </div>
                     </div>

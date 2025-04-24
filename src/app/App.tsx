@@ -1,46 +1,45 @@
 import "./App.scss"
-import { inject, observer } from "mobx-react";
 import { useEffect, useState } from "react";
 import { HashRouter } from "react-router-dom";
-import SettingStore from "@/app/stores/settingStore";
-import DataStore from "@/app/stores/dataStore";
 import { Toaster } from "@/app/components/ui/toaster";
 import Routers from "@/app/routes/routes";
 import stores from "./stores";
+import { Provider } from "mobx-react";
 
-interface AppProps {
-  settingStore?: SettingStore
-  dataStore?: DataStore
-}
-
-const App = inject('settingStore', 'dataStore')(observer(({ settingStore, dataStore }: AppProps) => {
+const App = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    dataStore?.initData().then(() => {
+    stores.dataStore?.initData().then(() => {
       setReady(true)
     })
-    settingStore?.initSetting().then(() => {
+    stores.settingStore?.initSetting().then(() => {
       // 注册监听
       console.log("注册监听");
       stores.appStore?.handleMessage();
       stores.pluginStore?.handlePluginMessage();
+      stores.dataStore?.handleDataMessage();
       setReady(true);
     });
 
-  }, [dataStore, settingStore]);
+    return () => {
+      stores.appStore?.removeHandler();
+      stores.pluginStore?.removePluginHandler();
+      stores.dataStore?.removeDataHandler();
+      console.log("取消监听");
+    }
+  }, []);
 
   return (
-    <div
-      className={`bg-background text-foreground h-full ${window.AIM.isWindows ? " win" : window.AIM.isMac ? " mac" : ""
-        }`}
-    >
+    <div className={`bg-background text-foreground h-full ${window.AIM.isWindows ? " win" : window.AIM.isMac ? " mac" : ""}`}>
       <HashRouter>
-        {ready && <Routers />}
+        <Provider {...stores}>
+          {ready && <Routers />}
+        </Provider>
       </HashRouter>
       <Toaster />
     </div>
   );
-}))
+}
 
 export default App;
