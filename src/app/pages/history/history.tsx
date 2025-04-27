@@ -98,10 +98,10 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                     description: t('history.save success')
                 })
                 break;
-            case 'text:audio:abort':
+            case 'temo:audio:abort':
                 console.log('翻译中止');
                 break;
-            case 'text:audio:error':
+            case 'temo:audio:error':
                 console.log(messageData)
                 const error = messageData.data?.message;
                 if (error.includes('Unsupported voice')) {
