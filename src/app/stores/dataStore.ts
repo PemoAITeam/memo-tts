@@ -155,6 +155,7 @@ class DataStore {
 
   currentTTSUUID: string = ''
   currentTTSProgress: number = 0
+  synthesizing = false
 
   mergeTemo = async (
     data: {
@@ -164,121 +165,125 @@ class DataStore {
       uuid: string,
       editorData: any,
       bgm?: BgmData,
-      setGenerating: (params: boolean) => void
     },
     options: any
   ) => {
-    const jsonData: any[] = getJSONDataFromEditorContents(data.editorData.content, data.target);
-    console.log(jsonData)
-    if (!jsonData?.length) {
-      toast({
-        variant: "destructive",
-        description: i18n.t('app.edit data')
-      })
-      return
-    }
-    let params;
-    if (data.service === 'Edge') {
-      const rate = getSpeed(data.speed);
-      params = {
-        type: 'Edge',
-        lang: options?.lang,
-        rate: rate,
-        pitch: 0,
-        voiceName: options?.voice?.shortName,
-        voiceLocalName: options?.voice?.properties.LocalName,
-        data: jsonData?.map((item: any) => {
-          const textData = item.content?.find((info: any) => info.type === 'text')
-          const data: any = { text: '', md5: '' }
-          if (textData) {
-            data.text = textData.text.replace(/<br \/>/g, '');
-            data.picture = item.attrs?.picture
-            data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
-            if (item.attrs?.voice) {
-              data.options = item.attrs.voice
-            }
-            if (data.text.length > 1000) {
-              data.textChunks = splitString(data.text)
-            }
-          }
-          return data
-        })
-      }
-    } else if (data.service === 'OpenAI') {
-      if (!settingStore.settings.openAI?.apiKey) {
+    try {
+      const jsonData: any[] = getJSONDataFromEditorContents(data.editorData.content, data.target);
+      console.log(jsonData)
+      if (!jsonData?.length) {
         toast({
           variant: "destructive",
-          description: i18n.t('app.set apikey')
+          description: i18n.t('app.edit data')
         })
         return
       }
-      params = {
-        type: 'OpenAI',
-        model: options?.model,
-        speed: data.speed,
-        voice: options?.voice?.value,
-        voiceLocalName: options?.voice?.label,
-        data: jsonData?.map((item: any) => {
-          const textData = item.content?.find((info: any) => info.type === 'text')
-          const data: any = { text: '', md5: '' }
-          if (textData) {
-            data.text = textData.text.replace(/<br \/>/g, '');
-            data.picture = item.attrs?.picture
-            data.md5 = md5((item.attrs?.voice?.speed || data.speed) + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
-            if (item.attrs?.voice) {
-              data.options = item.attrs.voice
+      let params;
+      if (data.service === 'Edge') {
+        const rate = getSpeed(data.speed);
+        params = {
+          type: 'Edge',
+          lang: options?.lang,
+          rate: rate,
+          pitch: 0,
+          voiceName: options?.voice?.shortName,
+          voiceLocalName: options?.voice?.properties.LocalName,
+          data: jsonData?.map((item: any) => {
+            const textData = item.content?.find((info: any) => info.type === 'text')
+            const data: any = { text: '', md5: '' }
+            if (textData) {
+              data.text = textData.text.replace(/<br \/>/g, '');
+              data.picture = item.attrs?.picture
+              data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
+              if (item.attrs?.voice) {
+                data.options = item.attrs.voice
+              }
+              if (data.text.length > 1000) {
+                data.textChunks = splitString(data.text)
+              }
             }
-            if (data.text.length > 1000) {
-              data.textChunks = splitString(data.text)
+            return data
+          })
+        }
+      } else if (data.service === 'OpenAI') {
+        if (!settingStore.settings.openAI?.apiKey) {
+          toast({
+            variant: "destructive",
+            description: i18n.t('app.set apikey')
+          })
+          return
+        }
+        params = {
+          type: 'OpenAI',
+          model: options?.model,
+          speed: data.speed,
+          voice: options?.voice?.value,
+          voiceLocalName: options?.voice?.label,
+          data: jsonData?.map((item: any) => {
+            const textData = item.content?.find((info: any) => info.type === 'text')
+            const data: any = { text: '', md5: '' }
+            if (textData) {
+              data.text = textData.text.replace(/<br \/>/g, '');
+              data.picture = item.attrs?.picture
+              data.md5 = md5((item.attrs?.voice?.speed || data.speed) + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
+              if (item.attrs?.voice) {
+                data.options = item.attrs.voice
+              }
+              if (data.text.length > 1000) {
+                data.textChunks = splitString(data.text)
+              }
             }
-          }
-          return data
-        })
+            return data
+          })
+        }
+      } else if (data.service === 'Volcano') {
+        if (!settingStore.settings.tts?.volctrans?.accessToken) {
+          toast({
+            variant: "destructive",
+            description: i18n.t('app.set accessToken')
+          })
+          return
+        }
+        params = {
+          type: 'Volc',
+          emotion: options?.emotion?.value,
+          voice_type: options?.voice?.value,
+          voiceLocalName: options?.voice?.label,
+          scene: options?.scenes,
+          data: jsonData?.map((item: any) => {
+            const textData = item.content?.find((info: any) => info.type === 'text')
+            const data: any = { text: '', md5: '' }
+            if (textData) {
+              data.text = textData.text.replace(/<br \/>/g, '').replace(/\n/g, '');
+              data.picture = item.attrs?.picture
+              data.md5 = md5(data.speed + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
+              if (item.attrs?.voice) {
+                data.options = item.attrs.voice
+              }
+              if (data.text.length > 1000) {
+                data.textChunks = splitString(data.text)
+              }
+            }
+            return data
+          })
+        }
       }
-    } else if (data.service === 'Volcano') {
-      if (!settingStore.settings.tts?.volctrans?.accessToken) {
-        toast({
-          variant: "destructive",
-          description: i18n.t('app.set accessToken')
-        })
-        return
-      }
-      params = {
-        type: 'Volc',
-        emotion: options?.emotion?.value,
-        voice_type: options?.voice?.value,
-        voiceLocalName: options?.voice?.label,
-        scene: options?.scenes,
-        data: jsonData?.map((item: any) => {
-          const textData = item.content?.find((info: any) => info.type === 'text')
-          const data: any = { text: '', md5: '' }
-          if (textData) {
-            data.text = textData.text.replace(/<br \/>/g, '').replace(/\n/g, '');
-            data.picture = item.attrs?.picture
-            data.md5 = md5(data.speed + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
-            if (item.attrs?.voice) {
-              data.options = item.attrs.voice
-            }
-            if (data.text.length > 1000) {
-              data.textChunks = splitString(data.text)
-            }
-          }
-          return data
-        })
-      }
+      this.synthesizing = true
+      console.log(params)
+      const result = await window.AIM.tts.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType, ttsOptions: cloneDeep({ service: data.service, speed: data.speed, target: data.target, ttsOptions: options }) });
+      // if (!result) {
+      //     toast({
+      //         variant: "destructive",
+      //         description: i18n.t('tts.synthesis fail')
+      //     })
+      // }
+      console.log(result)
+      this.synthesizing = false
+      return result
+    } catch (error) {
+      this.synthesizing = false
+      throw error
     }
-    data.setGenerating(true)
-    console.log(params)
-    const result = await window.AIM.tts.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType, ttsOptions: cloneDeep({ service: data.service, speed: data.speed, target: data.target, ttsOptions: options }) });
-    // if (!result) {
-    //     toast({
-    //         variant: "destructive",
-    //         description: i18n.t('tts.synthesis fail')
-    //     })
-    // }
-    console.log(result)
-    data.setGenerating(false)
-    return result
   }
   handleMessage = async (e: any) => {
     if (e && e.ipcData) {

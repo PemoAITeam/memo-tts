@@ -29,7 +29,6 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
   const [curEditorData, setCurEditorData] = useState<any>()
   const [speed, setSpeed] = useState<string>('1')
   const [target, setTarget] = useState<'original' | 'translate'>('original')
-  const [generating, setGenerating] = useState(false)
   const [editorRef, setEditorRef] = useState<Editor>();
   const [options, setOptions] = useState<TTSOptions>()
   // const [currentFile, setCurrentFile] = useState<TemoData>();
@@ -39,7 +38,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
   const { t } = useTranslation()
   const { toast } = useToast()
 
-  const { currentTTSProgress, currentTTSUUID, mergeTemo } = dataStore!
+  const { currentTTSProgress, currentTTSUUID, mergeTemo, synthesizing } = dataStore!
 
   useEffect(() => {
     if (dataStore?.editorData) {
@@ -95,9 +94,9 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
   }, [handler]) // handler更新时重新注册事件
 
   const generateAudio = async () => {
-    console.log({ setGenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options);
+    console.log({ target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options);
     try {
-      const result = await mergeTemo({ setGenerating, target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options)
+      const result = await mergeTemo({ target, service, speed, uuid: generateUUID(), editorData: editorRef?.getJSON(), bgm }, options)
       if (result) {
         result.duration = secondsToHMS(result.metadata?.duration)
         dataStore?.setTemoData(updateTemoData(result))
@@ -111,13 +110,11 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
         navigate(`/history/${result.uuid}`)
       }
     } catch (error) {
-      setGenerating(false);
       console.log(error)
     }
   }
 
   const stopGenerateAudio = () => {
-    // setGenerating(false);
   }
 
   return (
@@ -147,7 +144,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                     <div style={{ width: `${currentTTSProgress}%` }} className='left-0 top-0 h-full absolute opacity-50 bg-primary' />
                   </Button>
                 ) : (
-                  <Button className='mt-6 w-full' disabled={generating} onClick={generateAudio}>
+                  <Button className='mt-6 w-full' disabled={synthesizing} onClick={generateAudio}>
                     <span>{t('tts.synthesis')}</span>
                   </Button>
                 )
