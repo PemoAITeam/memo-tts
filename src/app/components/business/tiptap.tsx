@@ -359,7 +359,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
               <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
             </PopoverContent>
           </Popover>
-          <Button aria-label={t('app.clear')} variant={'ghost'} size={"sm"} onClick={() => clear()}>
+          <Button aria-label={t('app.clear')} variant={'ghost'} size={"sm"} onClick={clear}>
             <TbEraser size={18} />
             <span className="text-sm">{t('app.clear')}</span>
           </Button>
