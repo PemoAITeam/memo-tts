@@ -294,7 +294,7 @@ class DataStore {
       }
       if (msg.type === 'temo:audio:progress') {
         console.log('temo:audio:progress');
-        this.currentTTSProgress = msg.data.percent
+        this.currentTTSProgress = Math.floor(msg.data.percent || 0)
       }
       if (msg.type === 'temo:audio:error') {
         console.log('temo:audio:error');

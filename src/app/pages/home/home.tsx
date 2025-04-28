@@ -115,6 +115,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
   }
 
   const stopGenerateAudio = () => {
+    window.AIM.tts.abortMergeTemo()
   }
 
   return (

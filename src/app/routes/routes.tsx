@@ -87,12 +87,9 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
     }
 
     return <>
-        <div className={`App-title h-12`}>
-        </div>
         <div className='flex h-full'>
-            <div className={` px-4 flex-shrink-0 h-full bg-background border-r page-left-tabs`}>
-                <div className='h-12 p-4'></div>
-                <div className='temo-no-draggable mt-8'>
+            <div className={`px-2 flex-shrink-0 h-full bg-background border-r page-left-tabs`}>
+                <div className='temo-no-draggable mt-4'>
                     {sidebarItems.map((section) => (
                         <div key={section.id}>
                             <Button variant={selectedId === section.id ? "default" : "ghost"} onClick={() => changeTab(section)} className={`cursor-pointer w-full justify-start mb-1`}>

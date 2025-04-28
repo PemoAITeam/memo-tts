@@ -33,9 +33,11 @@ export const EventHandler = Extension.create({
 
                                 if (lines.length > 1) {
                                     let startIndex = 0;
+                                    let insertPos = from;
                                     if (isEmptyEditorCard) {
                                         // 第一行插入到当前空的 editor-card
-                                        tr.insertText(lines[0], from);
+                                        tr.insertText(lines[0], insertPos);
+                                        insertPos += lines[0].length;
                                         startIndex = 1;
                                     }
                                     // 剩下的每一行新建 editor-card
@@ -44,7 +46,8 @@ export const EventHandler = Extension.create({
                                             {},
                                             state.schema.text(lines[i])
                                         );
-                                        tr.insert(tr.selection.to, node);
+                                        tr.insert(insertPos, node);
+                                        insertPos += node.nodeSize;
                                     }
                                     dispatch(tr);
                                 } else {
