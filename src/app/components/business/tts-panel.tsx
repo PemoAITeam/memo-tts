@@ -62,7 +62,7 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
 
     const formRef = useRef<FormRendererHandle>(null);
 
-    const usePlugin = useRef(false);
+    const usePlugin = useRef(true);
     // 从插件中过滤出 TTS 插件
     useEffect(() => {
         if (memoPlugins?.pluginProviders) {
@@ -85,7 +85,7 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
 
     useEffect(() => {
         if (!showConfirmButton) {
-            getOptions && getOptions(options)
+            getOptions?.(options)
         }
     }, [options, showConfirmButton, getOptions])
 
@@ -160,11 +160,11 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
     const handleSelectOpenChange = (value: boolean) => {
     };
 
-
     // 当表单变更时，判断当前插件的是否必填项已经填写，控制能否提交TTS
-    const handlePluginConfigChange = (data: Record<string, any>) => {
-
-    };
+    const handlePluginConfigChange = useCallback((data: Record<string, any>) => {
+        console.log(data)
+        setOptions(data)
+    }, [])
 
     useEffect(() => {
         if (memoPlugins) {

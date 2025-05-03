@@ -267,6 +267,28 @@ class DataStore {
             return data
           })
         }
+      } else {
+        params = {
+          type: data.service,
+          // voiceName: options?.voice?.shortName,
+          // voiceLocalName: options?.voice?.properties.LocalName,
+          data: jsonData?.map((item: any) => {
+            const textData = item.content?.find((info: any) => info.type === 'text')
+            const data: any = { text: '', md5: '' }
+            if (textData) {
+              data.text = textData.text.replace(/<br \/>/g, '');
+              data.picture = item.attrs?.picture
+              data.md5 = md5("" + 0 + "" + textData.text)
+              if (item.attrs?.voice) {
+                data.options = item.attrs.voice
+              }
+              if (data.text.length > 1000) {
+                data.textChunks = splitString(data.text)
+              }
+            }
+            return data
+          })
+        }
       }
       this.synthesizing = true
       console.log(params)
