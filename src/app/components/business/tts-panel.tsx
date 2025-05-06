@@ -56,7 +56,7 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
     const [options, setOptions] = useState<TTSOptions>()
     const { t } = useTranslation()
     const [ttsProviders, setTtsProviders] = useState<any[]>([])
-    const [provider, setProvider] = useState<string>('Edge')
+    const [provider, setProvider] = useState<string>('')
     const [layout, setLayout] = useState<AimForm<Record<string, any>>>();
     const [showExposed, setShowExposed] = useState(false);
 
@@ -206,16 +206,20 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
                     {
                         usePlugin.current && ttsProviders.map(option => <SelectItem disabled={option.disabled} key={option.value} value={option.value}>{t((option.pluginId ? (option.pluginId + ".") : "") + option.label)}</SelectItem>)
                     }
-                    {/* <Button size={"sm"} variant={"ghost"} className='w-full' key={"view"}>{t("translate.view plugins")}</Button> */}
-                    <SelectItem value='OpenAI'>
-                        Open AI {!settings.openAI?.apiKey && t('tts.unset')}
-                    </SelectItem>
-                    <SelectItem value='Edge'>
-                        Edge
-                    </SelectItem>
-                    <SelectItem value='Volcano'>
-                        Volcano {!settings.tts?.volctrans?.accessToken && t('tts.unset')}
-                    </SelectItem>
+                    <Button size={"sm"} variant={"ghost"} className='w-full' key={"view"}>{t("translate.view plugins")}</Button>
+                    {
+                        !usePlugin.current && <>
+                            <SelectItem value='OpenAI'>
+                                Open AI {!settings.openAI?.apiKey && t('tts.unset')}
+                            </SelectItem>
+                            <SelectItem value='Edge'>
+                                Edge
+                            </SelectItem>
+                            <SelectItem value='Volcano'>
+                                Volcano {!settings.tts?.volctrans?.accessToken && t('tts.unset')}
+                            </SelectItem>
+                        </>
+                    }
                 </SelectContent>
             </Select>
             {
@@ -224,47 +228,52 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
                 </div>
             }
             {
-                localPlugins.map((item) => provider === item.key && <item.component
-                    key={item.key}
-                    options={voiceOptions?.service === item.key ? options : undefined}
-                    setOptions={setOptions}
-                    getAudition={audition}
-                />)
-            }
-            <div className="relative mt-4 mb-2">
-                <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                </div>
-                <div className="relative flex text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                        {t('tts.other setting')}
-                    </span>
-                </div>
-            </div>
-            {
-                provider !== 'Volcano' &&
-                <>
-                    <div className="mb-1 text-sm">{t('tts.speed')}</div>
-                    <Tabs value={speed}>
-                        <TabsList className="grid w-full grid-cols-7">
-                            <TabsTrigger className='px-1' value="0.5" onClick={() => switchSpeed('0.5')}>0.5</TabsTrigger>
-                            <TabsTrigger className='px-1' value="0.75" onClick={() => switchSpeed('0.75')}>0.75</TabsTrigger>
-                            <TabsTrigger className='px-1' value="1" onClick={() => switchSpeed('1')}>1</TabsTrigger>
-                            <TabsTrigger className='px-1' value="1.5" onClick={() => switchSpeed('1.5')}>1.5</TabsTrigger>
-                            <TabsTrigger className='px-1' value="2" onClick={() => switchSpeed('2')}>2</TabsTrigger>
-                            <TabsTrigger className='px-1' value="3" onClick={() => switchSpeed('3')}>3</TabsTrigger>
-                            <TabsTrigger className='px-1' value="4" onClick={() => switchSpeed('4')}>4</TabsTrigger>
+                !usePlugin.current && <>
+                    {
+                        localPlugins.map((item) => provider === item.key && <item.component
+                            key={item.key}
+                            options={voiceOptions?.service === item.key ? options : undefined}
+                            setOptions={setOptions}
+                            getAudition={audition}
+                        />)
+                    }
+                    <div className="relative mt-4 mb-2">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">
+                                {t('tts.other setting')}
+                            </span>
+                        </div>
+                    </div>
+                    {
+                        provider !== 'Volcano' &&
+                        <>
+                            <div className="mb-1 text-sm">{t('tts.speed')}</div>
+                            <Tabs value={speed}>
+                                <TabsList className="grid w-full grid-cols-7">
+                                    <TabsTrigger className='px-1' value="0.5" onClick={() => switchSpeed('0.5')}>0.5</TabsTrigger>
+                                    <TabsTrigger className='px-1' value="0.75" onClick={() => switchSpeed('0.75')}>0.75</TabsTrigger>
+                                    <TabsTrigger className='px-1' value="1" onClick={() => switchSpeed('1')}>1</TabsTrigger>
+                                    <TabsTrigger className='px-1' value="1.5" onClick={() => switchSpeed('1.5')}>1.5</TabsTrigger>
+                                    <TabsTrigger className='px-1' value="2" onClick={() => switchSpeed('2')}>2</TabsTrigger>
+                                    <TabsTrigger className='px-1' value="3" onClick={() => switchSpeed('3')}>3</TabsTrigger>
+                                    <TabsTrigger className='px-1' value="4" onClick={() => switchSpeed('4')}>4</TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                        </>
+                    }
+                    <div className="mb-1 text-sm mt-4">{t('tts.text')}</div>
+                    <Tabs value={target}>
+                        <TabsList className="grid grid-cols-2">
+                            <TabsTrigger className='px-1' value="original" onClick={() => switchTarget('original')}>{t('tts.original text')}</TabsTrigger>
+                            <TabsTrigger className='px-1' value="translate" onClick={() => switchTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </>
             }
-            <div className="mb-1 text-sm mt-4">{t('tts.text')}</div>
-            <Tabs value={target}>
-                <TabsList className="grid grid-cols-2">
-                    <TabsTrigger className='px-1' value="original" onClick={() => switchTarget('original')}>{t('tts.original text')}</TabsTrigger>
-                    <TabsTrigger className='px-1' value="translate" onClick={() => switchTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
-                </TabsList>
-            </Tabs>
+
             {showConfirmButton && <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
                 <span>{t('app.sure')}</span>
             </Button>}

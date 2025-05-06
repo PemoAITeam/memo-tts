@@ -7,7 +7,7 @@ import { cloneDeep } from 'lodash-es';
 import { WhisperSegments } from "@/app/interface";
 import { Button } from "../ui/button";
 import TTSPanel, { VoiceOptions } from "./tts-panel";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { useTranslation } from "react-i18next";
 import { SlPicture } from "react-icons/sl";
@@ -54,6 +54,8 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
     const [openMenu, setOpenMenu] = useState(false)
     const [selectedImage, setSelectedImage] = useState(node.attrs.picture ? node.attrs.picture.path : null);
     const [openDialog, setOpenDialog] = useState(false);
+
+    const usePlugin = useRef(true)
 
     useEffect(() => {
         setHasPic(dataStore?.TTSType === 'video')
@@ -219,36 +221,38 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
             </div>}
 
             <div className="flex items-start">
-                <DropdownMenu open={openMenu} onOpenChange={setOpenMenu}>
-                    <DropdownMenuTrigger title={t('app.option')} className='flex-shrink-0 p-0 border-none'>
-                        <TbPlus size='20' />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                                <TbMicrophone className="mr-2" size={16} /> {t('app.add voice')}
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent className=" p-3 editor-card-tts">
-                                    <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
-                                    {/* <Button className="w-full mt-2" onClick={addVoice}>
-                                        <span>{t('app.sure')}</span>
-                                    </Button> */}
-                                </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger disabled={node.content.size == 0} className={`${node.content.size == 0 ? 'text-gray-500' : ''}`}>
-                                <TbArrowsDownUp className="mr-2" size={16} /> {t('app.translate')}
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent className=" p-3">
-                                    <TranslatePanel getTranslateData={addTranslate} getContent={getContent}></TranslatePanel>
-                                </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {
+                    !usePlugin.current && <DropdownMenu open={openMenu} onOpenChange={setOpenMenu}>
+                        <DropdownMenuTrigger title={t('app.option')} className='flex-shrink-0 p-0 border-none'>
+                            <TbPlus size='20' />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                    <TbMicrophone className="mr-2" size={16} /> {t('app.add voice')}
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent className=" p-3 editor-card-tts">
+                                        <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
+                                        {/* <Button className="w-full mt-2" onClick={addVoice}>
+                                            <span>{t('app.sure')}</span>
+                                        </Button> */}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger disabled={node.content.size == 0} className={`${node.content.size == 0 ? 'text-gray-500' : ''}`}>
+                                    <TbArrowsDownUp className="mr-2" size={16} /> {t('app.translate')}
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent className=" p-3">
+                                        <TranslatePanel getTranslateData={addTranslate} getContent={getContent}></TranslatePanel>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                }
                 <NodeViewContent className={`content flex-1 px-2 editable-content ${node.content.size == 0 ? 'is-empty' : ''}`} />
                 <Dialog open={openDialog} onOpenChange={setOpenDialog}>
                     <DialogTrigger asChild>

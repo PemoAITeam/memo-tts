@@ -52,6 +52,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
   const [originalVoice, setOriginalVoice] = useState<string>()
   const { synthesizing } = dataStore!
   const { t } = useTranslation()
+  const usePlugin = useRef(true)
 
   const { mergeTemo } = dataStore!
 
@@ -124,8 +125,8 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
           setVoice(ttsOptions.voice.properties.LocalName)
           setOriginalVoice(ttsOptions.voice.properties.LocalName)
         } else {
-          setVoice(ttsOptions.voice.label)
-          setOriginalVoice(ttsOptions.voice.label)
+          setVoice(ttsOptions?.voice?.label)
+          setOriginalVoice(ttsOptions?.voice?.label)
         }
       }
     } else if (dataStore?.TTSType) {
@@ -348,17 +349,19 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
             </PopoverContent>
           </Popover>}
 
-          <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
-            <PopoverTrigger asChild>
-              <Button aria-label={t('app.translate')} variant={'ghost'} size={"sm"}>
-                {translating ? <TbLoader className='transition-colors ease-linear animate-spin' /> : <TbLanguage />}
-                <span className="text-sm">{t('app.translate')}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto">
-              <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
-            </PopoverContent>
-          </Popover>
+          {
+            !usePlugin.current && <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
+              <PopoverTrigger asChild>
+                <Button aria-label={t('app.translate')} variant={'ghost'} size={"sm"}>
+                  {translating ? <TbLoader className='transition-colors ease-linear animate-spin' /> : <TbLanguage />}
+                  <span className="text-sm">{t('app.translate')}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto">
+                <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
+              </PopoverContent>
+            </Popover>
+          }
           <Button aria-label={t('app.clear')} variant={'ghost'} size={"sm"} onClick={clear}>
             <TbEraser size={18} />
             <span className="text-sm">{t('app.clear')}</span>
