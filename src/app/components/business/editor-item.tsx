@@ -55,7 +55,7 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
     const [selectedImage, setSelectedImage] = useState(node.attrs.picture ? node.attrs.picture.path : null);
     const [openDialog, setOpenDialog] = useState(false);
 
-    const usePlugin = useRef(true)
+    const usePlugin = useRef(false)
 
     useEffect(() => {
         setHasPic(dataStore?.TTSType === 'video')

@@ -52,7 +52,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
   const [originalVoice, setOriginalVoice] = useState<string>()
   const { synthesizing } = dataStore!
   const { t } = useTranslation()
-  const usePlugin = useRef(true)
+  const usePlugin = useRef(false)
 
   const { mergeTemo } = dataStore!
 
@@ -122,8 +122,8 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         setCurOptions(currentFile.ttsOptions)
         const ttsOptions = currentFile.ttsOptions.ttsOptions
         if (currentFile.ttsOptions.service === 'Edge') {
-          setVoice(ttsOptions.voice.properties.LocalName)
-          setOriginalVoice(ttsOptions.voice.properties.LocalName)
+          setVoice(ttsOptions?.voice?.properties?.LocalName)
+          setOriginalVoice(ttsOptions?.voice?.properties?.LocalName)
         } else {
           setVoice(ttsOptions?.voice?.label)
           setOriginalVoice(ttsOptions?.voice?.label)

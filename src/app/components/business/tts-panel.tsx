@@ -56,13 +56,13 @@ const TTSPanel = inject('settingStore', 'pluginStore')(observer(({ settingStore,
     const [options, setOptions] = useState<TTSOptions>()
     const { t } = useTranslation()
     const [ttsProviders, setTtsProviders] = useState<any[]>([])
-    const [provider, setProvider] = useState<string>('')
+    const [provider, setProvider] = useState<string>('Edge')
     const [layout, setLayout] = useState<AimForm<Record<string, any>>>();
     const [showExposed, setShowExposed] = useState(false);
 
     const formRef = useRef<FormRendererHandle>(null);
 
-    const usePlugin = useRef(true);
+    const usePlugin = useRef(false);
     // 从插件中过滤出 TTS 插件
     useEffect(() => {
         if (memoPlugins?.pluginProviders) {

@@ -10,6 +10,8 @@ import i18n from 'i18next'
 import { eventBus } from '@/events/eventBus';
 import { customEvents } from '@/events/eventBus';
 
+const MAX_TEXT_LENGTH = 1000
+
 class DataStore {
   constructor() {
     makeAutoObservable(this)
@@ -198,7 +200,7 @@ class DataStore {
               if (item.attrs?.voice) {
                 data.options = item.attrs.voice
               }
-              if (data.text.length > 1000) {
+              if (data.text.length > MAX_TEXT_LENGTH) {
                 data.textChunks = splitString(data.text)
               }
             }
@@ -229,7 +231,7 @@ class DataStore {
               if (item.attrs?.voice) {
                 data.options = item.attrs.voice
               }
-              if (data.text.length > 1000) {
+              if (data.text.length > MAX_TEXT_LENGTH) {
                 data.textChunks = splitString(data.text)
               }
             }
@@ -260,7 +262,7 @@ class DataStore {
               if (item.attrs?.voice) {
                 data.options = item.attrs.voice
               }
-              if (data.text.length > 1000) {
+              if (data.text.length > MAX_TEXT_LENGTH) {
                 data.textChunks = splitString(data.text)
               }
             }
@@ -282,7 +284,7 @@ class DataStore {
               if (item.attrs?.voice) {
                 data.options = item.attrs.voice
               }
-              if (data.text.length > 1000) {
+              if (data.text.length > MAX_TEXT_LENGTH) {
                 data.textChunks = splitString(data.text)
               }
             }
