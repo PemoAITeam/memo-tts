@@ -80,6 +80,40 @@ class PluginStore {
     }
   }
 
+
+
+
+
+
+
+
+
+
+  // ---------------------------------------------------------传统合成
+  provider = 'Edge'
+  setProvider = (value: string) => {
+    this.provider = value;
+  }
+  ttsProviders: any[] = [];
+  setTTSProviders = (value: any[]) => {
+    this.ttsProviders = value;
+  }
+  // ---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   setShowCheckInline = (value: boolean) => {
     this.showCheckInline = value;
   };
