@@ -47,7 +47,7 @@ const TTSPanel = inject('pluginStore')(observer(({
   pluginStore, showConfirmButton, voiceOptions,
   getVoiceOptions, getOptions, onProviderChange, getSpeed, getTarget
 }: TTSPanelProps) => {
-  const { memoPlugins, provider, setProvider, ttsProviders } = pluginStore!
+  const { memoPlugins, provider, ttsProviders } = pluginStore!
 
   const [curPlay, setCurPlay] = useState<any>();
   const [speed, setSpeed] = useState<string>(voiceOptions?.speed || '1')
@@ -176,14 +176,13 @@ const TTSPanel = inject('pluginStore')(observer(({
   }, [currentTTSProviders, memoPlugins]);
 
   const handleProviderChange = useCallback((value: string) => {
-    setProvider(value);
     !showConfirmButton && onProviderChange?.(value)
-  }, [onProviderChange, showConfirmButton, setProvider]);
+  }, [onProviderChange, showConfirmButton]);
 
   return (
     <>
-      <div className="mb-1 text-sm">{t('tts.provider')}</div>
-      <SelectTTSProvider onChange={handleProviderChange} />
+      {/* <div className="mb-1 text-sm">{t('tts.provider')}</div>
+      <SelectTTSProvider onChange={handleProviderChange} /> */}
       {
         usePlugin.current && showExposed && <div>
           {layout && <FormRenderer onOpenChange={handleSelectOpenChange} className='pb-2' ref={formRef} onDataReady={handlePluginConfigChange} onChange={handlePluginConfigChange} layout={layout} />}

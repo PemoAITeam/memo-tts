@@ -17,6 +17,7 @@ import { BgmData } from '@/app/interface';
 // import { Remotion } from '@/app/components/business/remotion';
 import { useNavigate } from 'react-router-dom';
 import { IoStopCircleOutline } from 'react-icons/io5';
+import SelectTTSProvider from '@/app/components/business/SelectTTSProvider';
 interface HomePageProps {
   settingStore?: SettingStore
   dataStore?: DataStore
@@ -128,6 +129,8 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
                             <Remotion temoData={currentFile}></Remotion>
                         </div>} */}
             <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
+              <div className="mb-1 text-sm">{t('tts.provider')}</div>
+              <SelectTTSProvider onChange={setService} />
               <Tiptap content={curEditorData} type={ttsType} bgmData={bgm} setEditor={setEditorRef} getBgm={setBgm} from='home' />
             </div>
             <div className='px-4 flex-shrink-0 tts-service-panel'>

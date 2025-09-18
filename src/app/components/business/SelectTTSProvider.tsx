@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { inject, observer } from "mobx-react";
 import SettingStore from "@/app/stores/settingStore";
@@ -32,8 +32,13 @@ const SelectTTSProvider = function SelectTTSProvider({ onChange, pluginStore, se
     }
   }, [provider, ttsProviders, setProvider])
 
+  const handleProviderChange = useCallback((value: string) => {
+    setProvider(value);
+    onChange?.(value)
+  }, [onChange, setProvider]);
+
   return (
-    <Select value={provider} onValueChange={onChange}>
+    <Select value={provider} onValueChange={handleProviderChange}>
       <SelectTrigger className="w-full">
         <SelectValue placeholder="TTS provider" />
       </SelectTrigger>
