@@ -1,13 +1,12 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { TbArrowsDownUp, TbMicrophone, TbPlus, TbX } from "react-icons/tb";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { TbMicrophone, TbX, TbLanguage } from "react-icons/tb";
 import { generateUUID, getLocalFileUrl, getSpeed } from "@/app/lib/utils";
 import TranslatePanel from "./translate-panel";
 import { cloneDeep } from 'lodash-es';
 import { WhisperSegments } from "@/app/interface";
 import { Button } from "../ui/button";
 import TTSPanel, { VoiceOptions } from "./tts-panel";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { useTranslation } from "react-i18next";
 import { SlPicture } from "react-icons/sl";
@@ -43,31 +42,19 @@ function getContrastingColor(color: string): string {
 const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }: EditorCardProps) => {
 
   const { t } = useTranslation()
-  // const [service, setService] = useState<'Edge' | 'OpenAI' | 'Volcano'>('Edge')
-  // const [options, setOptions] = useState<TTSOptions>()
-  // const [curOptions, setCurOptions] = useState<VoiceOptions>()
-  // const [speed, setSpeed] = useState<string>('1')
-  // const [target, setTarget] = useState<'original' | 'translate'>('original')
   const [voice, setVoice] = useState<string>(node.attrs.voice ? `${node.attrs.voice?.voiceLocalName}(${!node.attrs.voice?.target || node.attrs.voice?.target === 'original' ? t('tts.original text') : t('tts.translate text')}-${node.attrs.voice?.speed || 1})` : '')
   const [hasPic, setHasPic] = useState<boolean>(!!node.attrs.picture)
   const [openTTS, setOpenTTS] = useState(false)
-  const [openMenu, setOpenMenu] = useState(false)
+  const [openTranslate, setOpenTranslate] = useState(false)
   const [selectedImage, setSelectedImage] = useState(node.attrs.picture ? node.attrs.picture.path : null);
   const [openDialog, setOpenDialog] = useState(false);
 
-  const usePlugin = useRef(false)
-
   useEffect(() => {
     setHasPic(dataStore?.TTSType === 'video')
-    console.log(dataStore?.TTSType)
   }, [dataStore?.TTSType])
 
   useEffect(() => {
     setSelectedImage(node.attrs.picture ? node.attrs.picture.path : null)
-    if (node.attrs.voice) {
-      // setCurOptions(node.attrs.voice.ttsOptions)
-      // setOptions(node.attrs.voice.ttsOptions.ttsOptions)
-    }
   }, [node.attrs])
 
   const selectBgPic = async (filePath: string) => {
@@ -84,7 +71,6 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
         editor.chain().setContent(jsonData, true).focus().run()
       }
     }
-
   }
 
   const addTranslate = (translateData: WhisperSegments[]) => {
@@ -97,11 +83,11 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
           editor.chain().setContent({ type: 'doc', content: cloneDeep(jsonData.content) }, true).focus().run()
         } else {
           const list = [...jsonData.content.slice(0, index + 1), { type: 'translateCard', attrs: { id: generateUUID() }, content: [{ type: 'text', text: translateData[0].text }] }, ...jsonData.content.slice(index + 1)];
-          console.log(list)
           editor.chain().setContent({ type: 'doc', content: list }, true).focus().run()
         }
       }
     }
+    setOpenTranslate(false)
   }
 
   const getContent = () => {
@@ -113,7 +99,6 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
     if (jsonData.content) {
       const curItem = jsonData.content?.find(item => item.attrs?.id == node.attrs.id && item.type === "editorCard")
       if (curItem && curItem.attrs) {
-        console.log(curItem)
         const { speed, target, service, ttsOptions } = data;
         if (service === 'Edge') {
           const rate = getSpeed(speed!);
@@ -148,10 +133,8 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
             ttsOptions: data,
           }
         }
-        // setCurOptions(data)
         setVoice(`${curItem.attrs.voice.voiceLocalName}(${target === 'original' ? t('tts.original text') : t('tts.translate text')}-${speed})`)
         editor.chain().setContent(jsonData, true).focus().run()
-        setOpenMenu(false)
       }
     }
   }
@@ -212,45 +195,25 @@ const EditorCardItem = inject('dataStore')(observer(({ node, editor, dataStore }
           </PopoverTrigger>
           <PopoverContent side="right" sideOffset={10} className="w-auto editor-card-tts">
             <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
-            {/* <TTSPanel getOptions={setOptions} getSpeed={setSpeed} getTarget={setTarget} onProviderChange={setService}></TTSPanel>
-                        <Button className="w-full mt-2" onClick={addVoice}>
-                            <span>{t('app.sure')}</span>
-                        </Button> */}
           </PopoverContent>
         </Popover>
       </div>}
 
       <div className="flex items-start">
-        {
-          !usePlugin.current && <DropdownMenu open={openMenu} onOpenChange={setOpenMenu}>
-            <DropdownMenuTrigger title={t('app.option')} className='flex-shrink-0 p-0 border-none'>
-              <TbPlus size='20' />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <TbMicrophone className="mr-2" size={16} /> {t('app.add voice')}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent className=" p-3 editor-card-tts">
-                    <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
-                    {/* <Button className="w-full mt-2" onClick={addVoice}>{t('app.sure')}</Button> */}
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger disabled={node.content.size == 0} className={`${node.content.size == 0 ? 'text-gray-500' : ''}`}>
-                  <TbArrowsDownUp className="mr-2" size={16} /> {t('app.translate')}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent className=" p-3">
-                    <TranslatePanel getTranslateData={addTranslate} getContent={getContent}></TranslatePanel>
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        }
+        <Popover open={openTranslate} onOpenChange={setOpenTranslate}>
+          <PopoverTrigger asChild>
+            <button
+              title={t('app.translate')}
+              className='flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors'
+              disabled={node.content.size == 0}
+            >
+              <TbLanguage size={18} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="right" sideOffset={10} className="w-auto">
+            <TranslatePanel getTranslateData={addTranslate} getContent={getContent} />
+          </PopoverContent>
+        </Popover>
         <NodeViewContent className={`content flex-1 px-2 editable-content ${node.content.size == 0 ? 'is-empty' : ''}`} />
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogTrigger asChild>

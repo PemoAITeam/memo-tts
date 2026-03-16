@@ -126,7 +126,7 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
             <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
               <div className="mb-1 text-sm">{t('tts.provider')}</div>
               <SelectTTSProvider onChange={setService} />
-              <Tiptap content={curEditorData} type={ttsType} bgmData={bgm} setEditor={setEditorRef} getBgm={setBgm} from='home' />
+              <Tiptap content={curEditorData} type={ttsType} bgmData={bgm} setEditor={setEditorRef} getBgm={setBgm} from='home' ttsProvider={service} />
             </div>
             <div className='px-4 flex-shrink-0 tts-service-panel'>
               <TTSPanel getSpeed={setSpeed} getTarget={setTarget} getOptions={setOptions} onProviderChange={setService}></TTSPanel>

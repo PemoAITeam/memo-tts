@@ -1,4 +1,5 @@
 import './tiptap.scss'
+import './tts-mention-styles.scss'
 import { useEditor, EditorContent, Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorCard } from '../extensions/editor-card'
@@ -27,6 +28,9 @@ import AppStore from '@/app/stores/appStore'
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
 import TTSDialog from './tts-dialog'
 import { IoIosClose } from 'react-icons/io'
+// TTS Mention 扩展
+import { TTSMentionSimple, TTSMentionNode, useTTSMentionMenu, SelectedVoiceConfig } from '@/app/lib/tts-mention'
+import { TTSMenu } from './tts-menu'
 
 interface TiptapProps {
   setEditor?: (editor: Editor) => void,
@@ -38,10 +42,11 @@ interface TiptapProps {
   dataStore?: DataStore,
   appStore?: AppStore,
   currentFile?: TemoData,
-  updateList?: (data: TemoData) => void
+  updateList?: (data: TemoData) => void,
+  ttsProvider?: 'Edge' | 'OpenAI' | 'Volcano'
 }
 
-const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore, updateList, getBgm, bgmData, currentFile }: TiptapProps) => {
+const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore, updateList, getBgm, bgmData, currentFile, ttsProvider }: TiptapProps) => {
   const [openTranslate, setOpenTranslate] = useState(false)
   const [translating, setTranslating] = useState<boolean>(false)
   const [openSynthesis, setOpenSynthesis] = useState<boolean>(false)
@@ -56,6 +61,10 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
 
   const { mergeTemo } = dataStore!
 
+  // TTS Mention 菜单回调 - 先定义，以便传递给 extension
+  const handleTTSMenuOpenRef = useRef<(props: { range: { from: number; to: number }; query: string }) => void>()
+  const handleTTSMenuCloseRef = useRef<() => void>()
+
   // 创建编辑器
   const editor = useEditor({
     extensions: [
@@ -63,6 +72,16 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
       EditorCard,
       TranslateCard,
       EventHandler,
+      // TTS Mention 扩展 - 配置回调
+      TTSMentionNode,
+      TTSMentionSimple.configure({
+        onMenuOpen: (props) => {
+          handleTTSMenuOpenRef.current?.(props)
+        },
+        onMenuClose: () => {
+          handleTTSMenuCloseRef.current?.()
+        },
+      }),
     ],
     autofocus: true,
     enablePasteRules: false,
@@ -81,6 +100,28 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
       }
     }
   })
+
+  // TTS Mention 菜单
+  const handleVoiceSelect = (config: SelectedVoiceConfig) => {
+    console.log('选中的语音配置:', config)
+    // 可以在这里处理语音选择后的逻辑
+  }
+  const ttsMenu = useTTSMentionMenu(editor, {
+    initialProvider: ttsProvider,
+    onVoiceSelect: handleVoiceSelect,
+  })
+
+  // TTS Mention 菜单回调 - 更新 ref
+  useEffect(() => {
+    handleTTSMenuOpenRef.current = (props: { range: { from: number; to: number }; query: string }) => {
+      console.log('[Tiptap] TTS menu open callback:', props)
+      ttsMenu.openMenu(props)
+    }
+    handleTTSMenuCloseRef.current = () => {
+      console.log('[Tiptap] TTS menu close callback')
+      ttsMenu.closeMenu()
+    }
+  }, [ttsMenu])
 
   const [bgm, setBgm] = useState<BgmData | undefined>(bgmData);
   const [selectedBgm, setSelectedBgm] = useState<boolean>(false)
@@ -375,6 +416,21 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         <EditorContent editor={editor} />
       </div>
       <audio className='audioRef' ref={audioRef} controls></audio>
+
+      {/* TTS Mention 菜单 */}
+      <TTSMenu
+        ref={ttsMenu.menuRef}
+        isOpen={ttsMenu.isOpen}
+        items={ttsMenu.items}
+        query={ttsMenu.query}
+        path={ttsMenu.path}
+        selectedIndex={ttsMenu.selectedIndex}
+        position={ttsMenu.position}
+        onQueryChange={ttsMenu.setQuery}
+        onSelect={ttsMenu.selectItem}
+        onGoBack={ttsMenu.goBack}
+        onClose={ttsMenu.closeMenu}
+      />
     </>
   )
 }))

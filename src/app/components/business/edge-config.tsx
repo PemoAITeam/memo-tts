@@ -13,7 +13,6 @@ const EdgeConfig = ({ setOptions, getAudition, options }: ConfigProps) => {
     const [currentLanguage, setCurrentLanguage] = useState<AllLanguage>('ZH_CN')
     const [voiceList, setVoiceList] = useState<any>(voices.filter(v => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()))
     const [voice, setVoice] = useState<any>(voiceList[0])
-    const [voiceSex, setVoiceSex] = useState<{ value: 'Male' | 'Female' | 'All', text: '全部' | '男' | '女' }>({ value: 'All', text: t('tts.all') })
     useEffect(() => {
         if (setOptions) {
             setOptions({ lang: currentLanguage, voice })
@@ -31,17 +30,7 @@ const EdgeConfig = ({ setOptions, getAudition, options }: ConfigProps) => {
 
     const handleSelectCurrentLanguage = (k: AllLanguage) => {
         setCurrentLanguage(k)
-        const filterVoices = voiceSex.value == 'All' ? voices.filter(v => v.locale.toLowerCase() === k.replace(/_/g, '-').toLowerCase()) :
-            voices.filter((v: any) => v.locale.toLowerCase() === k.replace(/_/g, '-').toLowerCase()).filter((v: any) => v.properties.Gender == voiceSex.value)
-        setVoiceList(filterVoices)
-        setVoice(filterVoices[0])
-    }
-
-    const handelVoiceSex = (value: 'Male' | 'Female' | 'All') => {
-        const sex: any = value == 'All' ? { text: t('tts.all'), value: 'All' } : value == 'Female' ? { text: t('tts.female'), value: 'Female' } : { text: t('tts.male'), value: 'Male' }
-        setVoiceSex(sex);
-        const filterVoices = value == 'All' ? voices.filter((v: any) => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()) :
-            voices.filter((v: any) => v.locale.toLowerCase() === currentLanguage.replace(/_/g, '-').toLowerCase()).filter((v: any) => v.properties.Gender == sex.value)
+        const filterVoices = voices.filter((v: any) => v.locale.toLowerCase() === k.replace(/_/g, '-').toLowerCase())
         setVoiceList(filterVoices)
         setVoice(filterVoices[0])
     }
@@ -75,23 +64,6 @@ const EdgeConfig = ({ setOptions, getAudition, options }: ConfigProps) => {
                             </SelectItem>
                         ))}
                     </ScrollArea>
-                </SelectContent>
-            </Select>
-            <div className="mb-1 mt-3 text-sm">{t('tts.sex')}</div>
-            <Select defaultValue={voiceSex.value} onValueChange={handelVoiceSex}>
-                <SelectTrigger value={voiceSex.text} className=" w-auto min-w-36 mr-4">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value='All'>
-                        {t('tts.all')}
-                    </SelectItem>
-                    <SelectItem value='Male'>
-                        {t('tts.male')}
-                    </SelectItem>
-                    <SelectItem value='Female'>
-                        {t('tts.female')}
-                    </SelectItem>
                 </SelectContent>
             </Select>
             <div className="mb-1 mt-3 text-sm">{t('tts.role')}</div>
