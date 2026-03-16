@@ -24,10 +24,9 @@ import { HiOutlineTrash } from "react-icons/hi2";
 import { TemoData, TemoFileList } from '@/app/interface';
 // import { RiFileList3Line } from "react-icons/ri";
 import { useTranslation } from 'react-i18next';
-import { Remotion } from '@/app/components/business/remotion';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-// import { PlayerRef } from '@remotion/player';
 import CircularProgressBar from '@/app/components/business/progress';
+import { getLocalFileUrl } from '@/app/lib/utils';
 
 declare const window: any;
 
@@ -353,8 +352,12 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                         <div className='flex flex-col h-full flex-1 temo-no-draggable'>
                             <div className='flex flex-1 overflow-hidden'>
                                 {!!currentFile && <div className='my-3 flex-1'>
-                                    <div>{currentFile.title}</div>
-                                    <Remotion temoData={currentFile}></Remotion>
+                                    <div className="mb-2 font-medium">{currentFile.title}</div>
+                                    <audio
+                                        className="w-full"
+                                        controls
+                                        src={getLocalFileUrl(currentFile.fileUrl!)}
+                                    />
                                 </div>}
                                 {!!curEditorData && <div className=' px-4 pb-4 flex flex-1'>
                                     <div className='flex flex-1  flex-col  border h-full p-3 pr-0 rounded-md'>

@@ -51,12 +51,6 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
             icon: TbTrash,
             label: t('route.trash'),
         },
-        // {
-        //     id: 'remotion',
-        //     path: '/remotion',
-        //     label: 'remotion',
-        //     icon: TbPhotoVideo
-        // },
     ])
 
 
@@ -105,7 +99,6 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
                     <Route path="/" element={<Navigate to="/home" replace />} />
                     <Route path="/home" element={<HomePage />}></Route>
                     <Route path="/trash" element={<TrashPage />}></Route>
-                    {/* <Route path="/remotion" element={<RemotionPage />}></Route> */}
                     <Route path="/history/:id?" element={<HistoryPage />}></Route>
                 </Routes>
             </div>

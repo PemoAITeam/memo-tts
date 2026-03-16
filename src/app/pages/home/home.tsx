@@ -14,7 +14,6 @@ import TTSPanel from '@/app/components/business/tts-panel';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/app/components/ui/use-toast';
 import { BgmData } from '@/app/interface';
-// import { Remotion } from '@/app/components/business/remotion';
 import { useNavigate } from 'react-router-dom';
 import { IoStopCircleOutline } from 'react-icons/io5';
 import SelectTTSProvider from '@/app/components/business/SelectTTSProvider';
@@ -124,10 +123,6 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
       <div className="flex flex-col h-full">
         <div className='flex flex-1 temo-draggable pt-4 overflow-hidden'>
           <div className='flex-1 pl-4 pb-4 flex temo-no-draggable'>
-            {/* {!!currentFile && <div className=' flex-shrink-0 tts-remotion mt-3 mb-3 mr-3'>
-                            <div>{currentFile.title}</div>
-                            <Remotion temoData={currentFile}></Remotion>
-                        </div>} */}
             <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
               <div className="mb-1 text-sm">{t('tts.provider')}</div>
               <SelectTTSProvider onChange={setService} />
