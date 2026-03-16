@@ -11,9 +11,26 @@ export {
 } from './tts-mention-simple'
 export type { TTSMentionSimpleOptions, SelectedVoiceConfig, MenuPath, TTSMenuItem, TTSProvider } from './tts-mention-simple'
 
+// TTS Speed 扩展
+export {
+  TTSSpeed,
+  TTSSpeedNode,
+  TTSSpeedPluginKey,
+  createTTSSpeedPlugin,
+  SPEED_SUB_OPTIONS,
+  getSpeedMenuLevel1,
+  getSpeedSubMenu,
+  getEmotionSubMenu,
+} from './tts-speed'
+export type { TTSSpeedOptions, TTSSpeedPluginOptions, SpeedMenuItem, SpeedMenuItemType, SpeedMenuPath } from './tts-speed'
+
 // Hook
 export { useTTSMentionMenu } from './use-tts-mention-menu'
 export type { TTSMenuState } from './use-tts-mention-menu'
+
+// Speed Hook
+export { useTTSSpeedMenu } from './use-tts-speed-menu'
+export type { TTSSpeedMenuState } from './use-tts-speed-menu'
 
 // 类型定义
 export type {

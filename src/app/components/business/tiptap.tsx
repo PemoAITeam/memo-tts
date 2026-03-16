@@ -20,7 +20,7 @@ import strip from 'strip-markdown'
 import { useTranslation } from 'react-i18next'
 import { inject, observer } from 'mobx-react'
 import DataStore from '@/app/stores/dataStore'
-import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
+// import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
 import { MdOutlineMusicNote } from "react-icons/md";
 import { BsPause, BsPlay } from "react-icons/bs";
 import TTSPanel, { VoiceOptions } from './tts-panel'
@@ -29,8 +29,9 @@ import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
 import TTSDialog from './tts-dialog'
 import { IoIosClose } from 'react-icons/io'
 // TTS Mention 扩展
-import { TTSMentionSimple, TTSMentionNode, useTTSMentionMenu, SelectedVoiceConfig } from '@/app/lib/tts-mention'
+import { TTSMentionSimple, TTSMentionNode, useTTSMentionMenu, SelectedVoiceConfig, TTSSpeed, TTSSpeedNode, useTTSSpeedMenu } from '@/app/lib/tts-mention'
 import { TTSMenu } from './tts-menu'
+import { TTSSpeedMenu } from './tts-speed-menu'
 
 interface TiptapProps {
   setEditor?: (editor: Editor) => void,
@@ -65,6 +66,10 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
   const handleTTSMenuOpenRef = useRef<(props: { range: { from: number; to: number }; query: string }) => void>()
   const handleTTSMenuCloseRef = useRef<() => void>()
 
+  // TTS Speed 菜单回调
+  const handleTTSSpeedMenuOpenRef = useRef<(props: { range: { from: number; to: number }; query: string }) => void>()
+  const handleTTSSpeedMenuCloseRef = useRef<() => void>()
+
   // 创建编辑器
   const editor = useEditor({
     extensions: [
@@ -80,6 +85,16 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         },
         onMenuClose: () => {
           handleTTSMenuCloseRef.current?.()
+        },
+      }),
+      // TTS Speed 扩展 - 配置回调
+      TTSSpeedNode,
+      TTSSpeed.configure({
+        onMenuOpen: (props) => {
+          handleTTSSpeedMenuOpenRef.current?.(props)
+        },
+        onMenuClose: () => {
+          handleTTSSpeedMenuCloseRef.current?.()
         },
       }),
     ],
@@ -111,6 +126,12 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     onVoiceSelect: handleVoiceSelect,
   })
 
+  // TTS Speed 菜单
+  const ttsSpeedMenu = useTTSSpeedMenu(editor, {
+    provider: ttsProvider,
+    // scene 需要从当前选中或全局配置获取，这里暂时不传
+  })
+
   // TTS Mention 菜单回调 - 更新 ref
   useEffect(() => {
     handleTTSMenuOpenRef.current = (props: { range: { from: number; to: number }; query: string }) => {
@@ -122,6 +143,18 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
       ttsMenu.closeMenu()
     }
   }, [ttsMenu])
+
+  // TTS Speed 菜单回调 - 更新 ref
+  useEffect(() => {
+    handleTTSSpeedMenuOpenRef.current = (props: { range: { from: number; to: number }; query: string }) => {
+      console.log('[Tiptap] TTS Speed menu open callback:', props)
+      ttsSpeedMenu.openMenu(props)
+    }
+    handleTTSSpeedMenuCloseRef.current = () => {
+      console.log('[Tiptap] TTS Speed menu close callback')
+      ttsSpeedMenu.closeMenu()
+    }
+  }, [ttsSpeedMenu])
 
   const [bgm, setBgm] = useState<BgmData | undefined>(bgmData);
   const [selectedBgm, setSelectedBgm] = useState<boolean>(false)
@@ -430,6 +463,21 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         onSelect={ttsMenu.selectItem}
         onGoBack={ttsMenu.goBack}
         onClose={ttsMenu.closeMenu}
+      />
+
+      {/* TTS Speed 菜单 */}
+      <TTSSpeedMenu
+        ref={ttsSpeedMenu.menuRef}
+        isOpen={ttsSpeedMenu.isOpen}
+        items={ttsSpeedMenu.items}
+        query={ttsSpeedMenu.query}
+        level={ttsSpeedMenu.level}
+        selectedIndex={ttsSpeedMenu.selectedIndex}
+        position={ttsSpeedMenu.position}
+        onQueryChange={ttsSpeedMenu.setQuery}
+        onSelect={ttsSpeedMenu.selectItem}
+        onGoBack={ttsSpeedMenu.goBack}
+        onClose={ttsSpeedMenu.closeMenu}
       />
     </>
   )
