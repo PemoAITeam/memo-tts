@@ -43,8 +43,13 @@ export function getSpeedMenuLevel1(): SpeedMenuItem[] {
 
 // 获取情绪子菜单项
 export function getEmotionSubMenu(provider?: string, scene?: ScenesType): SpeedMenuItem[] {
+  // 只有火山引擎支持情绪
+  if (provider !== 'Volcano') {
+    return []
+  }
+
   // 火山引擎场景情绪
-  if (provider === 'Volcano' && scene && VolcanoSceneEmotion[scene]) {
+  if (scene && VolcanoSceneEmotion[scene]) {
     return VolcanoSceneEmotion[scene].map((e: { label: string; value: string }) => ({
       id: `emotion-${e.value}`,
       type: 'emotion' as const,
@@ -53,7 +58,7 @@ export function getEmotionSubMenu(provider?: string, scene?: ScenesType): SpeedM
     }))
   }
 
-  // 默认情绪列表
+  // 火山引擎默认情绪列表
   const defaultEmotions = [
     { label: '无', value: 'none' },
     { label: '开心', value: 'happy' },

@@ -60,8 +60,11 @@ export const TTSBubbleMenu = forwardRef<HTMLDivElement, TTSBubbleMenuProps>(
       return opt ? opt.label : '情绪'
     }
 
-    // 是否有有效设置（1倍速不算设置）
-    const hasSettings = (speed !== null && speed !== 1) || (emotion !== null && emotion !== 'none')
+    // 是否支持情绪（只有选项不为空时才显示）
+    const supportsEmotion = emotionOptions.length > 0
+
+    // 是否有有效设置（1倍速不算设置，不支持情绪时忽略情绪设置）
+    const hasSettings = (speed !== null && speed !== 1) || (supportsEmotion && emotion !== null && emotion !== 'none')
 
     return (
       <div
@@ -75,42 +78,46 @@ export const TTSBubbleMenu = forwardRef<HTMLDivElement, TTSBubbleMenuProps>(
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-1 p-1 bg-popover border rounded-lg shadow-md animate-in fade-in-0 zoom-in-95">
-          {/* 情绪选择 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 text-sm rounded hover:bg-accent transition-colors",
-                  emotion !== null && emotion !== 'none' && "text-purple-600 dark:text-purple-400"
-                )}
-              >
-                <TbMoodSmile className="w-4 h-4" />
-                <span className="max-w-[60px] truncate">{getEmotionLabel()}</span>
-                <svg className="w-3 h-3 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[120px]">
-              {emotionOptions.map((opt) => {
-                // 使用映射表显示中文
-                const displayLabel = EMOTION_LABEL_MAP[opt.value as string] || opt.label
-                return (
-                  <DropdownMenuItem
-                    key={opt.id}
-                    onClick={() => onEmotionChange(opt.value as string)}
+          {/* 情绪选择 - 只有支持时才显示 */}
+          {supportsEmotion && (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
                     className={cn(
-                      emotion === opt.value && "bg-accent"
+                      "flex items-center gap-1 px-2 py-1 text-sm rounded hover:bg-accent transition-colors",
+                      emotion !== null && emotion !== 'none' && "text-purple-600 dark:text-purple-400"
                     )}
                   >
-                    {displayLabel}
-                  </DropdownMenuItem>
-                )
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    <TbMoodSmile className="w-4 h-4" />
+                    <span className="max-w-[60px] truncate">{getEmotionLabel()}</span>
+                    <svg className="w-3 h-3 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[120px]">
+                  {emotionOptions.map((opt) => {
+                    // 使用映射表显示中文
+                    const displayLabel = EMOTION_LABEL_MAP[opt.value as string] || opt.label
+                    return (
+                      <DropdownMenuItem
+                        key={opt.id}
+                        onClick={() => onEmotionChange(opt.value as string)}
+                        className={cn(
+                          emotion === opt.value && "bg-accent"
+                        )}
+                      >
+                        {displayLabel}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          <div className="w-px h-4 bg-muted" />
+              <div className="w-px h-4 bg-muted" />
+            </>
+          )}
 
           {/* 速度选择 */}
           <DropdownMenu>
