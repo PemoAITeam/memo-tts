@@ -24,6 +24,14 @@ export {
 } from './tts-speed'
 export type { TTSSpeedOptions, TTSSpeedPluginOptions, SpeedMenuItem, SpeedMenuItemType, SpeedMenuPath } from './tts-speed'
 
+// TTS Mark 扩展（Bubble Menu 使用）
+export { TTSMark, TTS_SPEED_OPTIONS, SPEED_LABEL_MAP, EMOTION_LABEL_MAP, getSpeedLabel, getEmotionLabel } from './tts-mark'
+export type { TTSMarkOptions, EmotionOption } from './tts-mark'
+
+// Bubble Menu Hook
+export { useTTSBubbleMenu } from './use-tts-bubble-menu'
+export type { TTSBubbleMenuState } from './use-tts-bubble-menu'
+
 // Hook
 export { useTTSMentionMenu } from './use-tts-mention-menu'
 export type { TTSMenuState } from './use-tts-mention-menu'
