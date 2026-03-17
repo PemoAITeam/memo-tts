@@ -1,5 +1,5 @@
 import { BgmData, EditorData, LibraryData, TemoData } from '@/app/interface';
-import { getJSONDataFromEditorContents, getSpeed, patchTemoData, splitString, updateTemoData } from '@/app/lib/utils';
+import { getJSONDataFromEditorContents, getSpeed, patchTemoData, splitString, updateTemoData, extractTextSegmentsFromNode, TextSegment } from '@/app/lib/utils';
 import { cloneDeep } from 'lodash-es';
 import md5 from 'md5';
 import { makeAutoObservable, runInAction } from 'mobx'
@@ -171,8 +171,14 @@ class DataStore {
     options: any
   ) => {
     try {
+      console.log('========== mergeTemo 调试 ==========')
+      console.log('data.editorData:', data.editorData)
+      console.log('data.editorData.content:', data.editorData?.content)
+      console.log('data.editorData.content[0]:', JSON.stringify(data.editorData?.content?.[0], null, 2))
+      console.log('data.target:', data.target)
       const jsonData: any[] = getJSONDataFromEditorContents(data.editorData.content, data.target);
-      console.log(jsonData)
+      console.log('jsonData:', jsonData)
+      console.log('====================================')
       if (!jsonData?.length) {
         toast({
           variant: "destructive",
@@ -180,31 +186,54 @@ class DataStore {
         })
         return
       }
+
+      // 提取所有文本片段，保留 Mark 属性
+      const allSegments: (TextSegment & { cardOptions?: any })[] = []
+
+      jsonData.forEach((item: any) => {
+        // 从卡片内容中提取文本片段
+        const segments = extractTextSegmentsFromNode(item)
+        segments.forEach(seg => {
+          allSegments.push({
+            ...seg,
+            cardOptions: item.attrs?.voice,
+          })
+        })
+      })
+
+      console.log('allSegments with marks:', allSegments)
+
       let params;
       if (data.service === 'Edge') {
-        const rate = getSpeed(data.speed);
+        const globalRate = getSpeed(data.speed);
         params = {
           type: 'Edge',
           lang: options?.lang,
-          rate: rate,
+          rate: globalRate,
           pitch: 0,
           voiceName: options?.voice?.shortName,
           voiceLocalName: options?.voice?.properties.LocalName,
-          data: jsonData?.map((item: any) => {
-            const textData = item.content?.find((info: any) => info.type === 'text')
-            const data: any = { text: '', md5: '' }
-            if (textData) {
-              data.text = textData.text.replace(/<br \/>/g, '');
-              data.picture = item.attrs?.picture
-              data.md5 = md5((item.attrs?.voice?.rate || rate) + 0 + (item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.shortName) + textData.text)
-              if (item.attrs?.voice) {
-                data.options = item.attrs.voice
-              }
-              if (data.text.length > MAX_TEXT_LENGTH) {
-                data.textChunks = splitString(data.text)
-              }
+          data: allSegments.map((seg) => {
+            // 使用片段自己的速度，如果没有则使用全局速度
+            const segRate = seg.speed != null ? seg.speed : globalRate
+            const text = seg.text.replace(/<br \/>/g, '');
+            const segData: any = {
+              text,
+              md5: md5(String(segRate) + '0' + options?.voice?.shortName + text),
             }
-            return data
+            // 如果片段有自定义速度，添加到 options
+            if (seg.speed != null && seg.speed !== globalRate) {
+              segData.options = {
+                ...seg.cardOptions,
+                rate: seg.speed,
+              }
+            } else if (seg.cardOptions) {
+              segData.options = seg.cardOptions
+            }
+            if (text.length > MAX_TEXT_LENGTH) {
+              segData.textChunks = splitString(text)
+            }
+            return segData
           })
         }
       } else if (data.service === 'OpenAI') {
@@ -215,27 +244,32 @@ class DataStore {
           })
           return
         }
+        const globalSpeed = parseFloat(data.speed) || 1;
         params = {
           type: 'OpenAI',
           model: options?.model,
-          speed: data.speed,
+          speed: globalSpeed,
           voice: options?.voice?.value,
           voiceLocalName: options?.voice?.label,
-          data: jsonData?.map((item: any) => {
-            const textData = item.content?.find((info: any) => info.type === 'text')
-            const data: any = { text: '', md5: '' }
-            if (textData) {
-              data.text = textData.text.replace(/<br \/>/g, '');
-              data.picture = item.attrs?.picture
-              data.md5 = md5((item.attrs?.voice?.speed || data.speed) + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
-              if (item.attrs?.voice) {
-                data.options = item.attrs.voice
-              }
-              if (data.text.length > MAX_TEXT_LENGTH) {
-                data.textChunks = splitString(data.text)
-              }
+          data: allSegments.map((seg) => {
+            const segSpeed = seg.speed != null ? seg.speed : globalSpeed
+            const text = seg.text.replace(/<br \/>/g, '');
+            const segData: any = {
+              text,
+              md5: md5(String(segSpeed) + '0' + options?.voice?.value + text),
             }
-            return data
+            if (seg.speed != null && seg.speed !== globalSpeed) {
+              segData.options = {
+                ...seg.cardOptions,
+                speed: seg.speed,
+              }
+            } else if (seg.cardOptions) {
+              segData.options = seg.cardOptions
+            }
+            if (text.length > MAX_TEXT_LENGTH) {
+              segData.textChunks = splitString(text)
+            }
+            return segData
           })
         }
       } else if (data.service === 'Volcano') {
@@ -246,61 +280,61 @@ class DataStore {
           })
           return
         }
+        const globalEmotion = options?.emotion?.value;
         params = {
           type: 'Volc',
-          emotion: options?.emotion?.value,
+          emotion: globalEmotion,
           voice_type: options?.voice?.value,
           voiceLocalName: options?.voice?.label,
           scene: options?.scenes,
-          data: jsonData?.map((item: any) => {
-            const textData = item.content?.find((info: any) => info.type === 'text')
-            const data: any = { text: '', md5: '' }
-            if (textData) {
-              data.text = textData.text.replace(/<br \/>/g, '').replace(/\n/g, '');
-              data.picture = item.attrs?.picture
-              data.md5 = md5(data.speed + 0 + item.attrs?.voice ? item.attrs?.voice.voiceLocalName : options?.voice?.value + textData.text)
-              if (item.attrs?.voice) {
-                data.options = item.attrs.voice
-              }
-              if (data.text.length > MAX_TEXT_LENGTH) {
-                data.textChunks = splitString(data.text)
-              }
+          data: allSegments.map((seg) => {
+            // 使用片段自己的情绪，如果没有则使用全局情绪
+            const segEmotion = seg.emotion && seg.emotion !== 'none' ? seg.emotion : globalEmotion
+            const text = seg.text.replace(/<br \/>/g, '').replace(/\n/g, '');
+            const segData: any = {
+              text,
+              md5: md5(String(seg.speed || 1) + '0' + options?.voice?.value + text),
             }
-            return data
+            // 如果片段有自定义情绪，添加到 options
+            if (segEmotion && segEmotion !== globalEmotion) {
+              segData.options = {
+                ...seg.cardOptions,
+                emotion: segEmotion,
+              }
+            } else if (seg.cardOptions) {
+              segData.options = seg.cardOptions
+            }
+            if (text.length > MAX_TEXT_LENGTH) {
+              segData.textChunks = splitString(text)
+            }
+            return segData
           })
         }
       } else {
         params = {
           type: data.service,
-          // voiceName: options?.voice?.shortName,
-          // voiceLocalName: options?.voice?.properties.LocalName,
-          data: jsonData?.map((item: any) => {
-            const textData = item.content?.find((info: any) => info.type === 'text')
-            const data: any = { text: '', md5: '' }
-            if (textData) {
-              data.text = textData.text.replace(/<br \/>/g, '');
-              data.picture = item.attrs?.picture
-              data.md5 = md5("" + 0 + "" + textData.text)
-              if (item.attrs?.voice) {
-                data.options = item.attrs.voice
-              }
-              if (data.text.length > MAX_TEXT_LENGTH) {
-                data.textChunks = splitString(data.text)
-              }
+          data: allSegments.map((seg) => {
+            const text = seg.text.replace(/<br \/>/g, '');
+            const segData: any = {
+              text,
+              md5: md5(text),
             }
-            return data
+            if (seg.cardOptions) {
+              segData.options = seg.cardOptions
+            }
+            if (text.length > MAX_TEXT_LENGTH) {
+              segData.textChunks = splitString(text)
+            }
+            return segData
           })
         }
       }
       this.synthesizing = true
-      console.log(params)
+      console.log('========== TTS 合成调试 ==========')
+      console.log('提取的文本片段 allSegments:', allSegments)
+      console.log('最终提交参数 params:', JSON.stringify(params, null, 2))
+      console.log('==================================')
       const result = await window.AIM.tts.mergeTemo(cloneDeep(params), data.uuid, { editorData: cloneDeep(data.editorData), bgm: cloneDeep(data.bgm), type: this.TTSType, ttsOptions: cloneDeep({ service: data.service, speed: data.speed, target: data.target, ttsOptions: options }) });
-      // if (!result) {
-      //     toast({
-      //         variant: "destructive",
-      //         description: i18n.t('tts.synthesis fail')
-      //     })
-      // }
       console.log(result)
       this.synthesizing = false
       return result

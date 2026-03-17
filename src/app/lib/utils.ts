@@ -367,32 +367,148 @@ export function splitString(str: string, chunkSize: number = 1000) {
 }
 
 export function getJSONDataFromEditorContents(editorContent: any, target: string) {
+  console.log('getJSONDataFromEditorContents called, editorContent:', editorContent, 'target:', target)
   const jsonData: any[] = [];
   if (editorContent?.length) {
-      editorContent.forEach((item: { type: string; attrs: { voice: any, picture: any }; }, index: number) => {
+      editorContent.forEach((item: { type: string; attrs: { voice: any } }, index: number) => {
           if (item.type == 'editorCard' && editorContent[index + 1]?.type == 'translateCard') {
               if (item.attrs?.voice) {
                   editorContent[index + 1].attrs!.voice = item.attrs.voice
               } else {
                   delete editorContent[index + 1].attrs!.voice
               }
-              if (item.attrs?.picture) {
-                  editorContent[index + 1].attrs!.picture = item.attrs.picture
-              } else {
-                  delete editorContent[index + 1].attrs!.picture
-              }
           }
       })
   }
-  editorContent.forEach((item: { attrs: { id: string, voice?: any, picture?: any }, content: string | any[]; type: string; }) => {
-      if (item.content?.length && item.content[0].text && (item.type === 'editorCard' || item.type === 'translateCard')) {
+  editorContent.forEach((item: { attrs: { id: string, voice?: any }, content: string | any[]; type: string; }) => {
+      console.log('checking item:', item.type, 'hasContent:', !!item.content?.length, 'attrs:', item.attrs)
+      // 检查是否有任何文本内容（不要求第一个元素必须是 text）
+      const hasTextContent = Array.isArray(item.content) && item.content.some((child: any) => child.type === 'text' && child.text)
+      if (hasTextContent && (item.type === 'editorCard' || item.type === 'translateCard')) {
+          console.log('passed first check, voice:', item.attrs?.voice)
           if (item.attrs.voice && (item.attrs.voice?.target === 'original' && item.type === 'editorCard' || (item.attrs.voice?.target !== 'original' && item.type === 'translateCard'))) {
+              console.log('pushing with voice')
               jsonData.push(item)
           } else if (!item.attrs.voice && (target === 'original' && item.type === 'editorCard' || (target !== 'original' && item.type === 'translateCard'))) {
+              console.log('pushing without voice, target:', target, 'type:', item.type)
               jsonData.push(item)
-
+          } else {
+              console.log('not matched, voice condition failed')
           }
+      } else {
+          console.log('first check failed, hasTextContent:', hasTextContent)
       }
   })
+  console.log('getJSONDataFromEditorContents result:', jsonData)
   return jsonData
+}
+
+/**
+ * 文本片段接口，包含速度和情绪属性
+ */
+export interface TextSegment {
+  text: string
+  speed?: number | null
+  emotion?: string | null
+}
+
+/**
+ * 从编辑器内容节点中提取文本片段，保留 Mark 属性
+ * 遍历文本节点，根据 ttsMark 的边界分割文本
+ */
+export function extractTextSegmentsFromNode(node: any): TextSegment[] {
+  const segments: TextSegment[] = []
+
+  if (!node?.content || !Array.isArray(node.content)) {
+    return segments
+  }
+
+  // 递归处理节点内容
+  const processContent = (content: any[], inheritedSpeed?: number | null, inheritedEmotion?: string | null) => {
+    content.forEach((child: any) => {
+      if (child.type === 'text') {
+        // 检查是否有 ttsMark
+        const ttsMark = child.marks?.find((m: any) => m.type === 'ttsMark')
+
+        segments.push({
+          text: child.text || '',
+          speed: ttsMark?.attrs?.speed ?? inheritedSpeed ?? null,
+          emotion: ttsMark?.attrs?.emotion ?? inheritedEmotion ?? null,
+        })
+      } else if (child.content) {
+        // 递归处理嵌套内容
+        const childMark = child.marks?.find((m: any) => m.type === 'ttsMark')
+        processContent(
+          child.content,
+          childMark?.attrs?.speed ?? inheritedSpeed,
+          childMark?.attrs?.emotion ?? inheritedEmotion
+        )
+      }
+    })
+  }
+
+  processContent(node.content)
+
+  // 合并相邻的相同属性片段
+  return mergeSegments(segments)
+}
+
+/**
+ * 合并相邻的相同属性片段
+ */
+function mergeSegments(segments: TextSegment[]): TextSegment[] {
+  if (segments.length === 0) return []
+
+  const result: TextSegment[] = []
+  let current = { ...segments[0] }
+
+  for (let i = 1; i < segments.length; i++) {
+    const next = segments[i]
+
+    // 如果属性相同，合并文本
+    if (current.speed === next.speed && current.emotion === next.emotion) {
+      current.text += next.text
+    } else {
+      result.push(current)
+      current = { ...next }
+    }
+  }
+
+  result.push(current)
+  return result
+}
+
+/**
+ * 从编辑器卡片中提取所有文本片段及其 TTS 属性
+ */
+export function extractTextSegmentsFromEditorCard(cardData: any): TextSegment[] {
+  const allSegments: TextSegment[] = []
+
+  // 获取文本内容
+  const textData = cardData.content?.find((info: any) => info.type === 'text')
+  if (!textData?.text) {
+    return allSegments
+  }
+
+  // 检查是否有 ttsMark
+  const segments = extractTextSegmentsFromNode({ content: [textData] })
+
+  // 如果没有分段（没有 marks），返回整个文本
+  if (segments.length === 0) {
+    return [{ text: textData.text }]
+  }
+
+  return segments
+}
+
+/**
+ * 扩展的 JSON 数据项，包含分段信息
+ */
+export interface ExtendedJsonDataItem {
+  text: string
+  md5: string
+  options?: any
+  textChunks?: string[]
+  // 新增：每个文本段的 TTS 属性
+  segments?: TextSegment[]
 }
