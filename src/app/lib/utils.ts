@@ -289,9 +289,10 @@ export function lowercaseFirstLetter(str: string) {
 
 export function updateTemoData(result: TemoData) {
   let from = 0, duration = 0;
-  const fileList: TemoFileList[] = result.fileList?.map(file => {
+  const fileList: TemoFileList[] = result.fileList?.map((file: any) => {
+    const { pic: _pic, ...rest } = file
     const newObj = {
-      ...file,
+      ...rest,
       from,
       duration: Math.ceil(file.metadata.duration)
     }
@@ -305,7 +306,8 @@ export function updateTemoData(result: TemoData) {
 
 export function patchTemoData(data: TemoData) {
   const fileList = (data.infoData!.order as string[]).map(item => {
-    return data.infoData![item] as TemoFileList
+    const { pic: _pic, ...rest } = data.infoData![item] as Record<string, any>
+    return rest as TemoFileList
   })
   return fileList
 }
@@ -410,6 +412,35 @@ export interface TextSegment {
   text: string
   speed?: number | null
   emotion?: string | null
+  voiceConfig?: Record<string, any> | null
+}
+
+function parseTTSMentionConfig(config: unknown): Record<string, any> | null {
+  if (!config) {
+    return null
+  }
+
+  if (typeof config === 'string') {
+    try {
+      return JSON.parse(config)
+    } catch (error) {
+      console.warn('Failed to parse ttsMention config:', error)
+      return null
+    }
+  }
+
+  if (typeof config === 'object') {
+    return config as Record<string, any>
+  }
+
+  return null
+}
+
+function isSameVoiceConfig(
+  left?: Record<string, any> | null,
+  right?: Record<string, any> | null
+) {
+  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null)
 }
 
 /**
@@ -453,6 +484,60 @@ export function extractTextSegmentsFromNode(node: any): TextSegment[] {
   return mergeSegments(segments)
 }
 
+export function extractTextSegmentsFromNodeWithMentions(node: any): TextSegment[] {
+  const segments: TextSegment[] = []
+
+  if (!node?.content || !Array.isArray(node.content)) {
+    return segments
+  }
+
+  const processContent = (
+    content: any[],
+    inheritedSpeed?: number | null,
+    inheritedEmotion?: string | null,
+    inheritedVoiceConfig?: Record<string, any> | null,
+  ) => {
+    let currentVoiceConfig = inheritedVoiceConfig ?? null
+
+    content.forEach((child: any) => {
+      if (child.type === 'ttsMention') {
+        currentVoiceConfig = parseTTSMentionConfig(child.attrs?.config)
+        return
+      }
+
+      const ttsMark = child.marks?.find((mark: any) => mark.type === 'ttsMark')
+      const nextSpeed = ttsMark?.attrs?.speed ?? inheritedSpeed ?? null
+      const nextEmotion = ttsMark?.attrs?.emotion ?? inheritedEmotion ?? null
+
+      if (child.type === 'text') {
+        if (!child.text) {
+          return
+        }
+
+        segments.push({
+          text: child.text,
+          speed: nextSpeed,
+          emotion: nextEmotion,
+          voiceConfig: currentVoiceConfig,
+        })
+        return
+      }
+
+      if (child.content) {
+        processContent(
+          child.content,
+          nextSpeed,
+          nextEmotion,
+          currentVoiceConfig,
+        )
+      }
+    })
+  }
+
+  processContent(node.content)
+  return mergeSegmentsWithVoice(segments)
+}
+
 /**
  * 合并相邻的相同属性片段
  */
@@ -467,6 +552,31 @@ function mergeSegments(segments: TextSegment[]): TextSegment[] {
 
     // 如果属性相同，合并文本
     if (current.speed === next.speed && current.emotion === next.emotion) {
+      current.text += next.text
+    } else {
+      result.push(current)
+      current = { ...next }
+    }
+  }
+
+  result.push(current)
+  return result
+}
+
+function mergeSegmentsWithVoice(segments: TextSegment[]): TextSegment[] {
+  if (segments.length === 0) return []
+
+  const result: TextSegment[] = []
+  let current = { ...segments[0] }
+
+  for (let i = 1; i < segments.length; i++) {
+    const next = segments[i]
+
+    if (
+      current.speed === next.speed &&
+      current.emotion === next.emotion &&
+      isSameVoiceConfig(current.voiceConfig, next.voiceConfig)
+    ) {
       current.text += next.text
     } else {
       result.push(current)

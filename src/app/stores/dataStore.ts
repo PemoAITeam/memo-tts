@@ -1,5 +1,5 @@
 import { BgmData, EditorData, LibraryData, TemoData } from '@/app/interface';
-import { getJSONDataFromEditorContents, getSpeed, patchTemoData, splitString, updateTemoData, extractTextSegmentsFromNode, TextSegment } from '@/app/lib/utils';
+import { getJSONDataFromEditorContents, getSpeed, patchTemoData, splitString, updateTemoData, extractTextSegmentsFromNodeWithMentions, TextSegment } from '@/app/lib/utils';
 import { cloneDeep } from 'lodash-es';
 import md5 from 'md5';
 import { makeAutoObservable, runInAction } from 'mobx'
@@ -12,6 +12,60 @@ import { customEvents } from '@/events/eventBus';
 
 const MAX_TEXT_LENGTH = 1000
 
+type SupportedTTSService = 'Edge' | 'OpenAI' | 'Volcano'
+
+function getMentionVoiceOptions(
+  service: SupportedTTSService,
+  voiceConfig?: Record<string, any> | null
+) {
+  if (!voiceConfig || voiceConfig.provider !== service) {
+    return null
+  }
+
+  const rawData = voiceConfig.rawData || {}
+
+  if (service === 'Edge') {
+    return {
+      type: 'Edge',
+      lang: voiceConfig.lang,
+      pitch: 0,
+      voiceName: voiceConfig.voiceName ?? rawData.shortName,
+      voiceLocalName: voiceConfig.voiceLocalName ?? rawData.properties?.LocalName ?? rawData.label,
+    }
+  }
+
+  if (service === 'OpenAI') {
+    return {
+      type: 'OpenAI',
+      model: voiceConfig.model,
+      voice: voiceConfig.voice ?? rawData.voice,
+      voiceLocalName: voiceConfig.voiceLocalName ?? rawData.label,
+    }
+  }
+
+  return {
+    type: 'Volc',
+    scene: voiceConfig.scene,
+    voice_type: voiceConfig.voiceType ?? rawData.voiceType,
+    voiceLocalName: voiceConfig.voiceLocalName ?? rawData.label,
+  }
+}
+
+function mergeSegmentOptions(...sources: Array<Record<string, any> | null | undefined>) {
+  const merged = sources.reduce<Record<string, any>>((result, source) => {
+    if (!source) {
+      return result
+    }
+
+    return {
+      ...result,
+      ...source,
+    }
+  }, {})
+
+  return Object.keys(merged).length ? merged : undefined
+}
+
 class DataStore {
   constructor() {
     makeAutoObservable(this)
@@ -20,7 +74,6 @@ class DataStore {
       properties: [
         'temoData',
         'editorData',
-        'trashData',
         'libraryData',
         'TTSType',
         'bgm'
@@ -31,8 +84,6 @@ class DataStore {
   temoData: TemoData[] = []
 
   editorData: { type: 'doc', content: EditorData } | string = ''
-
-  trashData: TemoData[] = []
 
   libraryData: LibraryData[] = []
 
@@ -68,44 +119,26 @@ class DataStore {
     localStorage.setItem('temo-editor', JSON.stringify(data))
   }
 
-  setTrashData = (data: TemoData[]) => {
-    this.trashData = data.concat(this.trashData)
-    window.AIM.tts.saveTemoTrash(cloneDeep(this.trashData))
-    data.forEach(info => {
-      const index = this.temoData.findIndex(item => item.uuid === info.uuid)
-      if (index > -1) {
-        const newData = cloneDeep(this.temoData)
-        newData.splice(index, 1)
-        this.temoData = newData
-      }
-    })
-    window.AIM.tts.updateTemoData(cloneDeep(this.temoData))
-  }
-
-  deleteTrashData = (data: TemoData[], isDelete?: boolean) => {
-    if (this.trashData.length) {
-      data.forEach(info => {
-        const index = this.trashData.findIndex(item => item.uuid === info.uuid)
-        if (index > -1) {
-          const newData = cloneDeep(this.trashData)
-          newData.splice(index, 1)
-          this.trashData = newData
-        }
-      })
-      if (!isDelete) {
-        this.temoData = data.concat(this.temoData)
-        window.AIM.tts.updateTemoData(cloneDeep(this.temoData))
-      }
-      window.AIM.tts.saveTemoTrash(cloneDeep(this.trashData), isDelete ? data.map(item => item.uuid) : null)
+  removeTemoData = async (data: TemoData[]) => {
+    if (!data.length) {
+      return
     }
-  }
 
-  getTrashData = async () => {
-    const trashData = await window.AIM.tts.getTemoTrash() || []
-    runInAction(() => {
-      this.trashData = trashData
-    })
-    return trashData
+    const removeIds = new Set(data.map(item => item.uuid))
+    const previousTemoData = cloneDeep(this.temoData)
+    const nextTemoData = this.temoData.filter(item => !removeIds.has(item.uuid))
+
+    this.temoData = nextTemoData
+
+    try {
+      await Promise.all([
+        window.AIM.tts.updateTemoData(cloneDeep(nextTemoData)),
+        window.AIM.tts.deleteTemoData(Array.from(removeIds)),
+      ])
+    } catch (error) {
+      this.temoData = previousTemoData
+      throw error
+    }
   }
 
   setLibraryData = (data: LibraryData[]) => {
@@ -114,10 +147,10 @@ class DataStore {
     console.log(data)
   }
 
-  copyLibraryFile = async (path: string, type: 'pic' | 'media', duration?: string) => {
+  copyLibraryFile = async (path: string, duration?: string) => {
     const data = await window.AIM.tts.copyTemoFile(path, 'library')
     if (!data.exist) {
-      data.type = type
+      data.type = 'media'
       data.duration = duration
       this.setLibraryData([data])
     }
@@ -136,7 +169,7 @@ class DataStore {
     const editorData = localStorage.getItem('temo-editor') || ""
     const ttsType = localStorage.getItem('temo-tts-type') || 'audio'
     const bgm = localStorage.getItem('temo-tts-bgm')
-    const libraryData = await window.AIM.tts.getTemoLibrary() || []
+    const libraryData = (await window.AIM.tts.getTemoLibrary() || []).filter((item: any) => item.type !== 'pic')
     runInAction(() => {
       this.temoData = temoData
       this.editorData = editorData ? JSON.parse(editorData) : ''
@@ -192,7 +225,7 @@ class DataStore {
 
       jsonData.forEach((item: any) => {
         // 从卡片内容中提取文本片段
-        const segments = extractTextSegmentsFromNode(item)
+        const segments = extractTextSegmentsFromNodeWithMentions(item)
         segments.forEach(seg => {
           allSegments.push({
             ...seg,
@@ -214,21 +247,23 @@ class DataStore {
           voiceName: options?.voice?.shortName,
           voiceLocalName: options?.voice?.properties.LocalName,
           data: allSegments.map((seg) => {
+            const mentionVoiceOptions = getMentionVoiceOptions('Edge', seg.voiceConfig)
+            const effectiveVoiceOptions = mergeSegmentOptions(seg.cardOptions, mentionVoiceOptions)
+            const effectiveVoiceName = effectiveVoiceOptions?.voiceName || options?.voice?.shortName
             // 使用片段自己的速度，如果没有则使用全局速度
             const segRate = seg.speed != null ? seg.speed : globalRate
             const text = seg.text.replace(/<br \/>/g, '');
             const segData: any = {
               text,
-              md5: md5(String(segRate) + '0' + options?.voice?.shortName + text),
+              md5: md5(String(segRate) + '0' + effectiveVoiceName + text),
             }
             // 如果片段有自定义速度，添加到 options
             if (seg.speed != null && seg.speed !== globalRate) {
-              segData.options = {
-                ...seg.cardOptions,
+              segData.options = mergeSegmentOptions(effectiveVoiceOptions, {
                 rate: seg.speed,
-              }
-            } else if (seg.cardOptions) {
-              segData.options = seg.cardOptions
+              })
+            } else if (effectiveVoiceOptions) {
+              segData.options = effectiveVoiceOptions
             }
             if (text.length > MAX_TEXT_LENGTH) {
               segData.textChunks = splitString(text)
@@ -252,19 +287,21 @@ class DataStore {
           voice: options?.voice?.value,
           voiceLocalName: options?.voice?.label,
           data: allSegments.map((seg) => {
+            const mentionVoiceOptions = getMentionVoiceOptions('OpenAI', seg.voiceConfig)
+            const effectiveVoiceOptions = mergeSegmentOptions(seg.cardOptions, mentionVoiceOptions)
+            const effectiveVoiceName = effectiveVoiceOptions?.voice || options?.voice?.value
             const segSpeed = seg.speed != null ? seg.speed : globalSpeed
             const text = seg.text.replace(/<br \/>/g, '');
             const segData: any = {
               text,
-              md5: md5(String(segSpeed) + '0' + options?.voice?.value + text),
+              md5: md5(String(segSpeed) + '0' + effectiveVoiceName + text),
             }
             if (seg.speed != null && seg.speed !== globalSpeed) {
-              segData.options = {
-                ...seg.cardOptions,
+              segData.options = mergeSegmentOptions(effectiveVoiceOptions, {
                 speed: seg.speed,
-              }
-            } else if (seg.cardOptions) {
-              segData.options = seg.cardOptions
+              })
+            } else if (effectiveVoiceOptions) {
+              segData.options = effectiveVoiceOptions
             }
             if (text.length > MAX_TEXT_LENGTH) {
               segData.textChunks = splitString(text)
@@ -289,20 +326,22 @@ class DataStore {
           scene: options?.scenes,
           data: allSegments.map((seg) => {
             // 使用片段自己的情绪，如果没有则使用全局情绪
+            const mentionVoiceOptions = getMentionVoiceOptions('Volcano', seg.voiceConfig)
+            const effectiveVoiceOptions = mergeSegmentOptions(seg.cardOptions, mentionVoiceOptions)
+            const effectiveVoiceName = effectiveVoiceOptions?.voice_type || options?.voice?.value
             const segEmotion = seg.emotion && seg.emotion !== 'none' ? seg.emotion : globalEmotion
             const text = seg.text.replace(/<br \/>/g, '').replace(/\n/g, '');
             const segData: any = {
               text,
-              md5: md5(String(seg.speed || 1) + '0' + options?.voice?.value + text),
+              md5: md5(String(seg.speed || 1) + '0' + effectiveVoiceName + text),
             }
             // 如果片段有自定义情绪，添加到 options
             if (segEmotion && segEmotion !== globalEmotion) {
-              segData.options = {
-                ...seg.cardOptions,
+              segData.options = mergeSegmentOptions(effectiveVoiceOptions, {
                 emotion: segEmotion,
-              }
-            } else if (seg.cardOptions) {
-              segData.options = seg.cardOptions
+              })
+            } else if (effectiveVoiceOptions) {
+              segData.options = effectiveVoiceOptions
             }
             if (text.length > MAX_TEXT_LENGTH) {
               segData.textChunks = splitString(text)

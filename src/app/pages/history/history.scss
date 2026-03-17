@@ -18,19 +18,3 @@
 .temo-list {
     width: 275px;
 }
-
-.editor-pic-item:hover {
-    .delete-button {
-        display: block;
-    }
-}
-
-.editor-pic-item .delete-button {
-    padding-left: 1px;
-    padding-right: 1px;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    background-color: rgba(0, 0, 0, 0.8);
-    border-radius: 0;
-    border-bottom-left-radius: 2px;
-}

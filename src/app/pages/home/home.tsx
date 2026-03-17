@@ -16,7 +16,6 @@ import { useToast } from '@/app/components/ui/use-toast';
 import { BgmData } from '@/app/interface';
 import { useNavigate } from 'react-router-dom';
 import { IoStopCircleOutline } from 'react-icons/io5';
-import SelectTTSProvider from '@/app/components/business/SelectTTSProvider';
 interface HomePageProps {
   settingStore?: SettingStore
   dataStore?: DataStore
@@ -124,12 +123,10 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
         <div className='flex flex-1 temo-draggable pt-4 overflow-hidden'>
           <div className='flex-1 pl-4 pb-4 flex temo-no-draggable'>
             <div className='flex  flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
-              <div className="mb-1 text-sm">{t('tts.provider')}</div>
-              <SelectTTSProvider onChange={setService} />
-              <Tiptap content={curEditorData} type={ttsType} bgmData={bgm} setEditor={setEditorRef} getBgm={setBgm} from='home' ttsProvider={service} />
+              <Tiptap content={curEditorData} type={ttsType} bgmData={bgm} setEditor={setEditorRef} getBgm={setBgm} from='home' ttsProvider={service} onProviderChange={(value) => setService(value)} />
             </div>
             <div className='px-4 flex-shrink-0 tts-service-panel'>
-              <TTSPanel getSpeed={setSpeed} getTarget={setTarget} getOptions={setOptions} onProviderChange={setService}></TTSPanel>
+              <TTSPanel getSpeed={setSpeed} getTarget={setTarget} getOptions={setOptions}></TTSPanel>
               {
                 currentTTSUUID ? (
                   <Button

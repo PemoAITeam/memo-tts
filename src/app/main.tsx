@@ -7,10 +7,9 @@ if (!window.AIM) {
   window.AIM = new Bridge({
     methods: [
       "getSetting",
-      "saveTemoTrash",
       "updateTemoData",
+      "deleteTemoData",
       "getTemoData",
-      "getTemoTrash",
       "saveTemoLibrary",
       "mergeTemo",
       "temoDownload",

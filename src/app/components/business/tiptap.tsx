@@ -28,6 +28,7 @@ import AppStore from '@/app/stores/appStore'
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
 import TTSDialog from './tts-dialog'
 import { IoIosClose } from 'react-icons/io'
+import SelectTTSProvider from './SelectTTSProvider'
 // TTS Mention 扩展
 import { TTSMentionSimple, TTSMentionNode, useTTSMentionMenu, SelectedVoiceConfig, TTSMark, useTTSBubbleMenu } from '@/app/lib/tts-mention'
 import { TTSMenu } from './tts-menu'
@@ -44,10 +45,11 @@ interface TiptapProps {
   appStore?: AppStore,
   currentFile?: TemoData,
   updateList?: (data: TemoData) => void,
-  ttsProvider?: 'Edge' | 'OpenAI' | 'Volcano'
+  ttsProvider?: 'Edge' | 'OpenAI' | 'Volcano',
+  onProviderChange?: (provider: 'Edge' | 'OpenAI' | 'Volcano') => void
 }
 
-const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore, updateList, getBgm, bgmData, currentFile, ttsProvider }: TiptapProps) => {
+const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore, updateList, getBgm, bgmData, currentFile, ttsProvider, onProviderChange }: TiptapProps) => {
   const [openTranslate, setOpenTranslate] = useState(false)
   const [translating, setTranslating] = useState<boolean>(false)
   const [openSynthesis, setOpenSynthesis] = useState<boolean>(false)
@@ -283,7 +285,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         const duration = audioRef.current.duration;
         // 在这里可以处理音频文件的时长
         const bgmData = { name: fileName, path: filePath, duration }
-        dataStore!.copyLibraryFile(filePath, 'media', secondsToHMS(duration))
+        dataStore!.copyLibraryFile(filePath, secondsToHMS(duration))
         getBgm && getBgm(bgmData)
         if (from === 'home') {
           dataStore?.setBgm(bgmData)
@@ -294,12 +296,6 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         setOpenDialog(false)
       });
     }
-  }
-
-  const switchTTSType = (type: 'audio' | 'video') => {
-    setTTSType(type)
-    const needSaveType = from === 'home'
-    dataStore?.setTTSType(type, needSaveType)
   }
 
   const playBgm = (event?: any) => {
@@ -351,15 +347,16 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     <>
       <div className='flex items-center flex-shrink-0 justify-between mb-4 pr-3'>
         {
-          // from === 'home' && <Tabs value={TTSType}>
-          //     <TabsList>
-          //         <TabsTrigger value="audio" onClick={() => switchTTSType('audio')}>{t('tts.audio')}</TabsTrigger>
-          //         <TabsTrigger value="video" onClick={() => switchTTSType('video')}>{t('tts.video')}</TabsTrigger>
-          //     </TabsList>
-          // </Tabs>
-          <div></div>
+          from === 'home'
+            ? <div className='flex flex-1 items-center gap-3 pr-3'>
+              <span className='text-sm whitespace-nowrap text-muted-foreground'>{t('tts.provider')}</span>
+              <div className='w-full max-w-52'>
+                <SelectTTSProvider onChange={(value) => onProviderChange?.(value as 'Edge' | 'OpenAI' | 'Volcano')} />
+              </div>
+            </div>
+            : <div></div>
         }
-        <div className='flex items-center flex-shrink-0'>
+        <div className='flex items-center flex-shrink-0 gap-1'>
           {from != 'home' && <Button aria-label={t('tts.synthesis')} variant={'ghost'} size={"sm"} disabled={synthesizing} onClick={generateAudio}>
             {
               synthesizing
@@ -380,7 +377,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
               </Button>
             </DialogTrigger>
             <DialogContent className="pic-dialog w-2/3 h-2/3 max-w-none">
-              <TTSDialog selectImage={selectBgm} fileType="media"></TTSDialog>
+              <TTSDialog selectImage={selectBgm}></TTSDialog>
             </DialogContent>
           </Dialog>}
           {from != 'home' && <Popover open={openSynthesis} onOpenChange={(open) => setOpenSynthesis(open)}>

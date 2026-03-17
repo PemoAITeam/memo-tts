@@ -10,7 +10,6 @@ import { TTSOptions } from "@/app/lib/tts"
 import { Button } from "../ui/button"
 import PluginStore from "@/app/stores/pluginStore"
 import { type AimForm, createExposedLayout, FormRenderer, type FormRendererHandle } from "memo-form-renderer";
-import SelectTTSProvider from "./SelectTTSProvider";
 export interface VoiceOptions {
   ttsOptions?: TTSOptions
   service?: 'Edge' | 'OpenAI' | 'Volcano',
@@ -21,7 +20,6 @@ export interface VoiceOptions {
 interface TTSPanelProps {
   pluginStore?: PluginStore,
   getOptions?: (data: any) => void
-  onProviderChange?: (provider: string) => void;
   getSpeed?: (speed: string) => void
   getTarget?: (target: 'original' | 'translate') => void
   voiceOptions?: VoiceOptions
@@ -45,7 +43,7 @@ const localPlugins = [{
 
 const TTSPanel = inject('pluginStore')(observer(({
   pluginStore, showConfirmButton, voiceOptions,
-  getVoiceOptions, getOptions, onProviderChange, getSpeed, getTarget
+  getVoiceOptions, getOptions, getSpeed, getTarget
 }: TTSPanelProps) => {
   const { memoPlugins, provider, ttsProviders } = pluginStore!
 
@@ -174,10 +172,6 @@ const TTSPanel = inject('pluginStore')(observer(({
       setShowExposed(false);
     }
   }, [currentTTSProviders, memoPlugins]);
-
-  const handleProviderChange = useCallback((value: string) => {
-    !showConfirmButton && onProviderChange?.(value)
-  }, [onProviderChange, showConfirmButton]);
 
   return (
     <>

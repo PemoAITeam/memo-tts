@@ -18,10 +18,6 @@ export const EditorCard = Node.create({
             voice: {
                 default: null,
                 rendered: false
-            },
-            picture: {
-                default: null,
-                rendered: false
             }
         }
     },

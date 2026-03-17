@@ -172,7 +172,6 @@ export interface TemoFileList {
   fileDest: string,
   metadata: any,
   text: string,
-  pic?: { name: string, path: string },
   from?: number,
   duration?: number
 }
@@ -186,6 +185,6 @@ export interface EditorData {
 export interface LibraryData {
   name: string,
   path: string
-  type: 'pic' | 'media'
+  type: 'media'
   duration?: string
 }

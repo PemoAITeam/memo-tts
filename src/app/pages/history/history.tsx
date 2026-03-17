@@ -12,6 +12,16 @@ import { GrCheckboxSelected } from "react-icons/gr";
 // import { TTSOptions } from '@/app/lib/tts';
 import { useToast } from "@/app/components/ui/use-toast"
 import { ScrollArea } from '@/app/components/ui/scroll-area';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/app/components/ui/alert-dialog';
 import { inject, observer } from 'mobx-react';
 import SettingStore from '@/app/stores/settingStore';
 import DataStore from '@/app/stores/dataStore';
@@ -24,7 +34,6 @@ import { HiOutlineTrash } from "react-icons/hi2";
 import { TemoData, TemoFileList } from '@/app/interface';
 // import { RiFileList3Line } from "react-icons/ri";
 import { useTranslation } from 'react-i18next';
-import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import CircularProgressBar from '@/app/components/business/progress';
 import { getLocalFileUrl } from '@/app/lib/utils';
 
@@ -46,6 +55,8 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     const [batchDownload] = useState<boolean>(false);
     const [isDownload, setIsDownload] = useState<boolean>(false);
     const [downloadProgress, setDownloadProgress] = useState<number>(0);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [pendingDeleteItems, setPendingDeleteItems] = useState<TemoData[]>([]);
     const { t } = useTranslation()
     const { toast } = useToast()
     // const [player, setPlayer] = useState<PlayerRef>()
@@ -183,13 +194,6 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             if (params.bgm) {
                 copyFiles.push(params.bgm.path)
             }
-            if (params.fileList?.length) {
-                params.fileList.forEach((file: TemoFileList) => {
-                    if (file.pic) {
-                        copyFiles.push(file.pic.path)
-                    }
-                })
-            }
             params.copyFiles = copyFiles
             console.log(params)
             setIsDownload(true)
@@ -273,11 +277,11 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
     //     setList(updatedData)
     // }
 
-    const deleteItem = async (event: any, data?: TemoData) => {
+    const requestDelete = (event: any, data?: TemoData) => {
         if (event) {
             event.stopPropagation();
         }
-        let items: any = [];
+        let items: TemoData[] = [];
         if (data) {
             items.push(data)
         } else {
@@ -290,10 +294,45 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                 return;
             }
         }
-        dataStore?.setTrashData(items)
-        setList(temoData || [])
-        if (data?.uuid === curTemoId && temoData.length) {
-            setCurTemoId(temoData[0].uuid)
+        setPendingDeleteItems(items)
+        setDeleteDialogOpen(true)
+    }
+
+    const confirmDelete = async () => {
+        if (!pendingDeleteItems.length) {
+            setDeleteDialogOpen(false)
+            return
+        }
+
+        const deleteIds = new Set(pendingDeleteItems.map(item => item.uuid))
+        const nextList = temoData.filter(item => !deleteIds.has(item.uuid))
+
+        try {
+            await dataStore?.removeTemoData(pendingDeleteItems)
+            setList(nextList)
+            setDeleteDialogOpen(false)
+            setPendingDeleteItems([])
+
+            if (deleteIds.has(curTemoId)) {
+                const nextId = nextList[0]?.uuid || ''
+                setCurTemoId(nextId)
+                if (!nextId) {
+                    setCurrentFile(undefined)
+                    setCurEditorData("")
+                }
+            }
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                description: error?.message || t('history.permanent delete fail', { defaultValue: '鍒犻櫎澶辫触锛岃閲嶈瘯' })
+            })
+        }
+    }
+
+    const handleDeleteDialogOpenChange = (open: boolean) => {
+        setDeleteDialogOpen(open)
+        if (!open) {
+            setPendingDeleteItems([])
         }
     }
 
@@ -336,7 +375,7 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
                                                     : <Button title={t('history.download')} disabled={isDownload} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => download(e, item)}>
                                                         <TbDownload size={18} />
                                                     </Button>}
-                                                <Button title={t('history.delete')} disabled={isDownload} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => deleteItem(e, item)}>
+                                                <Button title={t('history.delete')} disabled={isDownload} variant={'ghost'} className='flex-shrink-0 p-0 cursor-pointer bg-transparent shadow-none h-auto hover:bg-transparent text-sm' onClick={(e) => requestDelete(e, item)}>
                                                     <HiOutlineTrash size={18} />
                                                 </Button>
                                             </div>
@@ -372,6 +411,30 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             {!temoData.length && <div className='flex items-center justify-center h-full'>
                 {t('tts.no results')}
             </div>}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={handleDeleteDialogOpenChange}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t('history.permanent delete title', { defaultValue: '永久删除？' })}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {pendingDeleteItems.length > 1
+                                ? t('history.permanent delete multiple', {
+                                    count: pendingDeleteItems.length,
+                                    defaultValue: `这将永久删除 ${pendingDeleteItems.length} 项内容，且无法恢复。`,
+                                })
+                                : t('history.permanent delete single', {
+                                    title: pendingDeleteItems[0]?.title || '',
+                                    defaultValue: `这将永久删除“${pendingDeleteItems[0]?.title || ''}”，且无法恢复。`,
+                                })}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{t('history.cancel', { defaultValue: '取消' })}</AlertDialogCancel>
+                        <AlertDialogAction className='bg-red-600 hover:bg-red-600/90' onClick={confirmDelete}>
+                            {t('history.permanent delete confirm', { defaultValue: '永久删除' })}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     )
 }))

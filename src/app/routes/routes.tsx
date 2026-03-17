@@ -9,9 +9,8 @@ import DataStore from '@/app/stores/dataStore'
 import { IconType } from 'react-icons'
 import './routes.scss'
 import AppStore from '@/app/stores/appStore'
-import { TbHome, TbTrash, TbPlaylist } from "react-icons/tb";
+import { TbHome, TbPlaylist } from "react-icons/tb";
 import HistoryPage from '@/app/pages/history/history'
-import TrashPage from '@/app/pages/trash/trash'
 import { useTranslation } from 'react-i18next'
 
 interface Routers {
@@ -44,12 +43,6 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
             path: '/history',
             icon: TbPlaylist,
             label: t('route.media list'),
-        },
-        {
-            id: 'trash',
-            path: '/trash',
-            icon: TbTrash,
-            label: t('route.trash'),
         },
     ])
 
@@ -98,7 +91,6 @@ const Routers = inject('dataStore', 'appStore')(observer(({ appStore }: RouterPa
                 <Routes>
                     <Route path="/" element={<Navigate to="/home" replace />} />
                     <Route path="/home" element={<HomePage />}></Route>
-                    <Route path="/trash" element={<TrashPage />}></Route>
                     <Route path="/history/:id?" element={<HistoryPage />}></Route>
                 </Routes>
             </div>

@@ -13,10 +13,9 @@ import { LuFileClock } from "react-icons/lu";
 interface TTSDialogProps {
     selectImage: (path: string) => void
     dataStore?: DataStore
-    fileType: 'pic' | 'media'
 }
 
-const TTSDialog = inject('dataStore')(observer(({ selectImage, dataStore, fileType }: TTSDialogProps) => {
+const TTSDialog = inject('dataStore')(observer(({ selectImage, dataStore }: TTSDialogProps) => {
     const { t } = useTranslation()
     const [type, setType] = useState<'myLibrary' | 'generate' | 'favorate'>('myLibrary')
     const [list, setList] = useState<LibraryData[]>()
@@ -25,10 +24,10 @@ const TTSDialog = inject('dataStore')(observer(({ selectImage, dataStore, fileTy
     const [curPath, setCurPath] = useState<string>();
 
     useEffect(() => {
-        const data = dataStore?.libraryData.filter(item => item.type === fileType)
+        const data = dataStore?.libraryData.filter(item => item.type === 'media')
         setList(data)
         console.log(data)
-    }, [dataStore?.libraryData, fileType])
+    }, [dataStore?.libraryData])
 
     useEffect(() => {
         return () => {
@@ -43,7 +42,7 @@ const TTSDialog = inject('dataStore')(observer(({ selectImage, dataStore, fileTy
     const selectBgPic = async () => {
         const file: any = await window.AIM.openDialog('showOpenDialogSync', {
             properties: ['openFile'],
-            filters: [{ name: '', extensions: fileType === 'pic' ? ['jpg', 'jpeg', 'png'] : ['mp3'] }]
+            filters: [{ name: '', extensions: ['mp3'] }]
         })
         if (!file) return
         const filePath = file[0];
@@ -77,13 +76,11 @@ const TTSDialog = inject('dataStore')(observer(({ selectImage, dataStore, fileTy
             </Tabs>
             {type === 'myLibrary' && <div className=" mt-4 flex items-center flex-wrap">
                 <Button variant='ghost' onClick={selectBgPic} className=" border mr-4 h-auto w-auto mt-4 p-0 text-gray-300">
-                    <GoPlus size={fileType === 'pic' ? 128 : 86} />
+                    <GoPlus size={86} />
                 </Button>
                 {!!list?.length &&
                     list.map(item => (
-                        fileType == 'pic' ? <div key={item.name} className="border rounded-md mr-4 w-32 h-32 mt-4 cursor-pointer" onClick={() => selectImage(item.path)}>
-                            <img className="cover w-full h-full object-cover" src={getLocalFileUrl(item.path)} />
-                        </div> : <div key={item.name} className="flex justify-center flex-col border p-4 rounded-md ml-4 cursor-pointer" onClick={() => selectImage(item.path)}>
+                        <div key={item.name} className="flex justify-center flex-col border p-4 rounded-md ml-4 cursor-pointer" onClick={() => selectImage(item.path)}>
                             <div className="flex items-center">
                                 <TbVolume onClick={(e) => playBgm(e, item.path)} className={`mr-1 cursor-pointer flex-shrink-0 ${curPath === item.path ? 'text-indigo-500' : ''}`} size={18} />
                                 <span>{item.name}</span>
