@@ -1,12 +1,13 @@
 /**
  * TTS Mention Menu Hook
- * 用于在 React 组件中管理 @ 菜单的状态
+ * 鐢ㄤ簬鍦?React 缁勪欢涓鐞?@ 鑿滃崟鐨勭姸鎬?
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Editor } from '@tiptap/react'
-import { SelectedVoiceConfig, MenuPath, TTSMenuItem } from './types'
-import { getMenuItems } from './data'
+import type { Editor } from '@tiptap/react'
+
+import type { MenuPath, SelectedVoiceConfig, TTSMenuItem } from './types'
+import { buildSelectedVoiceConfig, getLoadingMenuItems, getMenuItems, getNextMenuPath } from './data'
 
 export interface TTSMenuState {
   isOpen: boolean
@@ -19,7 +20,7 @@ export interface TTSMenuState {
 }
 
 interface UseTTSMentionMenuOptions {
-  initialProvider?: 'Edge' | 'Volcano' | 'OpenAI'
+  initialProvider?: string
   onVoiceSelect?: (config: SelectedVoiceConfig) => void
 }
 
@@ -27,7 +28,6 @@ export function useTTSMentionMenu(
   editor: Editor | null,
   options?: UseTTSMentionMenuOptions | ((config: SelectedVoiceConfig) => void)
 ) {
-  // 兼容旧的 API：第二个参数可以是回调函数
   const opts: UseTTSMentionMenuOptions = typeof options === 'function'
     ? { onVoiceSelect: options }
     : options || {}
@@ -45,125 +45,102 @@ export function useTTSMentionMenu(
   })
 
   const menuRef = useRef<HTMLDivElement>(null)
+  const loadRequestIdRef = useRef(0)
 
-  // 打开菜单 - 由 extension 回调触发
+  const loadItems = useCallback((path: MenuPath, query: string) => {
+    const requestId = ++loadRequestIdRef.current
+
+    setState(prev => ({
+      ...prev,
+      path,
+      query,
+      items: getLoadingMenuItems(),
+      selectedIndex: 0,
+    }))
+
+    void getMenuItems(path, query, initialProvider)
+      .then((items) => {
+        if (loadRequestIdRef.current !== requestId) {
+          return
+        }
+
+        setState(prev => ({
+          ...prev,
+          path,
+          query,
+          items,
+          selectedIndex: 0,
+        }))
+      })
+      .catch(() => {
+        if (loadRequestIdRef.current !== requestId) {
+          return
+        }
+
+        setState(prev => ({
+          ...prev,
+          path,
+          query,
+          items: [],
+          selectedIndex: 0,
+        }))
+      })
+  }, [initialProvider])
+
   const openMenu = useCallback((props: { range: { from: number; to: number }; query: string }) => {
     const { range, query } = props
     const { from } = range
     const coords = editor?.view.coordsAtPos(from)
 
     const initialPath = initialProvider ? { provider: initialProvider } : {}
-    const items = getMenuItems(initialPath, query, initialProvider)
-
-    console.log('[TTS Mention] openMenu:', {
-      range,
-      query,
-      initialProvider,
-      itemsCount: items.length,
-    })
 
     setState({
       isOpen: true,
       query,
       range,
       path: initialPath,
-      items,
+      items: getLoadingMenuItems(),
       selectedIndex: 0,
       position: {
         x: coords?.left || 0,
-        y: (coords?.bottom || coords?.top || 0) + 5
+        y: (coords?.bottom || coords?.top || 0) + 5,
       },
     })
-  }, [editor, initialProvider])
+    loadItems(initialPath, query)
+  }, [editor, initialProvider, loadItems])
 
-  // 关闭菜单
   const closeMenu = useCallback(() => {
+    loadRequestIdRef.current += 1
     setState(prev => ({
       ...prev,
       isOpen: false,
-      path: {},
+      path: initialProvider ? { provider: initialProvider } : {},
       query: '',
       range: null,
       items: [],
     }))
-  }, [])
+  }, [initialProvider])
 
-  // 选择项目
   const selectItem = useCallback((item: TTSMenuItem) => {
+    if (item.disabled) {
+      return
+    }
+
     const { path, range } = state
+    const itemPath = (item.data?.menuPath as MenuPath | undefined) || path
+    const nextPath = getNextMenuPath(itemPath, item)
 
-    // 如果是服务提供商，进入下一级
-    if (item.type === 'provider') {
-      const newPath: MenuPath = { provider: item.data?.provider as any }
-      setState(prev => ({
-        ...prev,
-        path: newPath,
-        query: '',
-        items: getMenuItems(newPath, '', initialProvider),
-        selectedIndex: 0,
-      }))
+    if (nextPath) {
+      loadItems(nextPath, '')
       return
     }
 
-    // 如果是语言，进入语音列表
-    if (item.type === 'language' && path.provider === 'Edge') {
-      const newPath: MenuPath = { ...path, language: item.data?.code }
-      setState(prev => ({
-        ...prev,
-        path: newPath,
-        query: '',
-        items: getMenuItems(newPath, '', initialProvider),
-        selectedIndex: 0,
-      }))
-      return
-    }
-
-    // 如果是场景，进入语音列表
-    if (item.type === 'scene' && path.provider === 'Volcano') {
-      const newPath: MenuPath = { ...path, scene: item.data?.scene }
-      setState(prev => ({
-        ...prev,
-        path: newPath,
-        query: '',
-        items: getMenuItems(newPath, '', initialProvider),
-        selectedIndex: 0,
-      }))
-      return
-    }
-
-    // 如果是模型，进入语音列表
-    if (item.type === 'model' && path.provider === 'OpenAI') {
-      const newPath: MenuPath = { ...path, model: item.data?.model }
-      setState(prev => ({
-        ...prev,
-        path: newPath,
-        query: '',
-        items: getMenuItems(newPath, '', initialProvider),
-        selectedIndex: 0,
-      }))
-      return
-    }
-
-    // 如果是语音，完成选择
     if (item.type === 'voice' && range) {
-      const config: SelectedVoiceConfig = {
-        provider: path.provider!,
-        voiceLocalName: item.label,
-        rawData: item.data,
+      const config = buildSelectedVoiceConfig(itemPath, item)
+      if (!config) {
+        return
       }
 
-      if (path.provider === 'Edge') {
-        config.lang = path.language
-        config.voiceName = item.data?.shortName
-      } else if (path.provider === 'Volcano') {
-        config.scene = path.scene
-        config.voiceType = item.data?.voiceType
-      } else if (path.provider === 'OpenAI') {
-        config.model = path.model
-        config.voice = item.data?.voice
-      }
-
-      // 删除 @ 和查询文本
       const { from } = range
       const to = editor?.state.selection.from || from
 
@@ -176,7 +153,7 @@ export function useTTSMentionMenu(
           attrs: {
             provider: config.provider,
             config: JSON.stringify(config),
-            label: config.voiceLocalName,
+            label: config.displayLabel || config.voiceLocalName,
           },
         })
         .run()
@@ -184,52 +161,41 @@ export function useTTSMentionMenu(
       onVoiceSelect?.(config)
       closeMenu()
     }
-  }, [state, editor, onVoiceSelect, closeMenu, initialProvider])
+  }, [state, editor, onVoiceSelect, closeMenu, loadItems])
 
-  // 返回上一级
   const goBack = useCallback(() => {
     const { path } = state
 
     if (path.language || path.scene || path.model) {
       const newPath = { ...path }
-      delete newPath.language
-      delete newPath.scene
-      delete newPath.model
-      setState(prev => ({
-        ...prev,
-        path: newPath,
-        query: '',
-        items: getMenuItems(newPath, '', initialProvider),
-        selectedIndex: 0,
-      }))
+      if (path.model) {
+        delete newPath.model
+      } else if (path.scene) {
+        delete newPath.scene
+      } else if (path.language) {
+        delete newPath.language
+      }
+      loadItems(newPath, '')
       return true
-    } else if (path.provider && !initialProvider) {
-      setState(prev => ({
-        ...prev,
-        path: {},
-        query: '',
-        items: getMenuItems({}, '', initialProvider),
-        selectedIndex: 0,
-      }))
+    }
+
+    if (path.provider && !initialProvider) {
+      loadItems({}, '')
       return true
-    } else if (path.provider && initialProvider) {
+    }
+
+    if (path.provider && initialProvider) {
       closeMenu()
       return true
     }
+
     return false
-  }, [state, initialProvider, closeMenu])
+  }, [state, initialProvider, closeMenu, loadItems])
 
-  // 更新查询
   const setQuery = useCallback((query: string) => {
-    setState(prev => ({
-      ...prev,
-      query,
-      items: getMenuItems(prev.path, query, initialProvider),
-      selectedIndex: 0,
-    }))
-  }, [initialProvider])
+    loadItems(state.path, query)
+  }, [loadItems, state.path])
 
-  // 键盘导航
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (!state.isOpen) return false
 
@@ -237,6 +203,7 @@ export function useTTSMentionMenu(
 
     switch (event.key) {
       case 'ArrowDown':
+        if (items.length === 0) return true
         event.preventDefault()
         setState(prev => ({
           ...prev,
@@ -245,6 +212,7 @@ export function useTTSMentionMenu(
         return true
 
       case 'ArrowUp':
+        if (items.length === 0) return true
         event.preventDefault()
         setState(prev => ({
           ...prev,
@@ -261,12 +229,10 @@ export function useTTSMentionMenu(
         return false
 
       case 'Backspace':
-        // 如果 query 为空，关闭菜单并让编辑器处理删除
         if (!state.query) {
           closeMenu()
           return false
         }
-        // 如果有 query，让编辑器自然删除字符
         return false
 
       case 'Enter':
@@ -286,7 +252,6 @@ export function useTTSMentionMenu(
     }
   }, [state, goBack, selectItem, closeMenu])
 
-  // 全局键盘事件
   useEffect(() => {
     if (!state.isOpen) return
 
@@ -294,7 +259,6 @@ export function useTTSMentionMenu(
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [state.isOpen, handleKeyDown])
 
-  // 点击外部关闭
   useEffect(() => {
     if (!state.isOpen) return
 
@@ -317,6 +281,6 @@ export function useTTSMentionMenu(
     goBack,
     setQuery,
     closeMenu,
-    openMenu, // 导出 openMenu 供 extension 使用
+    openMenu,
   }
 }

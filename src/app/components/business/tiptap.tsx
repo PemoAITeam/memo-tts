@@ -1,6 +1,6 @@
 import './tiptap.scss'
 import './tts-mention-styles.scss'
-import { useEditor, EditorContent, Editor } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorCard } from '../extensions/editor-card'
 import { useEffect, useRef, useState } from 'react'
@@ -11,7 +11,7 @@ import { Button } from '../ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import TranslatePanel from './translate-panel'
 import { TbEraser, TbLanguage, TbLoader, TbMicrophone, TbWand } from 'react-icons/tb'
-import { BgmData, TemoData, WhisperSegments } from '@/app/interface'
+import type { BgmData, TemoData, WhisperSegments } from '@/app/interface'
 import { cloneDeep } from 'lodash-es'
 import mammoth from 'mammoth'
 import { toast } from '../ui/use-toast'
@@ -19,20 +19,42 @@ import { remark } from 'remark'
 import strip from 'strip-markdown'
 import { useTranslation } from 'react-i18next'
 import { inject, observer } from 'mobx-react'
-import DataStore from '@/app/stores/dataStore'
+import type DataStore from '@/app/stores/dataStore'
+import type PluginStore from '@/app/stores/pluginStore'
 // import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
 import { MdOutlineMusicNote } from "react-icons/md";
 import { BsPause, BsPlay } from "react-icons/bs";
-import TTSPanel, { VoiceOptions } from './tts-panel'
-import AppStore from '@/app/stores/appStore'
+import TTSPanel, { type VoiceOptions } from './tts-panel'
+import type AppStore from '@/app/stores/appStore'
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
 import TTSDialog from './tts-dialog'
 import { IoIosClose } from 'react-icons/io'
 import SelectTTSProvider from './SelectTTSProvider'
+import { isLegacyTTSSelection, parseStoredTTSSelection, resolveStoredTTSSelection } from '@/app/lib/tts-plugin'
 // TTS Mention 扩展
-import { TTSMentionSimple, TTSMentionNode, useTTSMentionMenu, SelectedVoiceConfig, TTSMark, useTTSBubbleMenu } from '@/app/lib/tts-mention'
+import { TTSMentionSimple, TTSMentionNode, TTSMark, useTTSBubbleMenu, useTTSMentionMenu, type SelectedVoiceConfig } from '@/app/lib/tts-mention'
 import { TTSMenu } from './tts-menu'
 import { TTSBubbleMenu } from './tts-bubble-menu'
+
+function stableSerializeConfig(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerializeConfig(item)).join(',')}]`
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([key, itemValue]) => `${JSON.stringify(key)}:${stableSerializeConfig(itemValue)}`)
+
+    return `{${entries.join(',')}}`
+  }
+
+  return JSON.stringify(value)
+}
 
 interface TiptapProps {
   setEditor?: (editor: Editor) => void,
@@ -43,13 +65,14 @@ interface TiptapProps {
   bgmData?: BgmData,
   dataStore?: DataStore,
   appStore?: AppStore,
+  pluginStore?: PluginStore,
   currentFile?: TemoData,
   updateList?: (data: TemoData) => void,
-  ttsProvider?: 'Edge' | 'OpenAI' | 'Volcano',
-  onProviderChange?: (provider: 'Edge' | 'OpenAI' | 'Volcano') => void
+  ttsProvider?: string,
+  onProviderChange?: (provider: string) => void
 }
 
-const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEditor, content, from, dataStore, updateList, getBgm, bgmData, currentFile, ttsProvider, onProviderChange }: TiptapProps) => {
+const Tiptap = inject('settingStore', 'dataStore', 'appStore', 'pluginStore')(observer(({ setEditor, content, from, dataStore, pluginStore, updateList, getBgm, bgmData, currentFile, ttsProvider, onProviderChange }: TiptapProps) => {
   const [openTranslate, setOpenTranslate] = useState(false)
   const [translating, setTranslating] = useState<boolean>(false)
   const [openSynthesis, setOpenSynthesis] = useState<boolean>(false)
@@ -60,9 +83,14 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
   const [originalVoice, setOriginalVoice] = useState<string>()
   const { synthesizing } = dataStore!
   const { t } = useTranslation()
-  const usePlugin = useRef(false)
 
   const { mergeTemo } = dataStore!
+  const effectiveProvider = ttsProvider || curOptions?.provider || pluginStore?.provider
+  const availableTTSProvidersKey = pluginStore?.ttsProviders?.map((item) => `${item.provider}:${item.pluginId}`).join('|')
+  const effectiveProviderConfigKey = effectiveProvider
+    ? stableSerializeConfig(pluginStore?.getRuntimeTTSConfiguration(effectiveProvider) || {})
+    : ''
+  const hasLegacySelection = isLegacyTTSSelection(curOptions)
 
   // TTS Mention 菜单回调 - 先定义，以便传递给 extension
   const handleTTSMenuOpenRef = useRef<(props: { range: { from: number; to: number }; query: string }) => void>()
@@ -112,13 +140,14 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
     // 可以在这里处理语音选择后的逻辑
   }
   const ttsMenu = useTTSMentionMenu(editor, {
-    initialProvider: ttsProvider,
+    initialProvider: effectiveProvider,
     onVoiceSelect: handleVoiceSelect,
   })
 
   // TTS Bubble Menu（选中文本后显示）
   const ttsBubbleMenu = useTTSBubbleMenu(editor, {
-    provider: ttsProvider,
+    provider: effectiveProvider,
+    configKey: effectiveProviderConfigKey,
   })
 
   // TTS Mention 菜单回调 - 更新 ref
@@ -168,17 +197,24 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         setTTSType(currentFile.type)
         dataStore?.setTTSType(currentFile.type)
       }
-      setVoice(currentFile.voiceLocalName)
-      if (currentFile.ttsOptions) {
-        setCurOptions(currentFile.ttsOptions)
-        const ttsOptions = currentFile.ttsOptions.ttsOptions
-        if (currentFile.ttsOptions.service === 'Edge') {
-          setVoice(ttsOptions?.voice?.properties?.LocalName)
-          setOriginalVoice(ttsOptions?.voice?.properties?.LocalName)
-        } else {
-          setVoice(ttsOptions?.voice?.label)
-          setOriginalVoice(ttsOptions?.voice?.label)
+      const storedSelection = parseStoredTTSSelection(currentFile.ttsOptions)
+      if (storedSelection) {
+        const providerMeta = pluginStore?.findTTSProviderByValue(storedSelection.provider)
+        const manifest = providerMeta
+          ? pluginStore?.findManifestByProviderValue(storedSelection.provider)
+          : undefined
+        const resolvedSelection = resolveStoredTTSSelection(storedSelection, providerMeta, manifest)
+
+        setCurOptions(resolvedSelection)
+        setVoice(resolvedSelection?.displayLabel)
+        setOriginalVoice(resolvedSelection?.displayLabel)
+
+        if (providerMeta && pluginStore?.provider !== providerMeta.provider) {
+          pluginStore?.setProvider(providerMeta.provider)
         }
+      } else {
+        setVoice(currentFile.voiceLocalName)
+        setOriginalVoice(currentFile.voiceLocalName)
       }
     } else if (dataStore?.TTSType) {
       setTTSType(dataStore.TTSType)
@@ -187,7 +223,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
       setBgm(bgmData)
     }
 
-  }, [dataStore, bgmData, currentFile])
+  }, [availableTTSProvidersKey, dataStore, bgmData, currentFile, pluginStore])
 
   useEffect(() => {
     return () => {
@@ -314,9 +350,24 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
   }
 
   const generateAudio = async () => {
+    if (!curOptions || !currentFile || !editor) {
+      toast({
+        variant: 'destructive',
+        description: t('tts.select voice', { defaultValue: 'Please select a TTS plugin and voice first.' }),
+      })
+      return
+    }
+
     try {
-      const result: TemoData = await mergeTemo({ target: curOptions!.target!, service: curOptions!.service!, speed: curOptions!.speed!, uuid: currentFile!.uuid, editorData: editor?.getJSON(), bgm }, curOptions!.ttsOptions!)
+      const result = await mergeTemo({
+        selection: curOptions,
+        uuid: currentFile.uuid,
+        editorData: editor.getJSON(),
+        bgm,
+      })
       if (result) {
+        result.voiceLocalName = result.voiceLocalName || curOptions.displayLabel
+        result.ttsOptions = result.ttsOptions || cloneDeep(curOptions)
         console.log(result)
         updateList && updateList(updateTemoData(result))
       }
@@ -327,12 +378,7 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
 
   const addVoice = (data: VoiceOptions) => {
     setOpenSynthesis(false)
-    const ttsOptions = data.ttsOptions
-    if (data.service === 'Edge') {
-      setVoice(ttsOptions?.voice.properties.LocalName)
-    } else {
-      setVoice(ttsOptions?.voice.label)
-    }
+    setVoice(data.displayLabel)
     setCurOptions(data)
   }
 
@@ -351,13 +397,13 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
             ? <div className='flex flex-1 items-center gap-3 pr-3'>
               <span className='text-sm whitespace-nowrap text-muted-foreground'>{t('tts.provider')}</span>
               <div className='w-full max-w-52'>
-                <SelectTTSProvider onChange={(value) => onProviderChange?.(value as 'Edge' | 'OpenAI' | 'Volcano')} />
+                <SelectTTSProvider onChange={onProviderChange || (() => undefined)} />
               </div>
             </div>
             : <div></div>
         }
         <div className='flex items-center flex-shrink-0 gap-1'>
-          {from != 'home' && <Button aria-label={t('tts.synthesis')} variant={'ghost'} size={"sm"} disabled={synthesizing} onClick={generateAudio}>
+          {from != 'home' && <Button aria-label={t('tts.synthesis')} variant={'ghost'} size={"sm"} disabled={synthesizing || !curOptions || hasLegacySelection} onClick={generateAudio}>
             {
               synthesizing
                 ? <TbLoader size={16} />
@@ -388,32 +434,37 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto">
-              <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
+              <TTSPanel getVoiceOptions={addVoice} voiceOptions={curOptions} showConfirmButton />
               {/* <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
                                 <span>{t('app.sure')}</span>
                             </Button> */}
             </PopoverContent>
           </Popover>}
 
-          {
-            !usePlugin.current && <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
-              <PopoverTrigger asChild>
-                <Button aria-label={t('app.translate')} variant={'ghost'} size={"sm"}>
-                  {translating ? <TbLoader className='transition-colors ease-linear animate-spin' /> : <TbLanguage />}
-                  <span className="text-sm">{t('app.translate')}</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto">
-                <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
-              </PopoverContent>
-            </Popover>
-          }
+          <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
+            <PopoverTrigger asChild>
+              <Button aria-label={t('app.translate')} variant={'ghost'} size={"sm"}>
+                {translating ? <TbLoader className='transition-colors ease-linear animate-spin' /> : <TbLanguage />}
+                <span className="text-sm">{t('app.translate')}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto">
+              <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
+            </PopoverContent>
+          </Popover>
           <Button aria-label={t('app.clear')} variant={'ghost'} size={"sm"} onClick={clear}>
             <TbEraser size={18} />
             <span className="text-sm">{t('app.clear')}</span>
           </Button>
         </div>
       </div>
+      {from !== 'home' && hasLegacySelection && (
+        <div className='mb-3 mr-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800'>
+          {t('tts.legacy selection notice', {
+            defaultValue: 'This history item uses legacy TTS settings. Open the voice selector and choose a plugin voice before synthesis.',
+          })}
+        </div>
+      )}
       <div id="drop-area" className='flex-1 overflow-y-auto pr-3'
         onDrop={handleDrop}
         onDragOver={(event) => event.preventDefault()}
@@ -442,11 +493,8 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore')(observer(({ setEd
         ref={ttsBubbleMenu.menuRef}
         isOpen={ttsBubbleMenu.isOpen}
         position={ttsBubbleMenu.position}
-        speed={ttsBubbleMenu.speed}
-        emotion={ttsBubbleMenu.emotion}
-        emotionOptions={ttsBubbleMenu.getEmotionOptions()}
-        onSpeedChange={ttsBubbleMenu.setSpeed}
-        onEmotionChange={ttsBubbleMenu.setEmotion}
+        fields={ttsBubbleMenu.fields}
+        onFieldChange={ttsBubbleMenu.setFieldValue}
         onClear={ttsBubbleMenu.clearMark}
       />
     </>

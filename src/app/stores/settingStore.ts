@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next'
 import { makeAutoObservable, runInAction } from 'mobx'
 import { makePersistable } from 'mobx-persist-store'
 
+import { registerPluginI18nBundle } from '@/app/lib/plugin-i18n'
 import { fallbackLanguage, localesResources } from '@/app/locales'
 import { AppSettings } from '@/app/interface'
 import { SettingChange } from '@/app/types'
@@ -50,7 +51,12 @@ class SettingStore {
     if (e && e.ipcData) {
       const msg = e.ipcData as SettingChange
       if (msg.type === 'setting:change') {
+        const previousLanguage = this.settings.language
         this.settings = msg.data
+
+        if (this.i18nInit && msg.data.language && msg.data.language !== previousLanguage) {
+          void i18n.changeLanguage(msg.data.language)
+        }
       }
     }
   };
@@ -61,6 +67,10 @@ class SettingStore {
     i18n.addResource(languageCode, 'translation', key, translation);
     // }
   };
+
+  registerPluginTranslations = (pluginId: string, translations?: Record<string, Record<string, any>>) => {
+    registerPluginI18nBundle(pluginId, translations)
+  }
 
   // handleChangeSettingMessage = () => {
   //   eventBus.on(customEvents.RendererMessage, this.handleMessage)

@@ -138,7 +138,7 @@ export function selectVoice(
   const deleteTr = state.tr.delete(from, to)
 
   // 插入语音标签
-  const voiceLabel = config.voiceLocalName || config.voice || config.voiceType || ''
+  const voiceLabel = config.displayLabel || config.voiceLocalName || config.voice || config.voiceType || ''
 
   // 创建一个带有自定义属性的文本节点
   const node = state.schema.text(`@${voiceLabel}`, [

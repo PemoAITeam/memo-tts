@@ -412,6 +412,7 @@ export interface TextSegment {
   text: string
   speed?: number | null
   emotion?: string | null
+  config?: Record<string, any> | null
   voiceConfig?: Record<string, any> | null
 }
 

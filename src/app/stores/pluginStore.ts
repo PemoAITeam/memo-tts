@@ -1,9 +1,10 @@
 import { compareVersions } from "compare-versions";
-import { cloneDeep } from "lodash-es";
+import { cloneDeep, isEqual } from "lodash-es";
 import { Plugin, PluginProvider, PluginReturnType } from "memo-plugin-manager";
 import { autorun, IReactionDisposer, makeAutoObservable, reaction, runInAction, when } from "mobx";
 
 import { customEvents, eventBus } from "@/events/eventBus";
+import { findTTSProviderMeta, getTTSProviderMetaList, type TTSProviderMeta } from "@/app/lib/tts-plugin";
 
 import { settingStore } from "./";
 
@@ -90,13 +91,37 @@ class PluginStore {
 
 
   // ---------------------------------------------------------传统合成
-  provider = 'Edge'
+  provider = ""
   setProvider = (value: string) => {
+    if (this.provider === value) {
+      return;
+    }
+
     this.provider = value;
   }
-  ttsProviders: any[] = [];
-  setTTSProviders = (value: any[]) => {
+  runtimeTTSConfigurations: Record<string, Record<string, any>> = {};
+  setRuntimeTTSConfiguration = (provider: string, config: Record<string, any>) => {
+    if (!provider) {
+      return;
+    }
+
+    const nextConfig = cloneDeep(config || {});
+    if (isEqual(this.runtimeTTSConfigurations[provider], nextConfig)) {
+      return;
+    }
+
+    this.runtimeTTSConfigurations[provider] = nextConfig;
+  };
+  getRuntimeTTSConfiguration = (provider: string) => {
+    return this.runtimeTTSConfigurations[provider];
+  };
+  ttsProviders: TTSProviderMeta[] = [];
+  setTTSProviders = (value: TTSProviderMeta[]) => {
     this.ttsProviders = value;
+    if (!this.provider || !this.ttsProviders.find((item) => item.provider === this.provider)) {
+      const firstAvailableProvider = this.ttsProviders.find((item) => !item.disabled);
+      this.provider = firstAvailableProvider?.provider || "";
+    }
   }
   // ---------------------------------------------------------
 
@@ -120,11 +145,10 @@ class PluginStore {
 
   setPluginI18n = () => {
     if (this.memoPlugins) {
+      this.setTTSProviders(getTTSProviderMetaList(this.memoPlugins));
       if (this.memoPlugins.installedPluginsI18ns && Object.keys(this.memoPlugins.installedPluginsI18ns).length) {
         Object.keys(this.memoPlugins.installedPluginsI18ns).forEach((pluginId) => {
-          for (const key in this.memoPlugins?.installedPluginsI18ns[pluginId]) {
-            settingStore.addTranslationIfNotExists(key, pluginId, this.memoPlugins?.installedPluginsI18ns[pluginId][key]);
-          }
+          settingStore.registerPluginTranslations(pluginId, this.memoPlugins?.installedPluginsI18ns[pluginId]);
         });
       }
     }
@@ -170,6 +194,19 @@ class PluginStore {
     if (provider) {
       return this.memoPlugins?.installedPlugins[provider.pluginId!];
     }
+  };
+
+  findTTSProviderByValue = (value: string) => {
+    return findTTSProviderMeta(this.ttsProviders, value);
+  };
+
+  findManifestByProviderValue = (value: string) => {
+    const provider = this.findTTSProviderByValue(value);
+    if (!provider) {
+      return undefined;
+    }
+
+    return this.memoPlugins?.installedPluginsManifests?.[provider.pluginId];
   };
 
   openPluginConfiguration = (plugins: Plugin) => {

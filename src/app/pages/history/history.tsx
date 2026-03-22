@@ -9,7 +9,6 @@ import { getTextFragment, updateTemoData } from '@/app/lib/utils';
 // import { PiVinylRecord } from "react-icons/pi";
 import { GrCheckboxSelected } from "react-icons/gr";
 // import { Editor } from '@tiptap/react';
-// import { TTSOptions } from '@/app/lib/tts';
 import { useToast } from "@/app/components/ui/use-toast"
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import {
@@ -114,12 +113,12 @@ const HistoryPage = inject('settingStore', 'dataStore', 'appStore')(observer(({ 
             case 'temo:audio:error':
                 console.log(messageData)
                 const error = messageData.data?.message;
-                if (error.includes('Unsupported voice')) {
+                if (typeof error === 'string' && error.includes('Unsupported voice')) {
                     toast({
                         variant: "destructive",
                         description: t('Unsupported voice')
                     })
-                } else {
+                } else if (error) {
                     toast({
                         variant: "destructive",
                         description: error

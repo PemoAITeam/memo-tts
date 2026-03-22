@@ -7,16 +7,24 @@ if (!window.AIM) {
   window.AIM = new Bridge({
     methods: [
       "getSetting",
-      "updateTemoData",
-      "deleteTemoData",
-      "getTemoData",
-      "saveTemoLibrary",
-      "mergeTemo",
-      "temoDownload",
       "openDialog",
-      "renderMedia",
-      "getTemoAudition",
-      "translateContent"
+      "translateContent",
+      "plugin.readLocalPlugins",
+      "plugin.saveConfiguration",
+      "plugin.getProviders",
+      "tts.getTemoData",
+      "tts.updateTemoData",
+      "tts.deleteTemoData",
+      "tts.getTemoLibrary",
+      "tts.saveTemoLibrary",
+      "tts.copyTemoFile",
+      "tts.mergeTemo",
+      "tts.abortMergeTemo",
+      "tts.getTemoAudition",
+      "tts.synthesize",
+      "tts.getPluginEditorOptions",
+      "tts.renderMedia",
+      "tts.temoDownload"
     ],
     appId: "memo-plugin-app-tts",
   }) || {}

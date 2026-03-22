@@ -1,55 +1,298 @@
-/**
- * TTS Bubble Menu Hook
- * 用于管理选中文本后的悬浮菜单状态
- */
-
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Editor } from '@tiptap/react'
-import { getEmotionSubMenu, SpeedMenuItem } from './tts-speed'
-import type { ScenesType } from '../volcano.config'
+import { pluginStore } from '@/app/stores'
+import { translatePluginOptionLabel, translatePluginText } from '@/app/lib/plugin-i18n'
+import {
+  getTTSSelectionConfig,
+  getProviderEditorFieldKeyMap,
+  getProviderEditorFieldOptions,
+  getProviderEditorFields,
+  type TTSProviderEditorField,
+} from '@/app/lib/tts-plugin'
+import { getActiveTTSMentionValueBeforeOffset } from '@/app/lib/tts-segments'
+import {
+  buildTTSMarkAttributesFromConfig,
+  getTTSMarkConfigFromAttributes,
+} from './tts-mark'
+import type { TTSFieldOption, TTSSegmentFieldControl } from './types'
 
 const TTS_MARK_NAME = 'ttsMark'
 
 export interface TTSBubbleMenuState {
   isOpen: boolean
   position: { x: number; y: number }
-  speed: number | null
-  emotion: string | null
+  config: Record<string, any>
+  contextConfig: Record<string, any>
 }
 
 interface UseTTSBubbleMenuOptions {
-  provider?: 'Edge' | 'OpenAI' | 'Volcano'
-  scene?: ScenesType
+  provider?: string
+  configKey?: string
 }
 
-// 保存选区的接口
 interface SavedSelection {
   from: number
   to: number
+}
+
+function stableSerializeConfig(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerializeConfig(item)).join(',')}]`
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([key, itemValue]) => `${JSON.stringify(key)}:${stableSerializeConfig(itemValue)}`)
+
+    return `{${entries.join(',')}}`
+  }
+
+  return JSON.stringify(value)
+}
+
+function isSameFieldOptions(nextOptions: TTSFieldOption[], prevOptions: TTSFieldOption[]) {
+  if (nextOptions.length !== prevOptions.length) {
+    return false
+  }
+
+  return nextOptions.every((item, index) => {
+    const current = prevOptions[index]
+    return !!current
+      && current.id === item.id
+      && current.type === item.type
+      && current.label === item.label
+      && current.value === item.value
+      && current.description === item.description
+      && current.fieldKey === item.fieldKey
+      && current.role === item.role
+  })
+}
+
+function isSameControls(nextControls: TTSSegmentFieldControl[], prevControls: TTSSegmentFieldControl[]) {
+  if (nextControls.length !== prevControls.length) {
+    return false
+  }
+
+  return nextControls.every((item, index) => {
+    const current = prevControls[index]
+    return !!current
+      && current.key === item.key
+      && current.label === item.label
+      && current.type === item.type
+      && current.role === item.role
+      && current.value === item.value
+      && isSameFieldOptions(item.options, current.options)
+  })
+}
+
+function normalizeFieldValue(field: Pick<TTSProviderEditorField, 'role'>, value: unknown) {
+  if (value === undefined || value === null || value === '') {
+    return null
+  }
+
+  if (field.role === 'speed') {
+    const numericValue = Number(value)
+    if (Number.isFinite(numericValue) && numericValue === 1) {
+      return null
+    }
+  }
+
+  if (field.role === 'emotion' && value === 'none') {
+    return null
+  }
+
+  return value as string | number
 }
 
 export function useTTSBubbleMenu(
   editor: Editor | null,
   options?: UseTTSBubbleMenuOptions
 ) {
-  const { provider, scene } = options || {}
+  const activeProvider = options?.provider || pluginStore.provider
 
   const [state, setState] = useState<TTSBubbleMenuState>({
     isOpen: false,
     position: { x: 0, y: 0 },
-    speed: null,
-    emotion: null,
+    config: {},
+    contextConfig: {},
   })
+  const [fields, setFields] = useState<TTSSegmentFieldControl[]>([])
 
   const menuRef = useRef<HTMLDivElement>(null)
   const savedSelectionRef = useRef<SavedSelection | null>(null)
 
-  // 获取情绪选项列表
-  const getEmotionOptions = useCallback((): SpeedMenuItem[] => {
-    return getEmotionSubMenu(provider, scene)
-  }, [provider, scene])
+  const getProviderContext = useCallback(() => {
+    if (!activeProvider) {
+      return {
+        providerMeta: undefined,
+        fieldKeyMap: {},
+        segmentFields: [],
+      }
+    }
 
-  // 计算菜单位置
+    const providerMeta = pluginStore.findTTSProviderByValue(activeProvider)
+    const manifest = pluginStore.findManifestByProviderValue(activeProvider)
+    const fieldKeyMap = getProviderEditorFieldKeyMap(providerMeta, manifest, 'segment')
+    const segmentFields = getProviderEditorFields(providerMeta, manifest)
+      .filter((field) => field.scope.includes('segment') && field.role !== 'voice')
+
+    return {
+      providerMeta,
+      fieldKeyMap,
+      segmentFields,
+    }
+  }, [activeProvider])
+
+  const mapFieldOptions = useCallback((
+    pluginId: string | undefined,
+    field: Pick<TTSProviderEditorField, 'key' | 'type' | 'role' | 'useI18nOptions'>,
+    options: Array<{ value: string | number; label: string; description?: string }>
+  ): TTSFieldOption[] => {
+    return options.map((option) => ({
+      id: `${field.key}-${option.value}`,
+      type: field.type,
+      fieldKey: field.key,
+      role: field.role,
+      label: translatePluginOptionLabel(pluginId, option.label, field.useI18nOptions),
+      value: option.value,
+      description: option.description
+        ? translatePluginText(pluginId, option.description, option.description)
+        : option.description,
+    }))
+  }, [])
+
+  const getCurrentConfig = useCallback(() => {
+    if (!editor) {
+      return {}
+    }
+
+    const { from, to } = editor.state.selection
+    const ttsMarkType = editor.state.schema.marks.ttsMark
+    if (!ttsMarkType) {
+      return {}
+    }
+
+    const { fieldKeyMap } = getProviderContext()
+    let currentConfig: Record<string, any> | null = null
+
+    editor.state.doc.nodesBetween(from, to, (node) => {
+      if (!node.marks) {
+        return
+      }
+
+      node.marks.forEach((mark) => {
+        if (mark.type === ttsMarkType) {
+          const nextConfig = getTTSMarkConfigFromAttributes(mark.attrs, fieldKeyMap)
+          if (nextConfig) {
+            currentConfig = nextConfig
+          }
+        }
+      })
+    })
+
+    if (!currentConfig) {
+      try {
+        currentConfig = getTTSMarkConfigFromAttributes(editor.getAttributes(TTS_MARK_NAME), fieldKeyMap)
+      } catch {
+        currentConfig = null
+      }
+    }
+
+    return currentConfig || {}
+  }, [editor, getProviderContext])
+
+  const getCurrentSelectionContextConfig = useCallback(() => {
+    if (!editor || !activeProvider) {
+      return {}
+    }
+
+    const { providerMeta } = getProviderContext()
+    const selectionFilter = providerMeta
+      ? { provider: activeProvider, pluginId: providerMeta.pluginId }
+      : { provider: activeProvider }
+    const { $from } = editor.state.selection
+    const cardConfig = getTTSSelectionConfig($from.parent?.attrs?.voice, selectionFilter)
+    const inlineVoiceValue = getActiveTTSMentionValueBeforeOffset($from.parent, $from.parentOffset)
+    const inlineVoiceConfig = getTTSSelectionConfig(inlineVoiceValue, selectionFilter)
+
+    return {
+      ...(cardConfig || {}),
+      ...(inlineVoiceConfig || {}),
+    }
+  }, [activeProvider, editor, getProviderContext])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!activeProvider || !state.isOpen) {
+      setFields((prev) => (prev.length ? [] : prev))
+      return
+    }
+
+    const { providerMeta, segmentFields } = getProviderContext()
+    if (!providerMeta || !segmentFields.length) {
+      setFields((prev) => (prev.length ? [] : prev))
+      return
+    }
+
+    const runtimeConfig = pluginStore.getRuntimeTTSConfiguration(activeProvider) || {}
+    const selectionContextConfig = state.contextConfig || {}
+    const segmentConfig = state.config || {}
+    const mergedConfig = {
+      ...runtimeConfig,
+      ...selectionContextConfig,
+      ...segmentConfig,
+    }
+
+    void Promise.all(segmentFields.map(async (field) => {
+      const result = await getProviderEditorFieldOptions({
+        providerMeta,
+        field,
+        config: mergedConfig,
+        scope: 'segment',
+      })
+      const value = normalizeFieldValue(field, segmentConfig[field.key])
+      const nextOptions = mapFieldOptions(providerMeta.pluginId, field, result.options)
+
+      if (!nextOptions.length && value === null) {
+        return null
+      }
+
+        return {
+          key: field.key,
+          label: translatePluginText(providerMeta.pluginId, field.label, field.label),
+          type: field.type,
+          role: field.role,
+          value,
+        options: nextOptions,
+      } satisfies TTSSegmentFieldControl
+    }))
+      .then((results) => {
+        if (cancelled) {
+          return
+        }
+
+        const nextFields = results.filter((item): item is TTSSegmentFieldControl => !!item)
+        setFields((prev) => (isSameControls(nextFields, prev) ? prev : nextFields))
+      })
+      .catch(() => {
+        if (cancelled) {
+          return
+        }
+
+        setFields((prev) => (prev.length ? [] : prev))
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeProvider, getProviderContext, mapFieldOptions, options?.configKey, state.config, state.contextConfig, state.isOpen])
+
   const calculatePosition = useCallback((): { x: number; y: number } => {
     if (!editor) return { x: 0, y: 0 }
 
@@ -57,101 +300,62 @@ export function useTTSBubbleMenu(
     const start = editor.view.coordsAtPos(from)
     const end = editor.view.coordsAtPos(to)
 
-    // 菜单显示在选区上方居中
-    const x = (start.left + end.right) / 2
-    const y = Math.min(start.top, end.top) - 10 // 选区上方 10px
-
-    return { x, y }
-  }, [editor])
-
-  // 获取当前选区的 TTS 属性
-  const getCurrentAttributes = useCallback((): { speed: number | null; emotion: string | null } => {
-    if (!editor) return { speed: null, emotion: null }
-
-    const { from, to } = editor.state.selection
-
-    // 尝试获取选区内的 mark 属性
-    const ttsMarkType = editor.state.schema.marks.ttsMark
-    if (!ttsMarkType) return { speed: null, emotion: null }
-
-    let speed: number | null = null
-    let emotion: string | null = null
-
-    // 遍历选区内的所有位置，查找 ttsMark
-    editor.state.doc.nodesBetween(from, to, (node) => {
-      if (node.marks) {
-        node.marks.forEach((mark) => {
-          if (mark.type === ttsMarkType) {
-            if (mark.attrs.speed !== null && mark.attrs.speed !== undefined) {
-              speed = mark.attrs.speed
-            }
-            if (mark.attrs.emotion !== null && mark.attrs.emotion !== undefined) {
-              emotion = mark.attrs.emotion
-            }
-          }
-        })
-      }
-    })
-
-    // 如果没找到，尝试从编辑器获取活动 mark
-    if (speed === null && emotion === null) {
-      try {
-        const attrs = editor.getAttributes(TTS_MARK_NAME)
-        if (attrs.speed !== undefined && attrs.speed !== null) {
-          speed = attrs.speed
-        }
-        if (attrs.emotion !== undefined && attrs.emotion !== null) {
-          emotion = attrs.emotion
-        }
-      } catch (e) {
-        // 忽略错误
-      }
+    return {
+      x: (start.left + end.right) / 2,
+      y: Math.min(start.top, end.top) - 10,
     }
-
-    return { speed, emotion }
   }, [editor])
 
-  // 检查选区是否有效（非空且有文本）
   const isValidSelection = useCallback((): boolean => {
     if (!editor) return false
 
     const { from, to, empty } = editor.state.selection
-
-    // 空选区不显示
     if (empty) return false
-
-    // 选区长度过小不显示
     if (to - from < 1) return false
 
     return true
   }, [editor])
 
-  // 更新菜单状态
   const updateMenuState = useCallback(() => {
     if (!editor) return
 
     const shouldShow = isValidSelection()
 
     if (shouldShow) {
-      // 保存当前选区
       const { from, to } = editor.state.selection
       savedSelectionRef.current = { from, to }
 
       const position = calculatePosition()
-      const { speed, emotion } = getCurrentAttributes()
+      const config = getCurrentConfig()
+      const contextConfig = getCurrentSelectionContextConfig()
+      const nextConfigKey = stableSerializeConfig(config)
+      const nextContextConfigKey = stableSerializeConfig(contextConfig)
 
-      setState({
-        isOpen: true,
-        position,
-        speed,
-        emotion,
+      setState((prev) => {
+        const prevConfigKey = stableSerializeConfig(prev.config)
+        const prevContextConfigKey = stableSerializeConfig(prev.contextConfig)
+        if (
+          prev.isOpen
+          && prev.position.x === position.x
+          && prev.position.y === position.y
+          && prevConfigKey === nextConfigKey
+          && prevContextConfigKey === nextContextConfigKey
+        ) {
+          return prev
+        }
+
+        return {
+          isOpen: true,
+          position,
+          config,
+          contextConfig,
+        }
       })
     } else {
-      setState(prev => ({ ...prev, isOpen: false }))
+      setState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
     }
-  }, [editor, isValidSelection, calculatePosition, getCurrentAttributes])
+  }, [calculatePosition, editor, getCurrentConfig, getCurrentSelectionContextConfig, isValidSelection])
 
-  // 恢复选区并执行命令
   const withSavedSelection = useCallback((callback: () => void) => {
     if (!editor || !savedSelectionRef.current) {
       callback()
@@ -159,83 +363,77 @@ export function useTTSBubbleMenu(
     }
 
     const { from, to } = savedSelectionRef.current
-    // 恢复选区
     editor.chain().focus().setTextSelection({ from, to }).run()
     callback()
   }, [editor])
 
-  // 设置速度
-  const setSpeed = useCallback((speed: number | null) => {
-    if (!editor) return
+  const setFieldValue = useCallback((fieldKey: string, value: number | string | null) => {
+    if (!editor) {
+      return
+    }
+
+    const { fieldKeyMap, segmentFields } = getProviderContext()
+    const field = segmentFields.find((item) => item.key === fieldKey)
+    const normalizedValue = normalizeFieldValue(field || { role: undefined }, value)
 
     withSavedSelection(() => {
-      const { emotion } = getCurrentAttributes()
+      const currentConfig = getCurrentConfig()
+      const nextConfig = {
+        ...currentConfig,
+      }
 
-      // 1倍速是默认值，不需要标记
-      if (speed === null || speed === 1) {
-        // 移除速度属性，但保留 emotion
-        if (emotion && emotion !== 'none') {
-          editor.chain().setMark(TTS_MARK_NAME, { emotion }).run()
-        } else {
-          editor.chain().unsetMark(TTS_MARK_NAME).run()
-        }
+      if (normalizedValue === null) {
+        delete nextConfig[fieldKey]
       } else {
-        editor.chain().setMark(TTS_MARK_NAME, { speed, emotion }).run()
+        nextConfig[fieldKey] = normalizedValue
+      }
+
+      const nextAttributes = buildTTSMarkAttributesFromConfig(nextConfig, fieldKeyMap)
+      if (!nextAttributes.config) {
+        editor.chain().unsetMark(TTS_MARK_NAME).run()
+      } else {
+        editor.chain().setMark(TTS_MARK_NAME, nextAttributes).run()
       }
     })
 
-    // 1倍速显示为 null（默认）
-    setState(prev => ({ ...prev, speed: speed === 1 ? null : speed }))
-  }, [editor, getCurrentAttributes, withSavedSelection])
+    setState((prev) => {
+      const nextConfig = {
+        ...prev.config,
+      }
 
-  // 设置情绪
-  const setEmotion = useCallback((emotion: string | null) => {
-    if (!editor) return
-
-    withSavedSelection(() => {
-      const { speed } = getCurrentAttributes()
-
-      if (emotion === null || emotion === 'none') {
-        // 移除情绪属性，但保留 speed（1倍速除外）
-        if (speed && speed !== 1) {
-          editor.chain().setMark(TTS_MARK_NAME, { speed }).run()
-        } else {
-          editor.chain().unsetMark(TTS_MARK_NAME).run()
-        }
+      if (normalizedValue === null) {
+        delete nextConfig[fieldKey]
       } else {
-        // 设置情绪时，只有非1倍速才保留 speed
-        const attrs: { speed?: number; emotion: string } = { emotion }
-        if (speed && speed !== 1) {
-          attrs.speed = speed
-        }
-        editor.chain().setMark(TTS_MARK_NAME, attrs).run()
+        nextConfig[fieldKey] = normalizedValue
+      }
+
+      return {
+        ...prev,
+        config: nextConfig,
       }
     })
+  }, [editor, getCurrentConfig, getProviderContext, withSavedSelection])
 
-    setState(prev => ({ ...prev, emotion: emotion === 'none' ? null : emotion }))
-  }, [editor, getCurrentAttributes, withSavedSelection])
-
-  // 清除所有标记
   const clearMark = useCallback(() => {
-    if (!editor) return
+    if (!editor) {
+      return
+    }
 
     withSavedSelection(() => {
       editor.chain().unsetMark(TTS_MARK_NAME).run()
     })
-    setState(prev => ({ ...prev, speed: null, emotion: null }))
+
+    setState((prev) => ({ ...prev, config: {} }))
   }, [editor, withSavedSelection])
 
-  // 关闭菜单
   const closeMenu = useCallback(() => {
-    setState(prev => ({ ...prev, isOpen: false }))
+    setState((prev) => ({ ...prev, isOpen: false }))
   }, [])
 
-  // 监听编辑器选区变化
   useEffect(() => {
     if (!editor) return
 
     const handleSelectionUpdate = () => {
-      // 使用 setTimeout 确保选区已更新
       setTimeout(updateMenuState, 0)
     }
 
@@ -248,26 +446,11 @@ export function useTTSBubbleMenu(
     }
   }, [editor, updateMenuState])
 
-  // 点击外部关闭菜单
-  useEffect(() => {
-    if (!state.isOpen) return
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        // 不关闭，让选区变化时自然会关闭
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [state.isOpen])
-
   return {
     ...state,
     menuRef,
-    getEmotionOptions,
-    setSpeed,
-    setEmotion,
+    fields,
+    setFieldValue,
     clearMark,
     closeMenu,
   }

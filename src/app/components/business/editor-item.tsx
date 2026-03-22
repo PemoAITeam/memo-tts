@@ -1,12 +1,13 @@
-import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { TbMicrophone, TbX, TbLanguage } from "react-icons/tb";
-import { generateUUID, getSpeed } from "@/app/lib/utils";
+import { generateUUID } from "@/app/lib/utils";
 import TranslatePanel from "./translate-panel";
 import { cloneDeep } from "lodash-es";
-import { WhisperSegments } from "@/app/interface";
+import type { WhisperSegments } from "@/app/interface";
 import { Button } from "../ui/button";
-import TTSPanel, { VoiceOptions } from "./tts-panel";
-import { useState } from "react";
+import TTSPanel, { type VoiceOptions } from "./tts-panel";
+import { parseStoredTTSSelection } from "@/app/lib/tts-plugin";
+import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { useTranslation } from "react-i18next";
 import { observer } from "mobx-react";
@@ -30,15 +31,26 @@ function getContrastingColor(color: string): string {
   return yiq >= 128 ? "#000000" : "#ffffff";
 }
 
+function getVoiceBadgeLabel(voice: any, t: any): string {
+  const selection = parseStoredTTSSelection(voice);
+  const displayLabel = selection?.displayLabel || voice?.displayLabel || voice?.voiceLocalName;
+  if (!displayLabel) {
+    return "";
+  }
+
+  const target = selection?.target || voice?.target || "original";
+  return `${displayLabel}(${target === "original" ? t("tts.original text") : t("tts.translate text")})`;
+}
+
 const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
   const { t } = useTranslation();
-  const [voice, setVoice] = useState<string>(
-    node.attrs.voice
-      ? `${node.attrs.voice?.voiceLocalName}(${!node.attrs.voice?.target || node.attrs.voice?.target === "original" ? t("tts.original text") : t("tts.translate text")}-${node.attrs.voice?.speed || 1})`
-      : ""
-  );
+  const [voice, setVoice] = useState<string>(() => getVoiceBadgeLabel(node.attrs.voice, t));
   const [openTTS, setOpenTTS] = useState(false);
   const [openTranslate, setOpenTranslate] = useState(false);
+
+  useEffect(() => {
+    setVoice(getVoiceBadgeLabel(node.attrs.voice, t));
+  }, [node.attrs.voice, t]);
 
   const addTranslate = (translateData: WhisperSegments[]) => {
     const jsonData = editor.getJSON();
@@ -70,41 +82,8 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
     if (jsonData.content) {
       const curItem = jsonData.content?.find((item) => item.attrs?.id == node.attrs.id && item.type === "editorCard");
       if (curItem && curItem.attrs) {
-        const { speed, target, service, ttsOptions } = data;
-        if (service === "Edge") {
-          const rate = getSpeed(speed!);
-          curItem.attrs.voice = {
-            type: "Edge",
-            lang: ttsOptions?.lang,
-            rate,
-            pitch: 0,
-            voiceName: ttsOptions?.voice?.shortName,
-            voiceLocalName: ttsOptions?.voice?.properties.LocalName,
-            target,
-            ttsOptions: data,
-          };
-        } else if (service === "OpenAI") {
-          curItem.attrs.voice = {
-            type: "OpenAI",
-            model: ttsOptions?.model,
-            speed,
-            voice: ttsOptions?.voice?.value,
-            voiceLocalName: ttsOptions?.voice?.label,
-            target,
-            ttsOptions: data,
-          };
-        } else if (service === "Volcano") {
-          curItem.attrs.voice = {
-            type: "Volc",
-            emotion: ttsOptions?.emotion,
-            voice_type: ttsOptions?.voice?.value,
-            voiceLocalName: ttsOptions?.voice?.label,
-            scene: ttsOptions?.scenes,
-            target,
-            ttsOptions: data,
-          };
-        }
-        setVoice(`${curItem.attrs.voice.voiceLocalName}(${target === "original" ? t("tts.original text") : t("tts.translate text")}-${speed})`);
+        curItem.attrs.voice = cloneDeep(data);
+        setVoice(getVoiceBadgeLabel(curItem.attrs.voice, t));
         editor.chain().setContent(jsonData, true).focus().run();
       }
     }
@@ -151,7 +130,7 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
               </Button>
             </PopoverTrigger>
             <PopoverContent side="right" sideOffset={10} className="w-auto editor-card-tts">
-              <TTSPanel getVoiceOptions={addVoice} showConfirmButton />
+              <TTSPanel getVoiceOptions={addVoice} voiceOptions={parseStoredTTSSelection(node.attrs.voice)} showConfirmButton />
             </PopoverContent>
           </Popover>
         </div>

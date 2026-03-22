@@ -1,207 +1,366 @@
-import { TTSMenuItem, MenuPath } from './types'
-import { lang, voices } from '../tts'
-import { VolcanoScenes, VolcanoVoiceType, VolcanoEmotion, VolcanoSceneEmotion } from '../volcano.config'
+import i18n from 'i18next'
 
-// ============ 服务提供商列表 ============
-export const getProviders = (): TTSMenuItem[] => [
-  {
-    id: 'edge',
-    type: 'provider',
-    label: 'Edge TTS',
-    labelEn: 'edge',
-    icon: 'TbBrandEdge',
-    data: { provider: 'Edge' }
-  },
-  {
-    id: 'volcano',
-    type: 'provider',
-    label: '火山引擎',
-    labelEn: 'volcano',
-    icon: 'TbVolcano',
-    data: { provider: 'Volcano' }
-  },
-  {
-    id: 'openai',
-    type: 'provider',
-    label: 'OpenAI',
-    labelEn: 'openai',
-    icon: 'TbBrandOpenai',
-    data: { provider: 'OpenAI' }
-  }
+import { translatePluginOptionLabel, translatePluginText } from '@/app/lib/plugin-i18n'
+import { pluginStore } from '@/app/stores'
+import {
+  findProviderEditorField,
+  getFieldDisplayValue,
+  getProviderFieldChoiceOptions,
+  type TTSConfigScope,
+  type MemoTTSEditorRole,
+} from '@/app/lib/tts-plugin'
+
+import type { MenuPath, SelectedVoiceConfig, TTSMenuItem } from './types'
+
+type PathRole = Extract<MemoTTSEditorRole, 'language' | 'scene' | 'model'>
+
+const PROVIDER_ICON_MAP: Array<{ match: RegExp; icon: string }> = [
+  { match: /edge/i, icon: 'TbBrandEdge' },
+  { match: /openai/i, icon: 'TbBrandOpenai' },
+  { match: /volc|volcano/i, icon: 'TbVolcano' },
 ]
 
-// ============ Edge TTS 数据 ============
-export const getEdgeLanguages = (): TTSMenuItem[] => {
-  return (Object.keys(lang) as Array<keyof typeof lang>).map(code => ({
-    id: `lang-${code}`,
-    type: 'language' as const,
-    label: lang[code],
-    labelEn: code.toLowerCase(),
-    data: { code }
-  }))
+function resolveProviderIcon(provider: string, pluginId?: string) {
+  const source = `${provider} ${pluginId || ''}`
+  return PROVIDER_ICON_MAP.find((item) => item.match.test(source))?.icon || 'TbMicrophone'
 }
 
-export const getEdgeVoices = (languageCode: string): TTSMenuItem[] => {
-  const locale = languageCode.replace(/_/g, '-').toLowerCase()
-  return voices
-    .filter(v => v.locale.toLowerCase() === locale)
-    .map(v => ({
-      id: `voice-${v.shortName}`,
-      type: 'voice' as const,
-      label: v.properties.LocalName,
-      labelEn: v.properties.DisplayName?.toLowerCase() || '',
-      gender: v.properties.Gender as 'Male' | 'Female',
-      data: {
-        shortName: v.shortName,
-        locale: v.locale,
-        properties: v.properties
-      }
-    }))
+function translateOptionLabel(pluginId: string | undefined, label: string, useI18n?: boolean) {
+  return translatePluginOptionLabel(pluginId, label, useI18n)
 }
 
-// ============ 火山引擎数据 ============
-export const getVolcanoScenes = (): TTSMenuItem[] => {
-  return VolcanoScenes.map(scene => ({
-    id: `scene-${scene.value}`,
-    type: 'scene' as const,
-    label: scene.label,
-    labelEn: scene.value,
-    data: { scene: scene.value }
-  }))
+function getProviderContext(providerValue?: string) {
+  const providerMeta = providerValue
+    ? pluginStore.findTTSProviderByValue(providerValue)
+    : undefined
+  const manifest = providerMeta
+    ? pluginStore.findManifestByProviderValue(providerValue!)
+    : undefined
+
+  return {
+    providerMeta,
+    manifest,
+  }
 }
 
-export const getVolcanoEmotions = (scene: string): TTSMenuItem[] => {
-  const emotions = VolcanoSceneEmotion[scene as keyof typeof VolcanoSceneEmotion] || []
-  return emotions.map((emotion: { label: string; value: string }) => ({
-    id: `emotion-${emotion.value}`,
-    type: 'emotion' as const,
-    label: emotion.label,
-    labelEn: emotion.value,
-    data: { emotion: emotion.value }
-  }))
+function getProviderRuntimeConfig(providerValue: string) {
+  const { providerMeta, manifest } = getProviderContext(providerValue)
+  if (!providerMeta || !manifest) {
+    return {}
+  }
+
+  const version = pluginStore.memoPlugins?.localPlugins?.versions?.[providerMeta.pluginId]
+  const storedConfig = version
+    ? pluginStore.memoPlugins?.pluginsConfigurations?.[`${providerMeta.pluginId}@${version}`] || {}
+    : {}
+  const defaultsConfig = manifest.defaultsConfiguration || {}
+  const runtimeConfig = pluginStore.getRuntimeTTSConfiguration(providerValue) || {}
+
+  return {
+    ...defaultsConfig,
+    ...storedConfig,
+    ...runtimeConfig,
+  }
 }
 
-export const getVolcanoVoices = (scene: string): TTSMenuItem[] => {
-  const voices = VolcanoVoiceType[scene as keyof typeof VolcanoVoiceType] || []
-  return voices.map(voice => ({
-    id: `voice-${voice.value}`,
-    type: 'voice' as const,
-    label: voice.label,
-    labelEn: voice.value.toLowerCase(),
-    gender: voice.gender as 'male' | 'female',
-    data: {
-      voiceType: voice.value,
-      label: voice.label
+function getField(providerValue: string, role: MemoTTSEditorRole, scope: 'segment' | 'card' | 'global' = 'segment') {
+  const { providerMeta, manifest } = getProviderContext(providerValue)
+  return findProviderEditorField(providerMeta, manifest, role, scope)
+}
+
+function getFieldByScopes(
+  providerValue: string,
+  role: MemoTTSEditorRole,
+  scopes: TTSConfigScope[]
+) {
+  for (const scope of scopes) {
+    const field = getField(providerValue, role, scope)
+    if (field) {
+      return field
     }
-  }))
-}
-
-// 根据语音获取支持的情感
-export const getVolcanoVoiceEmotions = (voiceType: string): TTSMenuItem[] => {
-  const emotions = VolcanoEmotion[voiceType] || []
-  return emotions.map((emotion: { label: string; value: string }) => ({
-    id: `emotion-${emotion.value}`,
-    type: 'emotion' as const,
-    label: emotion.label,
-    labelEn: emotion.value,
-    data: { emotion: emotion.value }
-  }))
-}
-
-// ============ OpenAI 数据 ============
-export const getOpenAIModels = (): TTSMenuItem[] => [
-  {
-    id: 'model-tts-1',
-    type: 'model',
-    label: '标准模型',
-    labelEn: 'tts-1',
-    data: { model: 'tts-1' }
-  },
-  {
-    id: 'model-tts-1-hd',
-    type: 'model',
-    label: '高清模型',
-    labelEn: 'tts-1-hd',
-    data: { model: 'tts-1-hd' }
   }
-]
 
-export const openAIVoices: TTSMenuItem[] = [
-  { id: 'voice-alloy', type: 'voice', label: 'Alloy', labelEn: 'alloy', data: { voice: 'alloy' } },
-  { id: 'voice-echo', type: 'voice', label: 'Echo', labelEn: 'echo', data: { voice: 'echo' } },
-  { id: 'voice-fable', type: 'voice', label: 'Fable', labelEn: 'fable', data: { voice: 'fable' } },
-  { id: 'voice-onyx', type: 'voice', label: 'Onyx', labelEn: 'onyx', data: { voice: 'onyx' } },
-  { id: 'voice-nova', type: 'voice', label: 'Nova', labelEn: 'nova', data: { voice: 'nova' } },
-  { id: 'voice-shimmer', type: 'voice', label: 'Shimmer', labelEn: 'shimmer', data: { voice: 'shimmer' } }
-]
+  const { providerMeta, manifest } = getProviderContext(providerValue)
+  return findProviderEditorField(providerMeta, manifest, role)
+}
 
-// ============ 根据路径获取菜单项 ============
-// initialProvider: 如果提供，跳过服务商选择，直接进入该服务商的菜单
-export function getMenuItems(path: MenuPath, query?: string, initialProvider?: 'Edge' | 'Volcano' | 'OpenAI'): TTSMenuItem[] {
-  let items: TTSMenuItem[] = []
+function getPathValue(path: MenuPath, role: PathRole) {
+  if (role === 'language') {
+    return path.language
+  }
+  if (role === 'scene') {
+    return path.scene
+  }
+  return path.model
+}
 
-  // 如果提供了初始服务商，跳过服务商选择
+function setPathValue(path: MenuPath, role: PathRole, value: string) {
+  if (role === 'language') {
+    return { ...path, language: value }
+  }
+  if (role === 'scene') {
+    return { ...path, scene: value as any }
+  }
+  return { ...path, model: value }
+}
+
+function filterMenuItems(query: string | undefined, items: TTSMenuItem[]) {
+  if (!query?.trim()) {
+    return items
+  }
+
+  const normalizedQuery = query.toLowerCase().trim()
+  return items.filter((item) =>
+    item.label.toLowerCase().includes(normalizedQuery)
+    || item.labelEn?.toLowerCase().includes(normalizedQuery)
+  )
+}
+
+function createStatusItem(id: string, label: string, data?: Record<string, any>): TTSMenuItem {
+  return {
+    id,
+    type: 'voice',
+    label,
+    disabled: true,
+    data,
+  }
+}
+
+export function getLoadingMenuItems(label?: string): TTSMenuItem[] {
+  return [createStatusItem('tts-menu-loading', label || i18n.t('app.loading', { defaultValue: 'Loading...' }), { loading: true })]
+}
+
+function buildProviderPathConfig(providerValue: string, path: MenuPath) {
+  const runtimeConfig = getProviderRuntimeConfig(providerValue)
+  const config: Record<string, any> = {
+    ...runtimeConfig,
+  }
+
+  ;(['language', 'scene', 'model'] as PathRole[]).forEach((role) => {
+    const field = getFieldByScopes(providerValue, role, ['segment', 'card', 'global'])
+    const value = getPathValue(path, role)
+
+    if (field && value != null && value !== '') {
+      config[field.key] = value
+    }
+  })
+
+  return config
+}
+
+async function buildChoiceItems(
+  providerValue: string,
+  role: PathRole | 'voice',
+  path: MenuPath,
+  query?: string
+): Promise<TTSMenuItem[]> {
+  const { providerMeta, manifest } = getProviderContext(providerValue)
+  const contextConfig = buildProviderPathConfig(providerValue, path)
+  const { field, options } = await getProviderFieldChoiceOptions({
+    providerMeta,
+    manifest,
+    role,
+    scope: 'segment',
+    config: contextConfig,
+    query,
+  })
+
+  if (!field) {
+    return []
+  }
+
+  return options.map((option) => {
+    const translatedLabel = translateOptionLabel(providerMeta?.pluginId, option.label, field.useI18nOptions)
+    const menuType = role === 'voice' ? 'voice' : role
+
+    return {
+      id: `${providerValue}-${field.key}-${option.value}`,
+      type: menuType,
+      label: translatedLabel,
+      labelEn: String(option.value).toLowerCase(),
+      data: {
+        provider: providerValue,
+        fieldKey: field.key,
+        role,
+        value: option.value,
+        label: translatedLabel,
+      },
+    } satisfies TTSMenuItem
+  })
+}
+
+function buildUnavailableVoiceItem(providerValue: string): TTSMenuItem[] {
+  return [{
+    id: `${providerValue}-segment-voice-unavailable`,
+    type: 'voice',
+    label: i18n.t('tts.no results', { defaultValue: 'No segment voice options' }),
+    disabled: true,
+    data: {
+      provider: providerValue,
+      unavailable: true,
+    },
+  }]
+}
+
+export function getProviders(): TTSMenuItem[] {
+  return pluginStore.ttsProviders.map((provider) => ({
+    id: provider.pluginId,
+    type: 'provider',
+    label: translatePluginText(provider.pluginId, provider.label, provider.label || provider.provider),
+    labelEn: provider.provider.toLowerCase(),
+    icon: resolveProviderIcon(provider.provider, provider.pluginId),
+    disabled: provider.disabled,
+    data: {
+      provider: provider.provider,
+      pluginId: provider.pluginId,
+    },
+  }))
+}
+
+export async function getMenuItems(path: MenuPath, query?: string, initialProvider?: string): Promise<TTSMenuItem[]> {
   const effectiveProvider = initialProvider || path.provider
 
-  // 第一级：选择服务提供商（如果没有初始服务商）
   if (!effectiveProvider) {
-    items = getProviders()
+    return filterMenuItems(query, getProviders())
   }
-  // Edge TTS 路径
-  else if (effectiveProvider === 'Edge') {
-    if (!path.language) {
-      items = getEdgeLanguages()
-    } else {
-      items = getEdgeVoices(path.language)
+
+  for (const role of ['language', 'scene', 'model'] as PathRole[]) {
+    if (getPathValue(path, role)) {
+      continue
     }
-  }
-  // Volcano 路径
-  else if (effectiveProvider === 'Volcano') {
-    if (!path.scene) {
-      items = getVolcanoScenes()
-    } else {
-      items = getVolcanoVoices(path.scene)
-    }
-  }
-  // OpenAI 路径
-  else if (effectiveProvider === 'OpenAI') {
-    if (!path.model) {
-      items = getOpenAIModels()
-    } else {
-      items = openAIVoices
+
+    const roleItems = await buildChoiceItems(effectiveProvider, role, path, query)
+    if (roleItems.length) {
+      return filterMenuItems(query, roleItems)
     }
   }
 
-  // 应用搜索过滤
-  if (query && query.trim()) {
-    const q = query.toLowerCase().trim()
-    items = items.filter(item =>
-      item.label.toLowerCase().includes(q) ||
-      (item.labelEn && item.labelEn.toLowerCase().includes(q))
-    )
-  }
-
-  return items
+  const voiceItems = await buildChoiceItems(effectiveProvider, 'voice', path, query)
+  return filterMenuItems(query, voiceItems.length ? voiceItems : buildUnavailableVoiceItem(effectiveProvider))
 }
 
-// ============ 获取路径的面包屑 ============
 export function getBreadcrumb(path: MenuPath): string[] {
   const crumbs: string[] = []
+  if (!path.provider) {
+    return crumbs
+  }
 
-  if (path.provider) {
-    const provider = getProviders().find(p => p.data?.provider === path.provider)
-    crumbs.push(provider?.label || path.provider)
-  }
-  if (path.language) {
-    crumbs.push(lang[path.language as keyof typeof lang] || path.language)
-  }
-  if (path.scene) {
-    const scene = VolcanoScenes.find(s => s.value === path.scene)
-    crumbs.push(scene?.label || path.scene)
-  }
-  if (path.model) {
-    crumbs.push(path.model)
-  }
+  const { providerMeta } = getProviderContext(path.provider)
+  crumbs.push(translatePluginText(providerMeta?.pluginId, providerMeta?.label, providerMeta?.label || path.provider))
+
+  ;(['language', 'scene', 'model'] as PathRole[]).forEach((role) => {
+    const value = getPathValue(path, role)
+    if (value == null || value === '') {
+      return
+    }
+
+    const field = getFieldByScopes(path.provider!, role, ['segment', 'card', 'global'])
+    crumbs.push(getFieldDisplayValue(field, value, providerMeta?.pluginId))
+  })
 
   return crumbs
+}
+
+export function getNextMenuPath(path: MenuPath, item: TTSMenuItem): MenuPath | undefined {
+  if (item.disabled) {
+    return undefined
+  }
+
+  if (item.type === 'provider') {
+    return { provider: item.data?.provider as string }
+  }
+
+  if (item.type === 'language') {
+    return setPathValue(path, 'language', String(item.data?.value ?? item.data?.code ?? ''))
+  }
+
+  if (item.type === 'scene') {
+    return setPathValue(path, 'scene', String(item.data?.value ?? item.data?.scene ?? ''))
+  }
+
+  if (item.type === 'model') {
+    return setPathValue(path, 'model', String(item.data?.value ?? item.data?.model ?? ''))
+  }
+
+  return undefined
+}
+
+export function buildSelectedVoiceConfig(path: MenuPath, item: TTSMenuItem): SelectedVoiceConfig | undefined {
+  if (item.type !== 'voice' || item.disabled) {
+    return undefined
+  }
+
+  const provider = path.provider || item.data?.provider
+  if (!provider) {
+    return undefined
+  }
+
+  const { providerMeta } = getProviderContext(provider)
+  const voiceField = getField(provider, 'voice', 'segment')
+  if (!providerMeta || !voiceField) {
+    return undefined
+  }
+
+  const config: Record<string, any> = {}
+  const runtimeConfig = getProviderRuntimeConfig(provider)
+
+  const languageField = getFieldByScopes(provider, 'language', ['segment', 'card', 'global'])
+  const sceneField = getFieldByScopes(provider, 'scene', ['segment', 'card', 'global'])
+  const modelField = getFieldByScopes(provider, 'model', ['segment', 'card', 'global'])
+
+  if (languageField && path.language) {
+    config[languageField.key] = path.language
+  } else if (languageField && runtimeConfig[languageField.key] != null) {
+    config[languageField.key] = runtimeConfig[languageField.key]
+  }
+  if (sceneField && path.scene) {
+    config[sceneField.key] = path.scene
+  } else if (sceneField && runtimeConfig[sceneField.key] != null) {
+    config[sceneField.key] = runtimeConfig[sceneField.key]
+  }
+  if (modelField && path.model) {
+    config[modelField.key] = path.model
+  } else if (modelField && runtimeConfig[modelField.key] != null) {
+    config[modelField.key] = runtimeConfig[modelField.key]
+  }
+
+  const voiceValue = item.data?.value
+  if (voiceValue == null) {
+    return undefined
+  }
+
+  config[voiceField.key] = voiceValue
+
+  const selection: SelectedVoiceConfig = {
+    provider,
+    pluginId: providerMeta.pluginId,
+    displayLabel: item.label,
+    voiceLocalName: item.label,
+    config,
+    rawData: item.data,
+  }
+
+  const resolvedLanguage = path.language || (languageField ? runtimeConfig[languageField.key] : undefined)
+  const resolvedScene = path.scene || (sceneField ? runtimeConfig[sceneField.key] : undefined)
+  const resolvedModel = path.model || (modelField ? runtimeConfig[modelField.key] : undefined)
+
+  if (resolvedLanguage != null && resolvedLanguage !== '') {
+    selection.lang = String(resolvedLanguage)
+  }
+  if (resolvedScene != null && resolvedScene !== '') {
+    selection.scene = String(resolvedScene)
+  }
+  if (resolvedModel != null && resolvedModel !== '') {
+    selection.model = String(resolvedModel)
+  }
+
+  if (/voicetype/i.test(voiceField.key)) {
+    selection.voiceType = String(voiceValue)
+  } else if (/voicename/i.test(voiceField.key)) {
+    selection.voiceName = String(voiceValue)
+  } else {
+    selection.voice = String(voiceValue)
+  }
+
+  return selection
 }

@@ -1,16 +1,14 @@
-/**
- * TTS Mention Menu Component
- * 级联菜单样式，支持键盘导航和自动展开子菜单
- */
-
+import { ForwardedRef, forwardRef, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IoIosFemale, IoIosMale } from 'react-icons/io'
-import { TbVolume, TbBrandEdge, TbBrandOpenai, TbSearch } from 'react-icons/tb'
 import { MdOutlineLocalFireDepartment } from 'react-icons/md'
-import { TTSMenuItem, MenuPath } from '../../lib/tts-mention/types'
-import { getMenuItems, getBreadcrumb } from '../../lib/tts-mention/data'
+import { TbBrandEdge, TbBrandOpenai, TbMicrophone, TbSearch, TbVolume } from 'react-icons/tb'
+
+import { buildSelectedVoiceConfig, getBreadcrumb, getLoadingMenuItems, getMenuItems } from '../../lib/tts-mention/data'
+import { getTTSHostErrorMessage } from '../../lib/tts-plugin'
+import { MenuPath, TTSMenuItem } from '../../lib/tts-mention/types'
 import { cn } from '../../lib/utils'
-import { ForwardedRef, forwardRef, useRef, useState, useEffect } from 'react'
+import { toast } from '../ui/use-toast'
 
 interface TTSMenuProps {
   isOpen: boolean
@@ -25,21 +23,28 @@ interface TTSMenuProps {
   onClose: () => void
 }
 
-// 图标映射
-const iconMap: Record<string, React.ReactNode> = {
-  TbBrandEdge: <TbBrandEdge className="w-4 h-4" />,
-  TbBrandOpenai: <TbBrandOpenai className="w-4 h-4" />,
-  TbVolcano: <MdOutlineLocalFireDepartment className="w-4 h-4 text-orange-500" />,
+const iconMap: Record<string, ReactNode> = {
+  TbBrandEdge: <TbBrandEdge className="h-4 w-4" />,
+  TbBrandOpenai: <TbBrandOpenai className="h-4 w-4" />,
+  TbVolcano: <MdOutlineLocalFireDepartment className="h-4 w-4 text-orange-500" />,
+  TbMicrophone: <TbMicrophone className="h-4 w-4" />,
 }
 
-// 判断是否有下一级
 const hasChildren = (item: TTSMenuItem) => {
+  if (item.disabled) {
+    return false
+  }
+
   return (
-    item.type === 'provider' ||
-    item.type === 'language' ||
-    item.type === 'scene' ||
-    item.type === 'model'
+    item.type === 'provider'
+    || item.type === 'language'
+    || item.type === 'scene'
+    || item.type === 'model'
   )
+}
+
+const getItemPathValue = (item: TTSMenuItem) => {
+  return item.data?.value ?? item.data?.code ?? item.data?.scene ?? item.data?.model
 }
 
 export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
@@ -54,17 +59,17 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
       onQueryChange,
       onSelect,
       onGoBack,
-      onClose: _onClose,
     },
     ref: ForwardedRef<HTMLDivElement>
   ) => {
     const { t } = useTranslation()
     const inputRef = useRef<HTMLInputElement>(null)
-    const menuRef = useRef<HTMLDivElement>(null)
     const mainItemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
     const subItemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+    const previewAudioRef = useRef<HTMLAudioElement | null>(null)
+    const previewUrlRef = useRef<string | undefined>(undefined)
+    const synthesize = window.AIM?.tts?.synthesize
 
-    // 主菜单状态
     const [mainIndex, setMainIndex] = useState(0)
     const [subIndex, setSubIndex] = useState(0)
     const [isInSubMenu, setIsInSubMenu] = useState(false)
@@ -72,7 +77,125 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
     const [hoveredMainIndex, setHoveredMainIndex] = useState<number | null>(null)
     const [hoveredSubIndex, setHoveredSubIndex] = useState<number | null>(null)
 
-    // 主菜单自动滚动
+    const cleanupPreview = () => {
+      previewAudioRef.current?.pause()
+      previewAudioRef.current = null
+
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = undefined
+      }
+    }
+
+    const getChildPath = (item?: TTSMenuItem): MenuPath | undefined => {
+      if (!item || !hasChildren(item)) {
+        return undefined
+      }
+
+      if (item.type === 'provider') {
+        return { provider: item.data?.provider as string }
+      }
+
+      if (item.type === 'language') {
+        return { ...path, language: String(getItemPathValue(item) ?? '') }
+      }
+
+      if (item.type === 'scene') {
+        return { ...path, scene: String(getItemPathValue(item) ?? '') as any }
+      }
+
+      if (item.type === 'model') {
+        return { ...path, model: String(getItemPathValue(item) ?? '') }
+      }
+
+      return undefined
+    }
+
+    const extendItemWithPath = (item: TTSMenuItem, itemPath?: MenuPath) => {
+      if (!itemPath) {
+        return item
+      }
+
+      return {
+        ...item,
+        data: {
+          ...item.data,
+          menuPath: itemPath,
+        },
+      }
+    }
+
+    const auditionItem = async (item: TTSMenuItem, itemPath: MenuPath) => {
+      if (item.type !== 'voice' || item.disabled) {
+        return
+      }
+
+      if (!synthesize) {
+        toast({
+          variant: 'destructive',
+          description: t('tts.preview not supported', {
+            defaultValue: 'The Electron host has not exposed plugin voice preview yet.',
+          }),
+        })
+        return
+      }
+
+      const selection = buildSelectedVoiceConfig(itemPath, item)
+      if (!selection?.provider || !selection.pluginId) {
+        return
+      }
+
+      try {
+        const result = await synthesize({
+          provider: selection.provider,
+          pluginId: selection.pluginId,
+          text: 'Welcome to memo',
+          options: selection.config,
+          returnBuffer: true,
+        })
+
+        if (!result?.success || !result.data) {
+          toast({
+            variant: 'destructive',
+            description: getTTSHostErrorMessage(
+              result?.message,
+              t('tts.preview failed', {
+                defaultValue: 'Voice preview failed. Please check the plugin configuration in the host.',
+              })
+            ),
+          })
+          return
+        }
+
+        const bufferLike = result.data?.data ?? result.data
+        cleanupPreview()
+
+        const nextUrl = URL.createObjectURL(new Blob([bufferLike], { type: 'audio/mpeg' }))
+        const audio = new Audio(nextUrl)
+
+        previewUrlRef.current = nextUrl
+        previewAudioRef.current = audio
+        await audio.play()
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          description: getTTSHostErrorMessage(
+            error,
+            t('tts.preview failed', {
+              defaultValue: 'Voice preview failed. Please check the plugin configuration in the host.',
+            })
+          ),
+        })
+        console.warn('[TTSMenu] audition failed', error)
+      }
+    }
+
+    useEffect(() => {
+      return () => {
+        cleanupPreview()
+      }
+    }, [])
+
     useEffect(() => {
       const item = mainItemRefs.current.get(mainIndex)
       if (item) {
@@ -80,7 +203,6 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
       }
     }, [mainIndex])
 
-    // 子菜单自动滚动
     useEffect(() => {
       const item = subItemRefs.current.get(subIndex)
       if (item) {
@@ -88,7 +210,6 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
       }
     }, [subIndex])
 
-    // 当 path 改变时，重置状态
     useEffect(() => {
       setMainIndex(0)
       setSubIndex(0)
@@ -98,128 +219,168 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
       setHoveredSubIndex(null)
     }, [path])
 
-    // 当 items 改变时，重置主菜单索引
     useEffect(() => {
       setMainIndex(0)
       setIsInSubMenu(false)
       setSubMenuItems([])
     }, [parentItems])
 
-    // 获取当前主菜单项的子菜单
     const currentMainItem = parentItems[mainIndex]
-    useEffect(() => {
-      if (currentMainItem && hasChildren(currentMainItem)) {
-        // 计算子菜单路径
-        let childPath: MenuPath = { ...path }
-        if (currentMainItem.type === 'provider') {
-          childPath = { provider: currentMainItem.data?.provider as any }
-        } else if (currentMainItem.type === 'language') {
-          childPath = { ...path, language: currentMainItem.data?.code }
-        } else if (currentMainItem.type === 'scene') {
-          childPath = { ...path, scene: currentMainItem.data?.scene }
-        } else if (currentMainItem.type === 'model') {
-          childPath = { ...path, model: currentMainItem.data?.model }
-        }
-        const children = getMenuItems(childPath, '', path.provider)
-        setSubMenuItems(children)
-      } else {
-        setSubMenuItems([])
-      }
-    }, [mainIndex, currentMainItem, path])
+    const currentSubMenuPath = getChildPath(currentMainItem)
 
-    // 键盘导航
     useEffect(() => {
-      if (!isOpen) return
+      const nextSubMenuPath = getChildPath(currentMainItem)
+      let cancelled = false
+
+      if (!nextSubMenuPath) {
+        setSubMenuItems([])
+        return
+      }
+
+      setSubMenuItems(getLoadingMenuItems())
+      void getMenuItems(nextSubMenuPath, '', nextSubMenuPath.provider || path.provider)
+        .then((items) => {
+          if (!cancelled) {
+            setSubMenuItems(items)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setSubMenuItems([])
+          }
+        })
+      return () => {
+        cancelled = true
+      }
+    }, [currentMainItem, path.language, path.model, path.provider, path.scene])
+
+    useEffect(() => {
+      if (!isOpen) {
+        return
+      }
 
       const handleKeyDown = (e: KeyboardEvent) => {
+        const nextSubMenuPath = getChildPath(currentMainItem)
+
         if (isInSubMenu) {
-          // 在子菜单中
           if (e.key === 'ArrowUp') {
+            if (subMenuItems.length === 0) {
+              return
+            }
             e.preventDefault()
             setSubIndex((prev) => (prev - 1 + subMenuItems.length) % subMenuItems.length)
-          } else if (e.key === 'ArrowDown') {
+            return
+          }
+
+          if (e.key === 'ArrowDown') {
+            if (subMenuItems.length === 0) {
+              return
+            }
             e.preventDefault()
             setSubIndex((prev) => (prev + 1) % subMenuItems.length)
-          } else if (e.key === 'ArrowLeft') {
+            return
+          }
+
+          if (e.key === 'ArrowLeft') {
             e.preventDefault()
             setIsInSubMenu(false)
             setSubIndex(0)
-          } else if (e.key === 'ArrowRight') {
+            return
+          }
+
+          if (e.key === 'ArrowRight') {
             e.preventDefault()
-            // 如果子菜单当前项还有子项，进入下一级
             const currentSubItem = subMenuItems[subIndex]
             if (currentSubItem && hasChildren(currentSubItem)) {
-              onSelect(currentSubItem)
+              onSelect(extendItemWithPath(currentSubItem, nextSubMenuPath))
             }
-          } else if (e.key === 'Backspace') {
-            // 不阻止默认行为，让编辑器处理删除
-            // 同时返回主菜单
+            return
+          }
+
+          if (e.key === 'Backspace') {
             setIsInSubMenu(false)
             setSubIndex(0)
-          } else if (e.key === 'Enter') {
+            return
+          }
+
+          if (e.key === 'Enter') {
             e.preventDefault()
             const currentSubItem = subMenuItems[subIndex]
             if (currentSubItem) {
-              if (hasChildren(currentSubItem)) {
-                onSelect(currentSubItem)
-              } else {
-                onSelect(currentSubItem)
-              }
+              onSelect(extendItemWithPath(currentSubItem, nextSubMenuPath))
             }
           }
-        } else {
-          // 在主菜单中
-          if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            setMainIndex((prev) => (prev - 1 + parentItems.length) % parentItems.length)
-          } else if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            setMainIndex((prev) => (prev + 1) % parentItems.length)
-          } else if (e.key === 'ArrowRight') {
-            e.preventDefault()
-            if (subMenuItems.length > 0) {
-              setIsInSubMenu(true)
-              setSubIndex(0)
-            }
-          } else if (e.key === 'ArrowLeft') {
-            e.preventDefault()
-            onGoBack()
-          } else if (e.key === 'Backspace') {
-            // 不阻止默认行为，让编辑器处理删除
-            // 菜单会通过 editor update 自动关闭
-          } else if (e.key === 'Enter') {
-            e.preventDefault()
-            const item = parentItems[mainIndex]
-            if (item) {
-              if (hasChildren(item)) {
-                setIsInSubMenu(true)
-                setSubIndex(0)
-              } else {
-                onSelect(item)
-              }
-            }
+          return
+        }
+
+        if (e.key === 'ArrowUp') {
+          if (parentItems.length === 0) {
+            return
           }
+          e.preventDefault()
+          setMainIndex((prev) => (prev - 1 + parentItems.length) % parentItems.length)
+          return
+        }
+
+        if (e.key === 'ArrowDown') {
+          if (parentItems.length === 0) {
+            return
+          }
+          e.preventDefault()
+          setMainIndex((prev) => (prev + 1) % parentItems.length)
+          return
+        }
+
+        if (e.key === 'ArrowRight') {
+          e.preventDefault()
+          if (subMenuItems.length > 0) {
+            setIsInSubMenu(true)
+            setSubIndex(0)
+          }
+          return
+        }
+
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault()
+          onGoBack()
+          return
+        }
+
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          const item = parentItems[mainIndex]
+          if (!item) {
+            return
+          }
+
+          if (hasChildren(item)) {
+            setIsInSubMenu(true)
+            setSubIndex(0)
+            return
+          }
+
+          onSelect(item)
         }
       }
 
       window.addEventListener('keydown', handleKeyDown)
       return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isOpen, isInSubMenu, mainIndex, subIndex, parentItems, subMenuItems, onSelect, onGoBack])
+    }, [currentMainItem, isInSubMenu, isOpen, mainIndex, onGoBack, onSelect, parentItems, path.language, path.model, path.provider, path.scene, subIndex, subMenuItems])
 
-    // 同步外部 selectedIndex 到内部 mainIndex
     useEffect(() => {
       if (!isInSubMenu && selectedIndex >= 0 && selectedIndex < parentItems.length) {
         setMainIndex(selectedIndex)
       }
-    }, [selectedIndex, isInSubMenu, parentItems.length])
+    }, [isInSubMenu, parentItems.length, selectedIndex])
 
-    if (!isOpen) return null
+    if (!isOpen) {
+      return null
+    }
 
     const breadcrumbs = getBreadcrumb(path)
     const activeMainIndex = hoveredMainIndex ?? mainIndex
     const activeSubIndex = hoveredSubIndex ?? subIndex
 
-    // 计算菜单位置
     const menuWidth = 220
     const subMenuWidth = 220
     const totalWidth = subMenuItems.length > 0 ? menuWidth + subMenuWidth + 4 : menuWidth
@@ -235,36 +396,26 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex gap-1">
-          {/* 主菜单 */}
-          <div
-            ref={menuRef}
-            className="min-w-[220px] overflow-hidden rounded-md border bg-popover p-0 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
-          >
-            {/* 面包屑导航 / 标题栏 */}
+          <div className="min-w-[220px] overflow-hidden rounded-md border bg-popover p-0 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
             {breadcrumbs.length > 0 ? (
-              <div className="flex items-center gap-1 px-2 py-1.5 border-b bg-muted/30">
-                <button
-                  className="hover:bg-accent rounded p-0.5 transition-colors"
-                  onClick={onGoBack}
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <div className="flex items-center gap-1 border-b bg-muted/30 px-2 py-1.5">
+                <button className="rounded p-0.5 transition-colors hover:bg-accent" onClick={onGoBack}>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M15 18l-6-6 6-6" />
                   </svg>
                 </button>
-                <div className="flex items-center text-xs text-muted-foreground flex-1 overflow-hidden">
+                <div className="flex flex-1 items-center overflow-hidden text-xs text-muted-foreground">
                   {breadcrumbs.map((crumb, index) => (
                     <span key={index} className="flex items-center">
                       {index > 0 && (
-                        <svg className="w-3 h-3 mx-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="mx-0.5 h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M9 18l6-6-6-6" />
                         </svg>
                       )}
                       <span
                         className={cn(
                           'truncate max-w-[80px]',
-                          index === breadcrumbs.length - 1
-                            ? 'text-foreground font-medium'
-                            : ''
+                          index === breadcrumbs.length - 1 ? 'font-medium text-foreground' : ''
                         )}
                       >
                         {crumb}
@@ -274,26 +425,24 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
                 </div>
               </div>
             ) : (
-              <div className="px-2 py-1.5 text-xs font-semibold border-b bg-muted/30">
-                {t('tts.select_voice') || '选择语音'}
+              <div className="border-b bg-muted/30 px-2 py-1.5 text-xs font-semibold">
+                {t('tts.select_voice') || 'Select voice'}
               </div>
             )}
 
-            {/* 搜索框 */}
-            <div className="flex items-center px-2 py-1.5 border-b">
-              <TbSearch className="w-4 h-4 mr-2 text-muted-foreground" />
+            <div className="flex items-center border-b px-2 py-1.5">
+              <TbSearch className="mr-2 h-4 w-4 text-muted-foreground" />
               <input
                 ref={inputRef}
                 type="text"
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                placeholder={t('tts.search') || '搜索...'}
+                placeholder={t('tts.search') || 'Search...'}
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}
                 tabIndex={-1}
               />
             </div>
 
-            {/* 菜单列表 */}
             <div
               className="max-h-[280px] overflow-y-auto p-1"
               onMouseLeave={() => {
@@ -303,27 +452,35 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
             >
               {parentItems.length === 0 ? (
                 <div className="py-4 text-center text-sm text-muted-foreground">
-                  {t('tts.no_voice_found') || '未找到'}
+                  {t('tts.no_voice_found') || 'No voice found'}
                 </div>
               ) : (
                 parentItems.map((item, index) => (
                   <div
                     key={item.id}
                     ref={(el) => {
-                      if (el) mainItemRefs.current.set(index, el)
+                      if (el) {
+                        mainItemRefs.current.set(index, el)
+                      }
                     }}
                     className={cn(
                       'relative flex cursor-default select-none items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
+                      item.disabled && 'cursor-not-allowed opacity-50',
                       index === activeMainIndex && 'bg-accent text-accent-foreground',
                       index === activeMainIndex && isInSubMenu && 'bg-accent/70'
                     )}
                     onClick={() => {
+                      if (item.disabled) {
+                        return
+                      }
+
                       if (hasChildren(item)) {
                         setIsInSubMenu(true)
                         setSubIndex(0)
-                      } else {
-                        onSelect(item)
+                        return
                       }
+
+                      onSelect(item)
                     }}
                     onMouseEnter={() => {
                       setHoveredMainIndex(index)
@@ -331,30 +488,30 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
                       setIsInSubMenu(false)
                     }}
                   >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
                       {item.icon && (
                         <span className="flex-shrink-0">{iconMap[item.icon]}</span>
                       )}
                       <span className="truncate">{item.label}</span>
                       {(item.gender === 'Female' || item.gender === 'female') && (
-                        <IoIosFemale className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />
+                        <IoIosFemale className="h-3.5 w-3.5 flex-shrink-0 text-pink-500" />
                       )}
                       {(item.gender === 'Male' || item.gender === 'male') && (
-                        <IoIosMale className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <IoIosMale className="h-3.5 w-3.5 flex-shrink-0 text-blue-500" />
                       )}
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex flex-shrink-0 items-center gap-1">
                       {item.type === 'voice' && (
                         <TbVolume
-                          className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors"
-                          onClick={(e) => {
+                          className="h-4 w-4 text-muted-foreground transition-colors hover:text-foreground"
+                          onClick={async (e) => {
                             e.stopPropagation()
-                            console.log('试听:', item)
+                            await auditionItem(item, path)
                           }}
                         />
                       )}
                       {hasChildren(item) && (
-                        <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M9 18l6-6-6-6" />
                         </svg>
                       )}
@@ -364,68 +521,68 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
               )}
             </div>
 
-            {/* 底部提示 */}
             <div className="-mx-1 my-1 h-px bg-muted" />
-            <div className="px-2 py-1 text-[10px] text-muted-foreground flex items-center justify-between">
-              <span>↑↓ 选择 → 进入</span>
-              <span>← 返回 · Esc 关闭</span>
+            <div className="flex items-center justify-between px-2 py-1 text-[10px] text-muted-foreground">
+              <span>↑↓ select → enter</span>
+              <span>← back · Esc close</span>
             </div>
           </div>
 
-          {/* 子菜单 */}
           {subMenuItems.length > 0 && (
             <div className="min-w-[220px] overflow-hidden rounded-md border bg-popover p-0 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
-              {/* 子菜单标题 */}
-              <div className="px-2 py-1.5 text-xs font-semibold border-b bg-muted/30">
-                {currentMainItem?.label || '选择'}
+              <div className="border-b bg-muted/30 px-2 py-1.5 text-xs font-semibold">
+                {currentMainItem?.label || 'Select'}
               </div>
 
-              {/* 子菜单列表 */}
-              <div
-                className="max-h-[280px] overflow-y-auto p-1"
-                onMouseLeave={() => setHoveredSubIndex(null)}
-              >
+              <div className="max-h-[280px] overflow-y-auto p-1" onMouseLeave={() => setHoveredSubIndex(null)}>
                 {subMenuItems.map((item, index) => (
                   <div
                     key={item.id}
                     ref={(el) => {
-                      if (el) subItemRefs.current.set(index, el)
+                      if (el) {
+                        subItemRefs.current.set(index, el)
+                      }
                     }}
                     className={cn(
                       'relative flex cursor-default select-none items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
+                      item.disabled && 'cursor-not-allowed opacity-50',
                       index === activeSubIndex && isInSubMenu && 'bg-accent text-accent-foreground',
                       index === activeSubIndex && !isInSubMenu && 'bg-accent/50'
                     )}
-                    onClick={() => onSelect(item)}
+                    onClick={() => {
+                      if (!item.disabled) {
+                        onSelect(extendItemWithPath(item, currentSubMenuPath))
+                      }
+                    }}
                     onMouseEnter={() => {
                       setHoveredSubIndex(index)
                       setSubIndex(index)
                     }}
                   >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
                       {item.icon && (
                         <span className="flex-shrink-0">{iconMap[item.icon]}</span>
                       )}
                       <span className="truncate">{item.label}</span>
                       {(item.gender === 'Female' || item.gender === 'female') && (
-                        <IoIosFemale className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />
+                        <IoIosFemale className="h-3.5 w-3.5 flex-shrink-0 text-pink-500" />
                       )}
                       {(item.gender === 'Male' || item.gender === 'male') && (
-                        <IoIosMale className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <IoIosMale className="h-3.5 w-3.5 flex-shrink-0 text-blue-500" />
                       )}
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex flex-shrink-0 items-center gap-1">
                       {item.type === 'voice' && (
                         <TbVolume
-                          className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors"
-                          onClick={(e) => {
+                          className="h-4 w-4 text-muted-foreground transition-colors hover:text-foreground"
+                          onClick={async (e) => {
                             e.stopPropagation()
-                            console.log('试听:', item)
+                            await auditionItem(item, currentSubMenuPath || path)
                           }}
                         />
                       )}
                       {hasChildren(item) && (
-                        <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M9 18l6-6-6-6" />
                         </svg>
                       )}

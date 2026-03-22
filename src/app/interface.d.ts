@@ -1,11 +1,57 @@
-import { AllLanguage } from "./lib/tts";
+import type { TTSMergePayload, TTSSelection } from "./lib/tts-plugin";
 import { AllServiceType, RequiredByKey } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+type AllLanguage = string;
+
 declare global {
   interface Window {
-    AIM: any;
+    AIM: AIMBridge;
   }
+}
+
+interface AIMBridge {
+  isWindows?: boolean;
+  isMac?: boolean;
+  getSetting: () => Promise<AppSettings>;
+  openDialog: (...args: any[]) => Promise<any>;
+  translateContent: (...args: any[]) => Promise<any>;
+  handleMessage: (handler: (...args: any[]) => void, key: string) => void;
+  removeHandler: (key: string) => void;
+  plugin: {
+    readLocalPlugins: () => Promise<any>;
+    saveConfiguration: (pluginId: string, formData: Record<string, any>) => Promise<any>;
+    getProviders?: (type: string) => Promise<any>;
+  };
+  tts: {
+    getTemoData: () => Promise<TemoData[]>;
+    updateTemoData: (data: TemoData[]) => Promise<any>;
+    deleteTemoData: (ids: string[]) => Promise<any>;
+    getTemoLibrary: () => Promise<LibraryData[]>;
+    saveTemoLibrary: (data: LibraryData[]) => Promise<any>;
+    copyTemoFile: (path: string, scope: string) => Promise<any>;
+    mergeTemo: (payload: TTSMergePayload, uuid: string, extra: Record<string, any>) => Promise<TemoData>;
+    abortMergeTemo: () => Promise<any> | void;
+    getTemoAudition?: (...args: any[]) => Promise<any>;
+    synthesize?: (payload: {
+      provider: string;
+      pluginId: string;
+      text: string;
+      options?: Record<string, any>;
+      returnBuffer?: boolean;
+    }) => Promise<any>;
+    getPluginEditorOptions?: (payload: {
+      provider: string;
+      pluginId: string;
+      fieldKey: string;
+      role?: string;
+      scope?: string;
+      config?: Record<string, any>;
+      query?: string;
+    }) => Promise<any[]>;
+    renderMedia: (...args: any[]) => Promise<any>;
+    temoDownload: (...args: any[]) => Promise<any>;
+  };
 }
 
 interface WhisperSegments {
@@ -158,7 +204,7 @@ export interface TemoData {
   bgm?: BgmData;
   type?: 'audio' | 'video';
   fileList: TemoFileList[],
-  ttsOptions: any,
+  ttsOptions: TTSSelection | any,
   fileDuration: number,
 }
 

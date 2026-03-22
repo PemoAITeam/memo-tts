@@ -1,244 +1,261 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import EdgeConfig from "./edge-config"
-import OpenAIConfig from "./openAI-config"
-import VolcanoConfig from "./volcano-config"
-import { getLocalFileUrl } from "@/app/lib/utils"
-import { inject, observer } from "mobx-react"
-import { useTranslation } from "react-i18next"
-import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
-import { TTSOptions } from "@/app/lib/tts"
-import { Button } from "../ui/button"
-import PluginStore from "@/app/stores/pluginStore"
+import { useCallback, useEffect, useRef, useState } from "react";
+import { inject, observer } from "mobx-react";
+import { useTranslation } from "react-i18next";
+import { cloneDeep, isEqual, merge } from "lodash-es";
 import { type AimForm, createExposedLayout, FormRenderer, type FormRendererHandle } from "memo-form-renderer";
-export interface VoiceOptions {
-  ttsOptions?: TTSOptions
-  service?: 'Edge' | 'OpenAI' | 'Volcano',
-  speed?: string,
-  target?: 'original' | 'translate'
-}
+
+import type PluginStore from "@/app/stores/pluginStore";
+import { buildTTSSelection, getTTSHostErrorMessage, type TTSTarget, type TTSSelection } from "@/app/lib/tts-plugin";
+import { toast } from "@/app/components/ui/use-toast";
+
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import { Button } from "../ui/button";
+
+export type VoiceOptions = TTSSelection;
 
 interface TTSPanelProps {
-  pluginStore?: PluginStore,
-  getOptions?: (data: any) => void
-  getSpeed?: (speed: string) => void
-  getTarget?: (target: 'original' | 'translate') => void
-  voiceOptions?: VoiceOptions
-  getVoiceOptions?: (options: VoiceOptions) => void
-  // voiceService?: 'Edge' | 'OpenAI' | 'Volcano'
-  // voiceSpeed?: string
-  // voiceTarget?: 'original' | 'translate'
-  showConfirmButton?: boolean
+  pluginStore?: PluginStore;
+  getOptions?: (data: VoiceOptions) => void;
+  getTarget?: (target: TTSTarget) => void;
+  voiceOptions?: VoiceOptions;
+  getVoiceOptions?: (options: VoiceOptions) => void;
+  showConfirmButton?: boolean;
 }
 
-const localPlugins = [{
-  key: 'Edge',
-  component: EdgeConfig
-}, {
-  key: 'OpenAI',
-  component: OpenAIConfig
-}, {
-  key: 'Volcano',
-  component: VolcanoConfig
-}]
-
-const TTSPanel = inject('pluginStore')(observer(({
-  pluginStore, showConfirmButton, voiceOptions,
-  getVoiceOptions, getOptions, getSpeed, getTarget
+const TTSPanel = inject("pluginStore")(observer(({
+  pluginStore,
+  showConfirmButton,
+  voiceOptions,
+  getVoiceOptions,
+  getOptions,
+  getTarget,
 }: TTSPanelProps) => {
-  const { memoPlugins, provider, ttsProviders } = pluginStore!
+  const { memoPlugins, provider, ttsProviders } = pluginStore!;
+  const { t } = useTranslation();
 
-  const [curPlay, setCurPlay] = useState<any>();
-  const [speed, setSpeed] = useState<string>(voiceOptions?.speed || '1')
-  const [target, setTarget] = useState<'original' | 'translate'>(voiceOptions?.target || 'original')
-  const [options, setOptions] = useState<TTSOptions>()
-  const { t } = useTranslation()
+  const [target, setTarget] = useState<TTSTarget>(voiceOptions?.target || "original");
+  const [config, setConfig] = useState<Record<string, any>>(voiceOptions?.config || {});
   const [layout, setLayout] = useState<AimForm<Record<string, any>>>();
-  const [showExposed, setShowExposed] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string>();
 
   const formRef = useRef<FormRendererHandle>(null);
 
-  const usePlugin = useRef(false);
+  const currentProviderMeta = ttsProviders.find((item) => item.provider === provider);
+  const currentManifest = currentProviderMeta
+    ? memoPlugins?.installedPluginsManifests?.[currentProviderMeta.pluginId]
+    : undefined;
+  const currentProvider = currentProviderMeta?.provider;
+  const synthesize = window.AIM?.tts?.synthesize;
+  const hasPreviewApi = !!synthesize;
 
   useEffect(() => {
-    if (voiceOptions) {
-      setOptions(voiceOptions.ttsOptions)
-    }
-  }, [voiceOptions])
-
-  useEffect(() => {
-    if (!showConfirmButton) {
-      getOptions?.(options)
-    }
-  }, [options, showConfirmButton, getOptions])
-
-  let audioPlayer: HTMLAudioElement | null;
-  const playAudio = (item: any, isAudition?: boolean, event?: any) => {
-    if (event) {
-      event.stopPropagation();
-    }
-    if (curPlay?.fileUrl === item.fileUrl && !isAudition) {
-      handleEnded()
-    } else {
-      if (audioPlayer) {
-        audioPlayer.pause()
-        audioPlayer?.removeEventListener('ended', handleEnded);
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
       }
-      setCurPlay(item);
-      setTimeout(() => {
-        audioPlayer = document.getElementById('auditionPlayer') as HTMLAudioElement;
-        audioPlayer.load();
-        audioPlayer.play();
-        if (!isAudition) {
-          audioPlayer.addEventListener('ended', handleEnded);
-        }
-      })
+    };
+  }, [audioUrl]);
+
+  useEffect(() => {
+    if (voiceOptions?.provider === provider) {
+      setTarget((prev) => (prev === voiceOptions.target ? prev : voiceOptions.target));
+      setConfig((prev) => (isEqual(prev, voiceOptions.config || {}) ? prev : (voiceOptions.config || {})));
+      return;
     }
-  }
-  const handleEnded = () => {
-    console.log('Audio playback stopped');
-    // 在这里执行播放结束后的逻辑
-    // 移除事件监听器
-    audioPlayer?.removeEventListener('ended', handleEnded);
-    setCurPlay(null)
-    audioPlayer = null;
+
+    setTarget((prev) => (prev === "original" ? prev : "original"));
+  }, [provider, voiceOptions]);
+
+  useEffect(() => {
+    if (!memoPlugins || !currentProviderMeta) {
+      setLayout((prev) => (prev === undefined ? prev : undefined));
+      return;
+    }
+
+    const version = memoPlugins.localPlugins?.versions?.[currentProviderMeta.pluginId];
+    const manifest = memoPlugins.installedPluginsManifests?.[currentProviderMeta.pluginId];
+    const plugin = memoPlugins.installedPlugins?.[currentProviderMeta.pluginId];
+    const storedConfig = version
+      ? cloneDeep(memoPlugins.pluginsConfigurations?.[`${currentProviderMeta.pluginId}@${version}`] || {})
+      : {};
+    const providerConfig = voiceOptions?.provider === currentProviderMeta.provider
+      ? merge({}, storedConfig, voiceOptions.config || {})
+      : storedConfig;
+    const resolvedConfig = merge({}, manifest?.defaultsConfiguration || {}, providerConfig);
+
+    setConfig((prev) => (isEqual(prev, resolvedConfig) ? prev : resolvedConfig));
+    pluginStore?.setRuntimeTTSConfiguration(currentProviderMeta.provider, resolvedConfig);
+
+    if (manifest?.configurationExposed?.length) {
+      const nextLayout = createExposedLayout(manifest, resolvedConfig, currentProviderMeta.pluginId, plugin?.file);
+      setLayout((prev) => (isEqual(prev, nextLayout) ? prev : nextLayout));
+      return;
+    }
+
+    setLayout((prev) => (prev === undefined ? prev : undefined));
+  }, [currentProviderMeta, memoPlugins, provider, voiceOptions]);
+
+  const buildSelection = useCallback(() => {
+    if (!currentProviderMeta) {
+      return undefined;
+    }
+
+    return buildTTSSelection({
+      providerMeta: currentProviderMeta,
+      manifest: currentManifest,
+      target,
+      config,
+    });
+  }, [config, currentManifest, currentProviderMeta, target]);
+
+  useEffect(() => {
+    if (!showConfirmButton) {
+      const selection = buildSelection();
+      if (selection) {
+        getOptions?.(selection);
+      }
+    }
+  }, [buildSelection, getOptions, showConfirmButton]);
+
+  const handlePluginConfigChange = useCallback((data: Record<string, any>) => {
+    setConfig((prev) => (isEqual(prev, data) ? prev : data));
+    if (currentProvider) {
+      pluginStore?.setRuntimeTTSConfiguration(currentProvider, data);
+    }
+  }, [currentProvider, pluginStore]);
+
+  const handleTargetChange = (value: TTSTarget) => {
+    setTarget(value);
+    getTarget?.(value);
   };
-  const audition = async (params: any, uuid: string) => {
-    console.log(params)
-    if (params.type === 'Edge') {
-      params.rate = speed || 0
-    } else if (params.type === 'OpenAI') {
-      params.speed = speed || 0
-    }
-    const fileUrl = await window.AIM.tts.getTemoAudition(params, uuid);
-    if (fileUrl) {
-      playAudio({ fileUrl }, true)
-    }
-  }
-
-  const switchSpeed = (speed: string) => {
-    setSpeed(speed)
-    if (!showConfirmButton) {
-      getSpeed && getSpeed(speed)
-    }
-  }
-
-  const switchTarget = (target: 'original' | 'translate') => {
-    setTarget(target)
-    if (!showConfirmButton) {
-      getTarget && getTarget(target)
-    }
-  }
 
   const addVoice = () => {
-    // onProviderChange(service)
-    // getSpeed(speed)
-    // getTarget(target)
-    // getOptions(options)
-    const builtin = ["Edge", "OpenAI", "Volcano"] as const;
-    const service = (builtin as readonly string[]).includes(provider) ? (provider as VoiceOptions["service"]) : undefined;
-    getVoiceOptions && getVoiceOptions({ ttsOptions: options, service, speed, target })
-  }
-
-  const currentTTSProviders = ttsProviders.find(item => item.value === provider);
-
-  const handleSelectOpenChange = () => { };
-
-  // 当表单变更时，判断当前插件的是否必填项已经填写，控制能否提交TTS
-  const handlePluginConfigChange = useCallback((data: Record<string, any>) => {
-    console.log(data)
-    setOptions(data)
-  }, [])
-
-  useEffect(() => {
-    if (memoPlugins) {
-      console.log(memoPlugins);
-
-      const { installedPluginsManifests, pluginsConfigurations, localPlugins: { versions } } = memoPlugins;
-      if (currentTTSProviders && currentTTSProviders.pluginId) {
-        const version = versions[currentTTSProviders.pluginId];
-        const manifest = installedPluginsManifests[currentTTSProviders.pluginId];
-        const pluginConfig = pluginsConfigurations[`${currentTTSProviders.pluginId}@${version}`] || {};
-        const plugin = memoPlugins?.installedPlugins[`${currentTTSProviders.pluginId}`];
-        if (manifest?.configurationExposed?.length) {
-          setLayout(createExposedLayout(manifest, pluginConfig, currentTTSProviders.pluginId, plugin?.file));
-          setShowExposed(true);
-          // TODO: 检查必填项
-
-          return;
-        }
-      }
-      setLayout(undefined);
-      // setRequiredConfig(false);
-      setShowExposed(false);
+    const selection = buildSelection();
+    if (selection) {
+      getVoiceOptions?.(selection);
     }
-  }, [currentTTSProviders, memoPlugins]);
+  };
+
+  const audition = async () => {
+    if (!currentProviderMeta) {
+      return;
+    }
+
+    if (!hasPreviewApi) {
+      toast({
+        variant: "destructive",
+        description: t("tts.preview not supported", {
+          defaultValue: "The Electron host has not exposed plugin voice preview yet.",
+        }),
+      });
+      return;
+    }
+
+    try {
+      const result = await synthesize({
+        provider: currentProviderMeta.provider,
+        pluginId: currentProviderMeta.pluginId,
+        text: "Welcome to temo",
+        options: cloneDeep(config),
+        returnBuffer: true,
+      });
+
+      if (!result?.success || !result.data) {
+        toast({
+          variant: "destructive",
+          description: getTTSHostErrorMessage(
+            result?.message,
+            t("tts.preview failed", {
+              defaultValue: "Voice preview failed. Please check the plugin configuration in the host.",
+            })
+          ),
+        });
+        return;
+      }
+
+      const bufferLike = result.data?.data ?? result.data;
+      const nextUrl = URL.createObjectURL(new Blob([bufferLike], { type: "audio/mpeg" }));
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+      setAudioUrl(nextUrl);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: getTTSHostErrorMessage(
+          error,
+          t("tts.preview failed", {
+            defaultValue: "Voice preview failed. Please check the plugin configuration in the host.",
+          })
+        ),
+      });
+      return;
+    }
+  };
 
   return (
     <>
-      {/* <div className="mb-1 text-sm">{t('tts.provider')}</div>
-      <SelectTTSProvider onChange={handleProviderChange} /> */}
-      {
-        usePlugin.current && showExposed && <div>
-          {layout && <FormRenderer onOpenChange={handleSelectOpenChange} className='pb-2' ref={formRef} onDataReady={handlePluginConfigChange} onChange={handlePluginConfigChange} layout={layout} />}
+      {layout && (
+        <FormRenderer
+          key={currentProviderMeta?.pluginId}
+          onOpenChange={() => { }}
+          className="pb-2"
+          ref={formRef}
+          onChange={handlePluginConfigChange}
+          layout={layout}
+        />
+      )}
+
+      {!layout && (
+        <div className="text-sm text-muted-foreground pb-2">
+          {!ttsProviders.length
+            ? t("tts.no plugin providers", {
+              defaultValue: "No TTS plugins are available. Install a host TTS plugin to continue.",
+            })
+            : currentProviderMeta
+              ? t("tts.plugin config handled by host", {
+                defaultValue: "This plugin has no exposed editor fields here. If its required settings are already saved in the host, you can still preview and synthesize.",
+              })
+              : t("tts.provider")}
         </div>
-      }
-      {
-        !usePlugin.current && <>
-          {
-            localPlugins.map((item) => provider === item.key && <item.component
-              key={item.key}
-              options={voiceOptions?.service === item.key ? options : undefined}
-              setOptions={setOptions}
-              getAudition={audition}
-            />)
-          }
-          <div className="relative mt-4 mb-2">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                {t('tts.other setting')}
-              </span>
-            </div>
-          </div>
-          {
-            provider !== 'Volcano' &&
-            <>
-              <div className="mb-1 text-sm">{t('tts.speed')}</div>
-              <Tabs value={speed}>
-                <TabsList className="grid w-full grid-cols-7">
-                  <TabsTrigger className='px-1' value="0.5" onClick={() => switchSpeed('0.5')}>0.5</TabsTrigger>
-                  <TabsTrigger className='px-1' value="0.75" onClick={() => switchSpeed('0.75')}>0.75</TabsTrigger>
-                  <TabsTrigger className='px-1' value="1" onClick={() => switchSpeed('1')}>1</TabsTrigger>
-                  <TabsTrigger className='px-1' value="1.5" onClick={() => switchSpeed('1.5')}>1.5</TabsTrigger>
-                  <TabsTrigger className='px-1' value="2" onClick={() => switchSpeed('2')}>2</TabsTrigger>
-                  <TabsTrigger className='px-1' value="3" onClick={() => switchSpeed('3')}>3</TabsTrigger>
-                  <TabsTrigger className='px-1' value="4" onClick={() => switchSpeed('4')}>4</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </>
-          }
-          <div className="mb-1 text-sm mt-4">{t('tts.text')}</div>
-          <Tabs value={target}>
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger className='px-1' value="original" onClick={() => switchTarget('original')}>{t('tts.original text')}</TabsTrigger>
-              <TabsTrigger className='px-1' value="translate" onClick={() => switchTarget('translate')}>{t('tts.translate text')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </>
-      }
+      )}
 
-      {showConfirmButton && <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
-        <span>{t('app.sure')}</span>
-      </Button>}
+      {currentProviderMeta && !hasPreviewApi && (
+        <div className="pb-2 text-xs text-muted-foreground">
+          {t("tts.preview host upgrade required", {
+            defaultValue: "Preview requires the Electron host to implement window.AIM.tts.synthesize(...).",
+          })}
+        </div>
+      )}
 
+      <div className="mb-1 text-sm mt-2">{t("tts.text")}</div>
+      <Tabs value={target}>
+        <TabsList className="grid grid-cols-2">
+          <TabsTrigger className="px-1" value="original" onClick={() => handleTargetChange("original")}>
+            {t("tts.original text")}
+          </TabsTrigger>
+          <TabsTrigger className="px-1" value="translate" onClick={() => handleTargetChange("translate")}>
+            {t("tts.translate text")}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      {curPlay?.fileUrl && <audio id="auditionPlayer" controls>
-        <source src={getLocalFileUrl(curPlay?.fileUrl)} type="audio/wav" />
-      </audio>}
+      <div className="flex gap-2 mt-3">
+        <Button className="flex-1" type="button" variant="outline" onClick={audition} disabled={!currentProviderMeta}>
+          <span>{t("tts.audition", { defaultValue: "Audition" })}</span>
+        </Button>
+        {showConfirmButton && (
+          <Button type="button" className="flex-1" onClick={addVoice} disabled={!currentProviderMeta}>
+            <span>{t("app.sure")}</span>
+          </Button>
+        )}
+      </div>
+
+      {audioUrl && (
+        <audio className="mt-3 w-full" controls src={audioUrl} />
+      )}
     </>
-  )
-}))
+  );
+}));
 
-export default TTSPanel
+export default TTSPanel;

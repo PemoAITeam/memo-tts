@@ -1,10 +1,5 @@
-/**
- * TTS Mark Extension
- * 用于包裹选中文本，添加速度和情绪属性
- * 在文本末尾显示标签（如「开心地」「快速地」）
- */
-
 import { Mark } from '@tiptap/react'
+import type { MemoTTSEditorRole } from '@/app/lib/tts-plugin'
 
 export interface TTSMarkOptions {
   HTMLAttributes: Record<string, any>,
@@ -13,63 +8,161 @@ export interface TTSMarkOptions {
 declare module '@tiptap/react' {
   interface Commands<ReturnType> {
     ttsMark: {
-      /**
-       * 设置 TTS 标记
-       */
-      setTTSMark: (attributes: { speed?: number; emotion?: string }) => ReturnType,
-      /**
-       * 切换 TTS 标记
-       */
-      toggleTTSMark: (attributes: { speed?: number; emotion?: string }) => ReturnType,
-      /**
-       * 移除 TTS 标记
-       */
+      setTTSMark: (attributes: {
+        config?: Record<string, any> | null
+        speed?: number | null
+        emotion?: string | null
+      }) => ReturnType,
+      toggleTTSMark: (attributes: {
+        config?: Record<string, any> | null
+        speed?: number | null
+        emotion?: string | null
+      }) => ReturnType,
       unsetTTSMark: () => ReturnType,
     }
   }
 }
 
-// 速度到中文副词的映射
 export const SPEED_LABEL_MAP: Record<number, string> = {
-  0.5: '非常慢地',
-  0.75: '缓慢地',
-  1: '', // 默认速度，不显示
-  1.25: '稍快地',
-  1.5: '快速地',
-  2: '非常快地',
+  0.5: 'very slow',
+  0.75: 'slow',
+  1: '',
+  1.25: 'slightly fast',
+  1.5: 'fast',
+  2: 'very fast',
 }
 
-// 情绪值到中文的映射
 export const EMOTION_LABEL_MAP: Record<string, string> = {
   none: '',
-  // 通用情绪
-  happy: '开心地',
-  sad: '悲伤地',
-  angry: '愤怒地',
-  surprise: '惊讶地',
-  // 火山引擎特有
-  customer_service: '客服腔',
-  pleased: '愉悦地',
-  narrative: '叙述地',
-  news: '新闻腔',
-  gossip: '八卦地',
-  documentary: '纪录片腔',
-  drama: '戏剧地',
-  ads: '广告腔',
-  poetry: '诗意地',
-  storytelling: '讲故事地',
+  happy: 'happy',
+  sad: 'sad',
+  angry: 'angry',
+  surprise: 'surprised',
+  customer_service: 'customer service',
+  pleased: 'pleased',
+  narrative: 'narrative',
+  news: 'news',
+  gossip: 'gossip',
+  documentary: 'documentary',
+  drama: 'drama',
+  ads: 'ads',
+  poetry: 'poetry',
+  storytelling: 'storytelling',
 }
 
-// 获取速度标签
 export function getSpeedLabel(speed: number | null | undefined): string {
   if (speed === null || speed === undefined || speed === 1) return ''
   return SPEED_LABEL_MAP[speed] || `${speed}x`
 }
 
-// 获取情绪标签
 export function getEmotionLabel(emotion: string | null | undefined): string {
   if (!emotion || emotion === 'none') return ''
   return EMOTION_LABEL_MAP[emotion] || emotion
+}
+
+function stableSerializeConfig(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerializeConfig(item)).join(',')}]`
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, itemValue]) => itemValue !== undefined && itemValue !== null && itemValue !== '')
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([key, itemValue]) => `${JSON.stringify(key)}:${stableSerializeConfig(itemValue)}`)
+
+    return `{${entries.join(',')}}`
+  }
+
+  return JSON.stringify(value)
+}
+
+export function normalizeTTSMarkConfig(value: unknown): Record<string, any> | null {
+  if (!value) {
+    return null
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return normalizeTTSMarkConfig(parsed)
+    } catch (error) {
+      console.warn('Failed to parse ttsMark config:', error)
+      return null
+    }
+  }
+
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(value as Record<string, any>).filter(([, itemValue]) => itemValue !== undefined && itemValue !== null && itemValue !== '')
+  )
+
+  return Object.keys(normalized).length ? normalized : null
+}
+
+export function buildTTSMarkAttributesFromConfig(
+  config: Record<string, any> | null | undefined,
+  editorFields?: Partial<Record<MemoTTSEditorRole, string>>
+) {
+  const normalizedConfig = normalizeTTSMarkConfig(config)
+
+  if (!normalizedConfig) {
+    return {
+      config: null,
+      speed: null,
+      emotion: null,
+    }
+  }
+
+  const speedFieldKey = editorFields?.speed
+  const emotionFieldKey = editorFields?.emotion
+  const speedValue = speedFieldKey ? normalizedConfig[speedFieldKey] : undefined
+  const emotionValue = emotionFieldKey ? normalizedConfig[emotionFieldKey] : undefined
+
+  return {
+    config: normalizedConfig,
+    speed: typeof speedValue === 'number' && speedValue !== 1 ? speedValue : null,
+    emotion: typeof emotionValue === 'string' && emotionValue !== 'none' ? emotionValue : null,
+  }
+}
+
+export function getTTSMarkConfigFromAttributes(
+  attributes: Record<string, any> | null | undefined,
+  editorFields?: Partial<Record<MemoTTSEditorRole, string>>
+) {
+  const normalizedConfig = {
+    ...(normalizeTTSMarkConfig(attributes?.config) || {}),
+  }
+
+  const speedFieldKey = editorFields?.speed
+  if (
+    speedFieldKey
+    && attributes?.speed !== undefined
+    && attributes?.speed !== null
+    && normalizedConfig[speedFieldKey] === undefined
+  ) {
+    normalizedConfig[speedFieldKey] = attributes.speed
+  }
+
+  const emotionFieldKey = editorFields?.emotion
+  if (
+    emotionFieldKey
+    && attributes?.emotion !== undefined
+    && attributes?.emotion !== null
+    && attributes?.emotion !== 'none'
+    && normalizedConfig[emotionFieldKey] === undefined
+  ) {
+    normalizedConfig[emotionFieldKey] = attributes.emotion
+  }
+
+  return Object.keys(normalizedConfig).length ? normalizedConfig : null
 }
 
 export const TTSMark = Mark.create<TTSMarkOptions>({
@@ -85,6 +178,15 @@ export const TTSMark = Mark.create<TTSMarkOptions>({
 
   addAttributes() {
     return {
+      config: {
+        default: null,
+        parseHTML: (element: HTMLElement) => normalizeTTSMarkConfig(element.getAttribute('data-config')),
+        renderHTML: (attributes: Record<string, any>) => {
+          const config = normalizeTTSMarkConfig(attributes.config)
+          if (!config) return {}
+          return { 'data-config': stableSerializeConfig(config) }
+        },
+      },
       speed: {
         default: null,
         parseHTML: (element: HTMLElement) => {
@@ -118,24 +220,20 @@ export const TTSMark = Mark.create<TTSMarkOptions>({
   renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, any> }) {
     const speed = HTMLAttributes['data-speed']
     const emotion = HTMLAttributes['data-emotion']
-
-    // 构建标签文字
     const labelParts: string[] = []
 
-    // 情绪在前
     const emotionLabel = getEmotionLabel(emotion)
     if (emotionLabel) {
       labelParts.push(emotionLabel)
     }
 
-    // 速度在后
     const speedLabel = getSpeedLabel(speed)
     if (speedLabel) {
       labelParts.push(speedLabel)
     }
 
     const hasLabel = labelParts.length > 0
-    const label = labelParts.join('，')
+    const label = labelParts.join(' ')
 
     return [
       'span',
@@ -146,19 +244,19 @@ export const TTSMark = Mark.create<TTSMarkOptions>({
         'data-label': hasLabel ? label : undefined,
         class: `tts-mark${hasLabel ? ' tts-mark--has-label' : ''}`,
       },
-      0, // 内容插槽
+      0,
     ]
   },
 
   addCommands() {
     return {
       setTTSMark:
-        (attributes: { speed?: number; emotion?: string }) =>
+        (attributes: { config?: Record<string, any> | null; speed?: number | null; emotion?: string | null }) =>
         ({ commands }: { commands: any }) => {
           return commands.setMark(this.name, attributes)
         },
       toggleTTSMark:
-        (attributes: { speed?: number; emotion?: string }) =>
+        (attributes: { config?: Record<string, any> | null; speed?: number | null; emotion?: string | null }) =>
         ({ commands }: { commands: any }) => {
           return commands.toggleMark(this.name, attributes)
         },
@@ -169,25 +267,17 @@ export const TTSMark = Mark.create<TTSMarkOptions>({
         },
     }
   },
-
-  addKeyboardShortcuts() {
-    return {
-      // 可以添加快捷键
-    }
-  },
 })
 
-// 速度选项（用于菜单显示）
 export const TTS_SPEED_OPTIONS = [
-  { value: 0.5, label: '非常慢', description: '0.5x' },
-  { value: 0.75, label: '缓慢', description: '0.75x' },
-  { value: 1, label: '正常', description: '1x（默认）' },
-  { value: 1.25, label: '稍快', description: '1.25x' },
-  { value: 1.5, label: '快速', description: '1.5x' },
-  { value: 2, label: '非常快', description: '2x' },
+  { value: 0.5, label: 'Very slow', description: '0.5x' },
+  { value: 0.75, label: 'Slow', description: '0.75x' },
+  { value: 1, label: 'Normal', description: '1x (default)' },
+  { value: 1.25, label: 'Slightly fast', description: '1.25x' },
+  { value: 1.5, label: 'Fast', description: '1.5x' },
+  { value: 2, label: 'Very fast', description: '2x' },
 ]
 
-// 情绪选项类型
 export interface EmotionOption {
   value: string
   label: string
