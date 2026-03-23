@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { Bridge } from '@memo/iframe-ipc';
+import { Bridge } from '@aim-packages/iframe-ipc';
 import App from './App'
 import './globals.scss'
 

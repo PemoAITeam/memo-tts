@@ -8,12 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@aim-packages/iframe-ipc':
+        specifier: ^1.0.15
+        version: 1.0.15
+      '@aim-packages/plugin-manager':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@esbuild-plugins/node-globals-polyfill':
         specifier: ^0.2.3
         version: 0.2.3(esbuild@0.20.1)
-      '@memo/iframe-ipc':
-        specifier: github:YuQian2015/memo-iframe-ipc
-        version: git+https://git@github.com:YuQian2015/memo-iframe-ipc.git#85e661bd2a181443b4ae8c37750a067868422837
       '@radix-ui/react-alert-dialog':
         specifier: ^1.0.5
         version: 1.0.5(@types/react-dom@18.2.18)(@types/react@18.2.47)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -109,10 +112,7 @@ importers:
         version: 2.3.0
       memo-form-renderer:
         specifier: github:YuQian2015/memo-form-renderer
-        version: https://codeload.github.com/YuQian2015/memo-form-renderer/tar.gz/c380d3307ab5f9f0a779e9b5c599cf07def7a245(p6gzlqjuyqvsusqw6v3t23766y)
-      memo-plugin-manager:
-        specifier: github:YuQian2015/memo-plugin-manager
-        version: https://codeload.github.com/YuQian2015/memo-plugin-manager/tar.gz/76c6c790b85fa430219627f95e04a3cddbbb5e28
+        version: https://codeload.github.com/YuQian2015/memo-form-renderer/tar.gz/c380d3307ab5f9f0a779e9b5c599cf07def7a245(fspfodpesaljugtilhzaowagcq)
       mitt:
         specifier: ^3.0.1
         version: 3.0.1
@@ -165,9 +165,6 @@ importers:
         specifier: ^3.22.4
         version: 3.22.4
     devDependencies:
-      '@tanstack/react-table':
-        specifier: ^8.12.0
-        version: 8.12.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -234,6 +231,12 @@ packages:
   '@aashutoshrathi/word-wrap@1.2.6':
     resolution: {integrity: sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==}
     engines: {node: '>=0.10.0'}
+
+  '@aim-packages/iframe-ipc@1.0.15':
+    resolution: {integrity: sha512-cQ+iZRF9rZL3hbuHvhRqCJNHo33IZSWrLL8qVQIezjSY/VoNfUW0H8wDiiIJg4os0/4C+FjqP7bMpU9vI3M+IA==}
+
+  '@aim-packages/plugin-manager@1.0.2':
+    resolution: {integrity: sha512-ZRDgz5L29stVBsQSzCWRSVKE0yZd1Gz+Vc8Oj7G8K5V8VCqbDg4UGMTG+wT3NUKYwltCg6kCfNKkoWtwNIrl1A==}
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -714,10 +717,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
-
-  '@memo/iframe-ipc@git+https://git@github.com:YuQian2015/memo-iframe-ipc.git#85e661bd2a181443b4ae8c37750a067868422837':
-    resolution: {commit: 85e661bd2a181443b4ae8c37750a067868422837, repo: git@github.com:YuQian2015/memo-iframe-ipc.git, type: git}
-    version: 0.0.1
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -1606,17 +1605,6 @@ packages:
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
     engines: {node: '>=10'}
 
-  '@tanstack/react-table@8.12.0':
-    resolution: {integrity: sha512-LlEQ1Gpz4bfpiET+qmle4BhKDgKN3Y/sssc+O/wLqX8HRtjV+nhusYbllZlutZfMR8oeef83whKTj/VhaV8EeA==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      react: '>=16'
-      react-dom: '>=16'
-
-  '@tanstack/table-core@8.12.0':
-    resolution: {integrity: sha512-cq/ylWVrOwixmwNXQjgZaQw1Izf7+nPxjczum7paAnMtwPg1S2qRAJU+Jb8rEBUWm69voC/zcChmePlk2hc6ug==}
-    engines: {node: '>=12'}
-
   '@tiptap/core@2.10.3':
     resolution: {integrity: sha512-wAG/0/UsLeZLmshWb6rtWNXKJftcmnned91/HLccHVQAuQZ1UWH+wXeQKu/mtodxEO7JcU2mVPR9mLGQkK0McQ==}
     peerDependencies:
@@ -2056,9 +2044,6 @@ packages:
 
   axios@1.6.5:
     resolution: {integrity: sha512-Ii012v05KEVuUoFWmMW/UQv9aRIc3ZwkWDcM+h5Il8izZCtRVpDUfwpoFf7eOtajT3QiGR4yDUx7lPqHJULgbg==}
-
-  axios@1.7.8:
-    resolution: {integrity: sha512-Uu0wb7KNqK2t5K+YQyVCLM76prD5sRFjKHbJYCP1J7JFGEQ6nN7HWn9+04LAeiJ3ji54lgS/gZCH1oxyrf1SPw==}
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
@@ -2523,15 +2508,6 @@ packages:
       debug:
         optional: true
 
-  follow-redirects@1.15.9:
-    resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
-
   foreground-child@3.1.1:
     resolution: {integrity: sha512-TMKDUnIte6bfb5nWv7V/caI169OHgvwjb7V4WkeUvbQQdjr5rWKqHFiKWb/fcOwB+CzBT+qbWjvj+DVwRskpIg==}
     engines: {node: '>=14'}
@@ -2907,10 +2883,6 @@ packages:
       react-icons: ^4.12.0
       tailwind-merge: ^1.13.2
       tailwindcss-animate: ^1.0.6
-
-  memo-plugin-manager@https://codeload.github.com/YuQian2015/memo-plugin-manager/tar.gz/76c6c790b85fa430219627f95e04a3cddbbb5e28:
-    resolution: {tarball: https://codeload.github.com/YuQian2015/memo-plugin-manager/tar.gz/76c6c790b85fa430219627f95e04a3cddbbb5e28}
-    version: 1.0.0
 
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
@@ -3929,6 +3901,19 @@ snapshots:
 
   '@aashutoshrathi/word-wrap@1.2.6': {}
 
+  '@aim-packages/iframe-ipc@1.0.15':
+    optionalDependencies:
+      electron: 27.3.10
+    transitivePeerDependencies:
+      - supports-color
+
+  '@aim-packages/plugin-manager@1.0.2':
+    dependencies:
+      compare-versions: 6.1.1
+      fs-extra: 11.2.0
+      unzip-stream: 0.3.4
+      vm2: 3.9.19
+
   '@alloc/quick-lru@5.2.0': {}
 
   '@ampproject/remapping@2.2.1':
@@ -4329,12 +4314,6 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
-
-  '@memo/iframe-ipc@git+https://git@github.com:YuQian2015/memo-iframe-ipc.git#85e661bd2a181443b4ae8c37750a067868422837':
-    optionalDependencies:
-      electron: 27.3.10
-    transitivePeerDependencies:
-      - supports-color
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -5257,14 +5236,6 @@ snapshots:
       defer-to-connect: 2.0.1
     optional: true
 
-  '@tanstack/react-table@8.12.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
-    dependencies:
-      '@tanstack/table-core': 8.12.0
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
-
-  '@tanstack/table-core@8.12.0': {}
-
   '@tiptap/core@2.10.3(@tiptap/pm@2.10.3)':
     dependencies:
       '@tiptap/pm': 2.10.3
@@ -5799,14 +5770,6 @@ snapshots:
   axios@1.6.5:
     dependencies:
       follow-redirects: 1.15.5
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
-  axios@1.7.8:
-    dependencies:
-      follow-redirects: 1.15.9
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -6354,8 +6317,6 @@ snapshots:
 
   follow-redirects@1.15.5: {}
 
-  follow-redirects@1.15.9: {}
-
   foreground-child@3.1.1:
     dependencies:
       cross-spawn: 7.0.3
@@ -6766,7 +6727,7 @@ snapshots:
 
   mdurl@2.0.0: {}
 
-  memo-form-renderer@https://codeload.github.com/YuQian2015/memo-form-renderer/tar.gz/c380d3307ab5f9f0a779e9b5c599cf07def7a245(p6gzlqjuyqvsusqw6v3t23766y):
+  memo-form-renderer@https://codeload.github.com/YuQian2015/memo-form-renderer/tar.gz/c380d3307ab5f9f0a779e9b5c599cf07def7a245(fspfodpesaljugtilhzaowagcq):
     dependencies:
       '@radix-ui/react-dialog': 1.0.5(@types/react-dom@18.2.18)(@types/react@18.2.47)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@radix-ui/react-icons': 1.3.0(react@18.2.0)
@@ -6780,7 +6741,6 @@ snapshots:
       cmdk: 0.2.0(@types/react@18.2.47)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       i18next: 23.7.16
       lodash-es: 4.17.21
-      memo-plugin-manager: https://codeload.github.com/YuQian2015/memo-plugin-manager/tar.gz/76c6c790b85fa430219627f95e04a3cddbbb5e28
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
       react-expanding-textarea: 2.3.6(react@18.2.0)
@@ -6788,16 +6748,6 @@ snapshots:
       react-icons: 4.12.0(react@18.2.0)
       tailwind-merge: 2.2.0
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.1)
-
-  memo-plugin-manager@https://codeload.github.com/YuQian2015/memo-plugin-manager/tar.gz/76c6c790b85fa430219627f95e04a3cddbbb5e28:
-    dependencies:
-      axios: 1.7.8
-      compare-versions: 6.1.1
-      fs-extra: 11.2.0
-      unzip-stream: 0.3.4
-      vm2: 3.9.19
-    transitivePeerDependencies:
-      - debug
 
   merge-stream@2.0.0: {}
 

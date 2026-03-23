@@ -1,4 +1,4 @@
-import type { Manifest, ManifestConfiguration, PluginReturnType } from "memo-plugin-manager";
+import type { Manifest, ManifestConfiguration, PluginReturnType } from "@aim-packages/plugin-manager";
 import { translatePluginText } from "@/app/lib/plugin-i18n";
 
 export type TTSTarget = "original" | "translate";

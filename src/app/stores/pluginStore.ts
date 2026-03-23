@@ -1,6 +1,6 @@
 import { compareVersions } from "compare-versions";
 import { cloneDeep, isEqual } from "lodash-es";
-import { Plugin, PluginProvider, PluginReturnType } from "memo-plugin-manager";
+import { Plugin, PluginProvider, PluginReturnType } from "@aim-packages/plugin-manager";
 import { autorun, IReactionDisposer, makeAutoObservable, reaction, runInAction, when } from "mobx";
 
 import { customEvents, eventBus } from "@/events/eventBus";
