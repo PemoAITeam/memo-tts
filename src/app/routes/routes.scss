@@ -1,15 +1,93 @@
 .page-left-tabs {
-    width: 200px;
+    width: 320px;
     box-sizing: border-box;
     position: relative;
     flex-shrink: 0;
 }
-.App-title {
-    position: absolute;
-    width: 200px;
-    text-align: right;
-    left: 0;
-    top: 0;
-    z-index: 10;
 
+.history-sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.history-sidebar-header {
+    padding: 1rem 0.75rem 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.history-sidebar-body {
+    flex: 1;
+    min-height: 0;
+    padding: 0.75rem 0 0.75rem 0.75rem;
+}
+
+.history-sidebar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.history-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.history-sidebar-item.is-selected {
+    border-color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.05);
+}
+
+.history-sidebar-play {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+.history-sidebar-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-sidebar-title {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-sidebar-meta {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.history-sidebar-action {
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.history-sidebar-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding-right: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    text-align: center;
 }

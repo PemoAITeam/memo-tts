@@ -96,6 +96,10 @@ class DataStore {
     this.temoData.unshift(data);
   }
 
+  upsertTemoData = (data: TemoData) => {
+    this.temoData = [data, ...this.temoData.filter((item) => item.uuid !== data.uuid)];
+  }
+
   setEditorData = (data: any) => {
     this.editorData = data;
     localStorage.setItem('temo-editor', JSON.stringify(data));
