@@ -2,39 +2,43 @@ import './tiptap.scss'
 import './tts-mention-styles.scss'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { EditorCard } from '../extensions/editor-card'
-import { useEffect, useRef, useState } from 'react'
-import { EventHandler } from '../extensions/paste-plugin'
-import { TranslateCard } from '../extensions/translate-card'
-import { generateUUID, getLocalFileUrl, mergeTranslate, secondsToHMS, updateTemoData } from '@/app/lib/utils'
-import { Button } from '../ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import TranslatePanel from './translate-panel'
-import { TbEraser, TbLanguage, TbLoader, TbMicrophone, TbWand } from 'react-icons/tb'
-import type { BgmData, TemoData, WhisperSegments } from '@/app/interface'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { inject, observer } from 'mobx-react'
 import { cloneDeep } from 'lodash-es'
 import mammoth from 'mammoth'
-import { toast } from '../ui/use-toast'
 import { remark } from 'remark'
 import strip from 'strip-markdown'
 import { useTranslation } from 'react-i18next'
-import { inject, observer } from 'mobx-react'
-import type DataStore from '@/app/stores/dataStore'
-import type PluginStore from '@/app/stores/pluginStore'
-// import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
-import { MdOutlineMusicNote } from "react-icons/md";
-import { BsPause, BsPlay } from "react-icons/bs";
-import TTSPanel, { type VoiceOptions } from './tts-panel'
-import type AppStore from '@/app/stores/appStore'
-import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
-import TTSDialog from './tts-dialog'
+import { TbEraser, TbLanguage, TbLoader, TbWand } from 'react-icons/tb'
+import { MdOutlineMusicNote } from 'react-icons/md'
+import { BsPause, BsPlay } from 'react-icons/bs'
+import { IoStopCircleOutline } from 'react-icons/io5'
 import { IoIosClose } from 'react-icons/io'
+
+import { EditorCard } from '../extensions/editor-card'
+import { EventHandler } from '../extensions/paste-plugin'
+import { TranslateCard } from '../extensions/translate-card'
+import { Button } from '../ui/button'
+import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+import TTSDialog from './tts-dialog'
+import TranslatePanel from './translate-panel'
 import SelectTTSProvider from './SelectTTSProvider'
-import { isLegacyTTSSelection, parseStoredTTSSelection, resolveStoredTTSSelection } from '@/app/lib/tts-plugin'
-// TTS Mention 扩展
-import { TTSMentionSimple, TTSMentionNode, TTSMark, useTTSBubbleMenu, useTTSMentionMenu, type SelectedVoiceConfig } from '@/app/lib/tts-mention'
 import { TTSMenu } from './tts-menu'
 import { TTSBubbleMenu } from './tts-bubble-menu'
+import { toast } from '../ui/use-toast'
+import type { BgmData, WhisperSegments } from '@/app/interface'
+import { generateUUID, getLocalFileUrl, mergeTranslate, secondsToHMS } from '@/app/lib/utils'
+import type DataStore from '@/app/stores/dataStore'
+import type PluginStore from '@/app/stores/pluginStore'
+import {
+  TTSMentionSimple,
+  TTSMentionNode,
+  TTSMark,
+  useTTSBubbleMenu,
+  useTTSMentionMenu,
+  type SelectedVoiceConfig,
+} from '@/app/lib/tts-mention'
 
 function stableSerializeConfig(value: unknown): string {
   if (value === null || value === undefined) {
@@ -57,53 +61,61 @@ function stableSerializeConfig(value: unknown): string {
 }
 
 interface TiptapProps {
-  setEditor?: (editor: Editor) => void,
-  getBgm?: (bgm: { name: string, path: string, duration: number }) => void,
-  content?: any,
-  from?: string,
-  type?: 'audio' | 'video',
-  bgmData?: BgmData,
-  dataStore?: DataStore,
-  appStore?: AppStore,
-  pluginStore?: PluginStore,
-  currentFile?: TemoData,
-  updateList?: (data: TemoData) => void,
-  ttsProvider?: string,
+  setEditor?: (editor: Editor) => void
+  getBgm?: (bgm?: { name: string; path: string; duration: number }) => void
+  content?: any
+  bgmData?: BgmData
+  dataStore?: DataStore
+  pluginStore?: PluginStore
+  ttsProvider?: string
   onProviderChange?: (provider: string) => void
+  onSynthesize?: () => void
+  onStopSynthesis?: () => void
+  synthesisActive?: boolean
+  synthesisBusy?: boolean
+  synthesisDisabled?: boolean
+  synthesisProgress?: number
 }
 
-const Tiptap = inject('settingStore', 'dataStore', 'appStore', 'pluginStore')(observer(({ setEditor, content, from, dataStore, pluginStore, updateList, getBgm, bgmData, currentFile, ttsProvider, onProviderChange }: TiptapProps) => {
+const Tiptap = inject('dataStore', 'pluginStore')(observer(({
+  setEditor,
+  content,
+  dataStore,
+  pluginStore,
+  getBgm,
+  bgmData,
+  ttsProvider,
+  onProviderChange,
+  onSynthesize,
+  onStopSynthesis,
+  synthesisActive,
+  synthesisBusy,
+  synthesisDisabled,
+  synthesisProgress,
+}: TiptapProps) => {
   const [openTranslate, setOpenTranslate] = useState(false)
-  const [translating, setTranslating] = useState<boolean>(false)
-  const [openSynthesis, setOpenSynthesis] = useState<boolean>(false)
-  const [curOptions, setCurOptions] = useState<VoiceOptions>()
-  const [TTSType, setTTSType] = useState<'video' | 'audio'>('audio')
-  const [voice, setVoice] = useState<string>();
-  const [openDialog, setOpenDialog] = useState(false);
-  const [originalVoice, setOriginalVoice] = useState<string>()
-  const { synthesizing } = dataStore!
+  const [translating, setTranslating] = useState(false)
+  const [ttsType, setTtsType] = useState<'video' | 'audio'>('audio')
+  const [openDialog, setOpenDialog] = useState(false)
+  const [bgm, setBgm] = useState<BgmData | undefined>(bgmData)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
   const { t } = useTranslation()
 
-  const { mergeTemo } = dataStore!
-  const effectiveProvider = ttsProvider || curOptions?.provider || pluginStore?.provider
-  const availableTTSProvidersKey = pluginStore?.ttsProviders?.map((item) => `${item.provider}:${item.pluginId}`).join('|')
+  const effectiveProvider = ttsProvider || pluginStore?.provider
   const effectiveProviderConfigKey = effectiveProvider
     ? stableSerializeConfig(pluginStore?.getRuntimeTTSConfiguration(effectiveProvider) || {})
     : ''
-  const hasLegacySelection = isLegacyTTSSelection(curOptions)
 
-  // TTS Mention 菜单回调 - 先定义，以便传递给 extension
   const handleTTSMenuOpenRef = useRef<(props: { range: { from: number; to: number }; query: string }) => void>()
   const handleTTSMenuCloseRef = useRef<() => void>()
 
-  // 创建编辑器
   const editor = useEditor({
     extensions: [
       StarterKit,
       EditorCard,
       TranslateCard,
       EventHandler,
-      // TTS Mention 扩展 - 配置回调
       TTSMentionNode,
       TTSMentionSimple.configure({
         onMenuOpen: (props) => {
@@ -113,367 +125,335 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore', 'pluginStore')(ob
           handleTTSMenuCloseRef.current?.()
         },
       }),
-      // TTS Mark 扩展 - 用于 Bubble Menu
       TTSMark,
     ],
     autofocus: true,
     enablePasteRules: false,
     onUpdate: (props) => {
-      const jsonData = props.editor.getJSON();
-      console.log(jsonData)
-      const hasEditorCard = jsonData.content?.filter(item => item.type === 'editorCard')
+      const jsonData = props.editor.getJSON()
+      const hasEditorCard = jsonData.content?.filter((item) => item.type === 'editorCard')
+
       if (!hasEditorCard?.length) {
-        props.editor.chain().insertContentAt(props.editor.state.selection.head, { type: 'editorCard', attrs: { id: generateUUID() } }).focus().run()
+        props.editor
+          .chain()
+          .insertContentAt(props.editor.state.selection.head, { type: 'editorCard', attrs: { id: generateUUID() } })
+          .focus()
+          .run()
       }
-      if (from === 'home') {
-        const data = props.editor.getJSON()
-        if (data) {
-          dataStore?.setEditorData(data)
-        }
-      }
-    }
+
+      dataStore?.setEditorData(props.editor.getJSON())
+    },
   })
 
-  // TTS Mention 菜单
-  const handleVoiceSelect = (config: SelectedVoiceConfig) => {
-    console.log('选中的语音配置:', config)
-    // 可以在这里处理语音选择后的逻辑
-  }
+  const handleVoiceSelect = (_config: SelectedVoiceConfig) => {}
+
   const ttsMenu = useTTSMentionMenu(editor, {
     initialProvider: effectiveProvider,
     onVoiceSelect: handleVoiceSelect,
   })
 
-  // TTS Bubble Menu（选中文本后显示）
   const ttsBubbleMenu = useTTSBubbleMenu(editor, {
     provider: effectiveProvider,
     configKey: effectiveProviderConfigKey,
   })
 
-  // TTS Mention 菜单回调 - 更新 ref
   useEffect(() => {
     handleTTSMenuOpenRef.current = (props: { range: { from: number; to: number }; query: string }) => {
-      console.log('[Tiptap] TTS menu open callback:', props)
       ttsMenu.openMenu(props)
     }
+
     handleTTSMenuCloseRef.current = () => {
-      console.log('[Tiptap] TTS menu close callback')
       ttsMenu.closeMenu()
     }
   }, [ttsMenu])
 
-  const [bgm, setBgm] = useState<BgmData | undefined>(bgmData);
-  const [selectedBgm, setSelectedBgm] = useState<boolean>(false)
-  const audioRef = useRef<any>();
-  const [isPlaying, setIsPlaying] = useState(false);
   useEffect(() => {
-    if (setEditor) {
-      setEditor(editor as Editor)
+    if (setEditor && editor) {
+      setEditor(editor)
     }
+
     return () => {
-      if (editor) {
-        editor.destroy()
-      }
-      if (audioRef?.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-        setIsPlaying(false);
+      editor?.destroy()
+
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.src = ''
+        setIsPlaying(false)
       }
     }
   }, [editor, setEditor])
 
   useEffect(() => {
-    // this is just an example. do whatever you want to do here
-    // to retrieve your editors content from somewhere
+    if (!editor) {
+      return
+    }
+
+    if (content && typeof content === 'object') {
+      const nextContentKey = stableSerializeConfig(content)
+      const currentContentKey = stableSerializeConfig(editor.getJSON())
+
+      if (nextContentKey === currentContentKey) {
+        return
+      }
+    }
+
     Promise.resolve().then(() => {
-      // 在微任务中执行
-      editor?.commands.setContent(content || `<editor-card></editor-card>`)
-    });
-  }, [editor, content])
+      editor.commands.setContent(content || '<editor-card></editor-card>')
+    })
+  }, [content, editor])
 
   useEffect(() => {
-    if (currentFile) {
-      if (currentFile.type) {
-        setTTSType(currentFile.type)
-        dataStore?.setTTSType(currentFile.type)
-      }
-      const storedSelection = parseStoredTTSSelection(currentFile.ttsOptions)
-      if (storedSelection) {
-        const providerMeta = pluginStore?.findTTSProviderByValue(storedSelection.provider)
-        const manifest = providerMeta
-          ? pluginStore?.findManifestByProviderValue(storedSelection.provider)
-          : undefined
-        const resolvedSelection = resolveStoredTTSSelection(storedSelection, providerMeta, manifest)
-
-        setCurOptions(resolvedSelection)
-        setVoice(resolvedSelection?.displayLabel)
-        setOriginalVoice(resolvedSelection?.displayLabel)
-
-        if (providerMeta && pluginStore?.provider !== providerMeta.provider) {
-          pluginStore?.setProvider(providerMeta.provider)
-        }
-      } else {
-        setVoice(currentFile.voiceLocalName)
-        setOriginalVoice(currentFile.voiceLocalName)
-      }
-    } else if (dataStore?.TTSType) {
-      setTTSType(dataStore.TTSType)
-    }
-    if (bgmData) {
-      setBgm(bgmData)
+    if (dataStore?.TTSType) {
+      setTtsType(dataStore.TTSType)
     }
 
-  }, [availableTTSProvidersKey, dataStore, bgmData, currentFile, pluginStore])
+    setBgm(bgmData || undefined)
+  }, [bgmData, dataStore?.TTSType])
 
   useEffect(() => {
     return () => {
       dataStore?.setTTSType('audio')
       setBgm(undefined)
-      setCurOptions(undefined)
     }
-  }, [])
+  }, [dataStore])
 
   const clear = () => {
-    editor?.commands.clearContent();
+    editor?.commands.clearContent()
     editor?.chain().insertContentAt(editor.state.selection.head, { type: 'editorCard' }).focus().run()
   }
 
   const getContent = () => {
-    const jsonData = editor?.getJSON();
-    const originalData = jsonData?.content?.filter(item => item.type === 'editorCard')
-    const data = originalData?.map((item, index) => ({ text: item.content ? item.content[0].text : '', index })).filter(item => !!item.text?.length)
+    const jsonData = editor?.getJSON()
+    const originalData = jsonData?.content?.filter((item) => item.type === 'editorCard')
+    const data = originalData
+      ?.map((item, index) => ({ text: item.content ? item.content[0].text : '', index }))
+      .filter((item) => !!item.text?.length)
+
     return data || []
   }
 
   const addTranslate = (translateData: WhisperSegments[]) => {
-    const jsonData = editor?.getJSON();
-    const editorContent = cloneDeep(jsonData?.content);
+    const jsonData = editor?.getJSON()
+    const editorContent = cloneDeep(jsonData?.content)
+
     if (editorContent?.length) {
-      const list = mergeTranslate(editorContent.filter(item => item.type === 'editorCard'), translateData).map(item => item.content && !item.content[0].text.length ? { type: item.type, attrs: item.attrs } : item)
+      const list = mergeTranslate(
+        editorContent.filter((item) => item.type === 'editorCard'),
+        translateData,
+      ).map((item) => (item.content && !item.content[0].text.length ? { type: item.type, attrs: item.attrs } : item))
+
       setTranslating(false)
       editor?.chain().setContent({ type: 'doc', content: list }, true).focus().run()
     }
   }
 
   const handleDrop = (event: any) => {
-    event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    const reader = new FileReader();
+    event.preventDefault()
+
+    const file = event.dataTransfer.files[0]
+    const reader = new FileReader()
+
     if (file.type === 'text/plain') {
-      reader.readAsText(file);
-      reader.onload = e => { // 读取完毕从中取值
-        const text = e.target?.result as string;
+      reader.readAsText(file)
+      reader.onload = (nextEvent) => {
+        const text = nextEvent.target?.result as string
         editor?.chain().insertContentAt(editor.state.selection.head, text).focus().run()
-        console.log('pointsTxt', text) // 获取到的TXT文件
-      };
-    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
-      reader.onloadend = function () {
-        const arrayBuffer = reader.result as ArrayBuffer;
-        if (arrayBuffer) {
-          mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function (resultObject) {
-            editor?.chain().insertContentAt(editor.state.selection.head, resultObject.value).focus().run()
-          })
-        }
-
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      const type = file.name.split('.').pop();
-      if (type === 'md') {
-        reader.onload = e => {
-          const markdownText = e.target?.result as string;
-          // 使用 remark 解析 Markdown
-          remark()
-            .use(strip) // 使用 strip 插件去除 Markdown 格式
-            .process(markdownText, (err, file) => {
-              if (err) throw err;
-
-              // 提取的纯文本
-              const text = file?.toString();
-              if (text) {
-                editor?.chain().insertContentAt(editor.state.selection.head, text).focus().run()
-              }
-            });
-        };
-        reader.readAsText(file); // 以文本格式读取文件
-      } else {
-        toast({
-          variant: "destructive",
-          description: `当前只支持解析txt、docx、md文档`
-        })
       }
-    }
-  };
-
-  const selectBgm = async (filePath: string) => {
-    // const file: any = await window.AIM.openDialog('showOpenDialogSync', {
-    //     properties: ['openFile'],
-    //     filters: [{ name: '', extensions: ['mp3'] }]
-    // })
-    // if (!file) return
-    // const filePath = file[0];
-
-    const fileName = filePath.replace(/^.*[\\/]/, '');
-    if (audioRef.current) {
-      audioRef.current.src = getLocalFileUrl(filePath);
-      // 使用loadedmetadata事件获取音频文件的duration
-      audioRef.current.addEventListener('loadedmetadata', () => {
-        const duration = audioRef.current.duration;
-        // 在这里可以处理音频文件的时长
-        const bgmData = { name: fileName, path: filePath, duration }
-        dataStore!.copyLibraryFile(filePath, secondsToHMS(duration))
-        getBgm && getBgm(bgmData)
-        if (from === 'home') {
-          dataStore?.setBgm(bgmData)
-        } else {
-          setSelectedBgm(true)
-        }
-        setBgm(bgmData);
-        setOpenDialog(false)
-      });
-    }
-  }
-
-  const playBgm = (event?: any) => {
-    if (event) {
-      event.stopPropagation();
-    }
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      if (bgm?.path) {
-        audioRef.current.src = getLocalFileUrl(bgm.path)
-        audioRef.current.play();
-      }
-    }
-    setIsPlaying(!isPlaying);
-  }
-
-  const generateAudio = async () => {
-    if (!curOptions || !currentFile || !editor) {
-      toast({
-        variant: 'destructive',
-        description: t('tts.select voice', { defaultValue: 'Please select a TTS plugin and voice first.' }),
-      })
       return
     }
 
-    try {
-      const result = await mergeTemo({
-        selection: curOptions,
-        uuid: currentFile.uuid,
-        editorData: editor.getJSON(),
-        bgm,
-      })
-      if (result) {
-        result.voiceLocalName = result.voiceLocalName || curOptions.displayLabel
-        result.ttsOptions = result.ttsOptions || cloneDeep(curOptions)
-        console.log(result)
-        updateList && updateList(updateTemoData(result))
+    if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
+      reader.onloadend = () => {
+        const arrayBuffer = reader.result as ArrayBuffer
+        if (arrayBuffer) {
+          mammoth.extractRawText({ arrayBuffer }).then((resultObject) => {
+            editor?.chain().insertContentAt(editor.state.selection.head, resultObject.value).focus().run()
+          })
+        }
       }
-    } catch (error) {
-      console.log(error)
+      reader.readAsArrayBuffer(file)
+      return
     }
+
+    const type = file.name.split('.').pop()
+    if (type === 'md') {
+      reader.onload = (nextEvent) => {
+        const markdownText = nextEvent.target?.result as string
+
+        remark()
+          .use(strip)
+          .process(markdownText, (error, result) => {
+            if (error) {
+              throw error
+            }
+
+            const text = result?.toString()
+            if (text) {
+              editor?.chain().insertContentAt(editor.state.selection.head, text).focus().run()
+            }
+          })
+      }
+      reader.readAsText(file)
+      return
+    }
+
+    toast({
+      variant: 'destructive',
+      description: 'Only txt, docx, and md files are supported.',
+    })
   }
 
-  const addVoice = (data: VoiceOptions) => {
-    setOpenSynthesis(false)
-    setVoice(data.displayLabel)
-    setCurOptions(data)
+  const selectBgm = (filePath: string) => {
+    const fileName = filePath.replace(/^.*[\\/]/, '')
+    const audio = audioRef.current
+
+    if (!audio) {
+      return
+    }
+
+    audio.src = getLocalFileUrl(filePath)
+
+    const handleLoadedMetadata = () => {
+      const duration = audio.duration
+      const nextBgm = { name: fileName, path: filePath, duration }
+
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      dataStore?.copyLibraryFile(filePath, secondsToHMS(duration))
+      dataStore?.setBgm(nextBgm)
+      getBgm?.(nextBgm)
+      setBgm(nextBgm)
+      setOpenDialog(false)
+    }
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
   }
 
-  const deleteBgm = (event?: any) => {
-    if (event) {
-      event.stopPropagation();
+  const playBgm = (event?: MouseEvent<SVGElement>) => {
+    event?.stopPropagation()
+
+    const audio = audioRef.current
+    if (!audio) {
+      return
     }
+
+    if (isPlaying) {
+      audio.pause()
+    } else if (bgm?.path) {
+      audio.src = getLocalFileUrl(bgm.path)
+      void audio.play()
+    }
+
+    setIsPlaying(!isPlaying)
+  }
+
+  const deleteBgm = (event?: MouseEvent<SVGElement>) => {
+    event?.stopPropagation()
+
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = ''
+    }
+
+    setIsPlaying(false)
+    dataStore?.setBgm(null)
+    getBgm?.()
     setBgm(undefined)
   }
 
   return (
     <>
       <div className='flex items-center flex-shrink-0 justify-between mb-4 pr-3'>
-        {
-          from === 'home'
-            ? <div className='flex flex-1 items-center gap-3 pr-3'>
-              <span className='text-sm whitespace-nowrap text-muted-foreground'>{t('tts.provider')}</span>
-              <div className='w-full max-w-52'>
-                <SelectTTSProvider onChange={onProviderChange || (() => undefined)} />
-              </div>
-            </div>
-            : <div></div>
-        }
+        <div className='flex flex-1 items-center gap-3 pr-3'>
+          <span className='text-sm whitespace-nowrap text-muted-foreground'>{t('tts.provider')}</span>
+          <div className='w-full max-w-52'>
+            <SelectTTSProvider onChange={onProviderChange || (() => undefined)} />
+          </div>
+        </div>
         <div className='flex items-center flex-shrink-0 gap-1'>
-          {from != 'home' && <Button aria-label={t('tts.synthesis')} variant={'ghost'} size={"sm"} disabled={synthesizing || !curOptions || hasLegacySelection} onClick={generateAudio}>
-            {
-              synthesizing
-                ? <TbLoader size={16} />
-                : <TbWand size={16} />
-            }
-            <span>{t('tts.synthesis')}</span>
-          </Button>}
-
-          {TTSType === 'video' && <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-            <DialogTrigger asChild>
-              <Button aria-label={t('tts.select music')} variant={'ghost'} size={"sm"}>
-                {!bgm && <MdOutlineMusicNote size={18} />}
-                {(bgm && isPlaying) && <BsPause onClick={playBgm} size={18} />}
-                {(bgm && !isPlaying) && <BsPlay onClick={playBgm} size={18} />}
-                <span className={`text-sm ml-1 ${selectedBgm ? ' text-indigo-600' : ''}`}>{bgm ? bgm.name : t('tts.select music')}</span>
-                {!!bgm && <IoIosClose size={16} className=" absolute -top-2 -right-3" onClick={deleteBgm} />}
+          {synthesisActive
+            ? (
+              <Button
+                aria-label={t('tts.synthesis')}
+                variant='outline'
+                size='sm'
+                className='relative overflow-hidden'
+                onClick={onStopSynthesis}
+              >
+                <IoStopCircleOutline size={16} className='relative z-10' />
+                <span className='relative z-10'>{t('tts.synthesis')}</span>
+                <span className='relative z-10'>{`${synthesisProgress || 0}%`}</span>
+                <div
+                  style={{ width: `${synthesisProgress || 0}%` }}
+                  className='pointer-events-none absolute left-0 top-0 h-full bg-primary opacity-20'
+                />
               </Button>
-            </DialogTrigger>
-            <DialogContent className="pic-dialog w-2/3 h-2/3 max-w-none">
-              <TTSDialog selectImage={selectBgm}></TTSDialog>
-            </DialogContent>
-          </Dialog>}
-          {from != 'home' && <Popover open={openSynthesis} onOpenChange={(open) => setOpenSynthesis(open)}>
-            <PopoverTrigger asChild>
-              <Button aria-label={t('tts.tts')} variant={'ghost'} size={"sm"}>
-                <TbMicrophone />
-                <span className={`${voice !== originalVoice ? ' text-indigo-600' : ''}`}> {voice} </span>
+            )
+            : (
+              <Button
+                aria-label={t('tts.synthesis')}
+                size='sm'
+                disabled={synthesisDisabled || !onSynthesize}
+                onClick={onSynthesize}
+              >
+                {synthesisBusy
+                  ? <TbLoader className='transition-colors ease-linear animate-spin' size={16} />
+                  : <TbWand size={16} />}
+                <span>{t('tts.synthesis')}</span>
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto">
-              <TTSPanel getVoiceOptions={addVoice} voiceOptions={curOptions} showConfirmButton />
-              {/* <Button title={t('app.sure')} className="w-full mt-2" onClick={() => addVoice()}>
-                                <span>{t('app.sure')}</span>
-                            </Button> */}
-            </PopoverContent>
-          </Popover>}
+            )}
 
-          <Popover open={openTranslate} onOpenChange={(open) => setOpenTranslate(open)}>
+          {ttsType === 'video' && (
+            <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+              <DialogTrigger asChild>
+                <Button aria-label={t('tts.select music')} variant='ghost' size='sm'>
+                  {!bgm && <MdOutlineMusicNote size={18} />}
+                  {(bgm && isPlaying) && <BsPause onClick={playBgm} size={18} />}
+                  {(bgm && !isPlaying) && <BsPlay onClick={playBgm} size={18} />}
+                  <span className='text-sm ml-1'>{bgm ? bgm.name : t('tts.select music')}</span>
+                  {!!bgm && <IoIosClose size={16} className='absolute -top-2 -right-3' onClick={deleteBgm} />}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className='pic-dialog w-2/3 h-2/3 max-w-none'>
+                <TTSDialog selectImage={selectBgm} />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          <Popover open={openTranslate} onOpenChange={setOpenTranslate}>
             <PopoverTrigger asChild>
-              <Button aria-label={t('app.translate')} variant={'ghost'} size={"sm"}>
+              <Button aria-label={t('app.translate')} variant='ghost' size='sm'>
                 {translating ? <TbLoader className='transition-colors ease-linear animate-spin' /> : <TbLanguage />}
-                <span className="text-sm">{t('app.translate')}</span>
+                <span className='text-sm'>{t('app.translate')}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto">
-              <TranslatePanel startTranslate={setTranslating} getTranslateData={addTranslate} getContent={getContent} closePanel={() => setOpenTranslate(false)}  ></TranslatePanel>
+            <PopoverContent className='w-auto'>
+              <TranslatePanel
+                startTranslate={setTranslating}
+                getTranslateData={addTranslate}
+                getContent={getContent}
+                closePanel={() => setOpenTranslate(false)}
+              />
             </PopoverContent>
           </Popover>
-          <Button aria-label={t('app.clear')} variant={'ghost'} size={"sm"} onClick={clear}>
+
+          <Button aria-label={t('app.clear')} variant='ghost' size='sm' onClick={clear}>
             <TbEraser size={18} />
-            <span className="text-sm">{t('app.clear')}</span>
+            <span className='text-sm'>{t('app.clear')}</span>
           </Button>
         </div>
       </div>
-      {from !== 'home' && hasLegacySelection && (
-        <div className='mb-3 mr-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800'>
-          {t('tts.legacy selection notice', {
-            defaultValue: 'This history item uses legacy TTS settings. Open the voice selector and choose a plugin voice before synthesis.',
-          })}
-        </div>
-      )}
-      <div id="drop-area" className='flex-1 overflow-y-auto pr-3'
+
+      <div
+        id='drop-area'
+        className='flex-1 overflow-y-auto pr-3'
         onDrop={handleDrop}
         onDragOver={(event) => event.preventDefault()}
-        onDragEnter={(event) => event.preventDefault()}>
+        onDragEnter={(event) => event.preventDefault()}
+      >
         <EditorContent editor={editor} />
       </div>
-      <audio className='audioRef' ref={audioRef} controls></audio>
+      <audio className='audioRef' ref={audioRef} controls />
 
-      {/* TTS Mention 菜单 */}
       <TTSMenu
         ref={ttsMenu.menuRef}
         isOpen={ttsMenu.isOpen}
@@ -488,7 +468,6 @@ const Tiptap = inject('settingStore', 'dataStore', 'appStore', 'pluginStore')(ob
         onClose={ttsMenu.closeMenu}
       />
 
-      {/* TTS Bubble Menu（选中文本后显示） */}
       <TTSBubbleMenu
         ref={ttsBubbleMenu.menuRef}
         isOpen={ttsBubbleMenu.isOpen}

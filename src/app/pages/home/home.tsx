@@ -1,47 +1,56 @@
 /* eslint-disable no-case-declarations */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { inject, observer } from 'mobx-react';
-import { useTranslation } from 'react-i18next';
-import { IoStopCircleOutline } from 'react-icons/io5';
-import type { Editor } from '@tiptap/react';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { inject, observer } from 'mobx-react'
+import { useTranslation } from 'react-i18next'
+import type { Editor } from '@tiptap/react'
+import { merge } from 'lodash-es'
 
-import HistoryAudioPlayer from '@/app/components/business/history-audio-player';
-import Tiptap from '@/app/components/business/tiptap';
-import TTSPanel, { type VoiceOptions } from '@/app/components/business/tts-panel';
-import { Button } from '@/app/components/ui/button';
-import { useToast } from '@/app/components/ui/use-toast';
-import { generateUUID, getLocalFileUrl, secondsToHMS, updateTemoData } from '@/app/lib/utils';
-import type { BgmData, TemoData } from '@/app/interface';
-import type AppStore from '@/app/stores/appStore';
-import type DataStore from '@/app/stores/dataStore';
-import type SettingStore from '@/app/stores/settingStore';
+import HistoryAudioPlayer from '@/app/components/business/history-audio-player'
+import Tiptap from '@/app/components/business/tiptap'
+import { useToast } from '@/app/components/ui/use-toast'
+import {
+  buildTTSSelection,
+  isLegacyTTSSelection,
+  parseStoredTTSSelection,
+  resolveStoredTTSSelection,
+} from '@/app/lib/tts-plugin'
+import { generateUUID, getLocalFileUrl, secondsToHMS, updateTemoData } from '@/app/lib/utils'
+import type { BgmData } from '@/app/interface'
+import type AppStore from '@/app/stores/appStore'
+import type DataStore from '@/app/stores/dataStore'
+import type PluginStore from '@/app/stores/pluginStore'
 
 interface HomePageProps {
-  settingStore?: SettingStore
   dataStore?: DataStore
   appStore?: AppStore
+  pluginStore?: PluginStore
 }
 
-const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dataStore, appStore }: HomePageProps) => {
+const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
+  dataStore,
+  appStore,
+  pluginStore,
+}: HomePageProps) => {
   const { id } = useParams()
   const location = useLocation()
-  const [provider, setProvider] = useState<string>('')
-  const [curEditorData, setCurEditorData] = useState<any>()
-  const [editorRef, setEditorRef] = useState<Editor>()
-  const [selection, setSelection] = useState<VoiceOptions>()
-  const [bgm, setBgm] = useState<BgmData>()
-  const [ttsType, setTtsType] = useState<'audio' | 'video'>()
-
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { toast } = useToast()
+
+  const [provider, setProvider] = useState('')
+  const [curEditorData, setCurEditorData] = useState<any>()
+  const [editorRef, setEditorRef] = useState<Editor>()
+  const [bgm, setBgm] = useState<BgmData>()
+
   const { currentTTSProgress, currentTTSUUID, mergeTemo, synthesizing } = dataStore!
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const lastAutoplayTokenRef = useRef<number | null>(null)
+
   const selectedHistoryItem = id ? dataStore?.temoData.find((item) => item.uuid === id) : undefined
   const currentFile = selectedHistoryItem ? updateTemoData(selectedHistoryItem) : undefined
-  const isHistoryMode = !!currentFile
+  const storedSelection = currentFile ? parseStoredTTSSelection(currentFile.ttsOptions) : undefined
+  const activeProvider = provider || pluginStore?.provider || storedSelection?.provider || ''
   const autoplayState = location.state as { autoplayId?: string; autoplayToken?: number } | null
   const autoplayToken = autoplayState && currentFile && autoplayState.autoplayId === currentFile.uuid
     ? autoplayState.autoplayToken
@@ -50,17 +59,23 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
   useEffect(() => {
     if (currentFile) {
       setCurEditorData(currentFile.editorData)
-      setBgm(currentFile.bgm)
-      setTtsType(currentFile.type)
+      setBgm(currentFile.bgm || undefined)
+
+      if (storedSelection?.provider) {
+        const providerMeta = pluginStore?.findTTSProviderByValue(storedSelection.provider)
+        if (providerMeta) {
+          setProvider(providerMeta.provider)
+          if (pluginStore?.provider !== providerMeta.provider) {
+            pluginStore?.setProvider(providerMeta.provider)
+          }
+        }
+      }
       return
     }
 
-    if (dataStore?.editorData) {
-      setCurEditorData(dataStore.editorData)
-    }
+    setCurEditorData(dataStore?.editorData || '')
     setBgm(dataStore?.bgm || undefined)
-    setTtsType(dataStore?.CurTTSType)
-  }, [currentFile, dataStore?.CurTTSType, dataStore?.bgm, dataStore?.editorData])
+  }, [currentFile, dataStore?.bgm, dataStore?.editorData, pluginStore, storedSelection?.provider])
 
   useEffect(() => {
     if (currentFile?.type !== 'video' || !autoplayToken) {
@@ -110,10 +125,8 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
   const handler = useCallback((_event: any, messageData: any) => {
     switch (messageData.type) {
       case 'temo:audio:abort':
-        console.log('temo:audio:abort')
         break
       case 'temo:audio:error':
-        console.log(messageData)
         const error = messageData.data?.message
         if (typeof error === 'string' && error.includes('Unsupported voice')) {
           toast({
@@ -138,8 +151,59 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     }
   }, [handler])
 
+  const handleEditorChange = useCallback((nextEditor: Editor) => {
+    setEditorRef(nextEditor)
+  }, [])
+
+  const handleBgmChange = useCallback((nextBgm?: BgmData) => {
+    setBgm(nextBgm)
+  }, [])
+
+  const handleProviderChange = useCallback((nextProvider: string) => {
+    setProvider(nextProvider)
+  }, [])
+
+  const buildHomeSelection = useCallback(() => {
+    if (!activeProvider) {
+      return undefined
+    }
+
+    const providerMeta = pluginStore?.findTTSProviderByValue(activeProvider)
+    if (!providerMeta) {
+      return undefined
+    }
+
+    const manifest = pluginStore?.findManifestByProviderValue(activeProvider)
+    const version = pluginStore?.memoPlugins?.localPlugins?.versions?.[providerMeta.pluginId]
+    const storedPluginConfig = version
+      ? pluginStore?.memoPlugins?.pluginsConfigurations?.[`${providerMeta.pluginId}@${version}`] || {}
+      : {}
+    const runtimeConfig = pluginStore?.getRuntimeTTSConfiguration(activeProvider) || {}
+
+    if (storedSelection && !isLegacyTTSSelection(storedSelection) && storedSelection.provider === activeProvider) {
+      const resolvedSelection = resolveStoredTTSSelection(storedSelection, providerMeta, manifest)
+
+      return buildTTSSelection({
+        providerMeta,
+        manifest,
+        target: resolvedSelection?.target || 'original',
+        config: merge({}, manifest?.defaultsConfiguration || {}, storedPluginConfig, resolvedSelection?.config || {}, runtimeConfig),
+      })
+    }
+
+    return buildTTSSelection({
+      providerMeta,
+      manifest,
+      target: storedSelection?.target || 'original',
+      config: merge({}, manifest?.defaultsConfiguration || {}, storedPluginConfig, runtimeConfig),
+    })
+  }, [activeProvider, pluginStore, storedSelection])
+
+  const canSynthesize = !!editorRef && !!buildHomeSelection()
+
   const generateAudio = async () => {
-    if (!selection) {
+    const selection = buildHomeSelection()
+    if (!selection || !editorRef) {
       toast({
         variant: 'destructive',
         description: t('tts.select voice', { defaultValue: 'Please select a TTS plugin and voice first.' }),
@@ -150,8 +214,8 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     try {
       const result = await mergeTemo({
         selection,
-        uuid: generateUUID(),
-        editorData: editorRef?.getJSON(),
+        uuid: currentFile?.uuid || generateUUID(),
+        editorData: editorRef.getJSON(),
         bgm,
       })
 
@@ -162,13 +226,18 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
           ttsOptions: result.ttsOptions || selection,
           duration: secondsToHMS(result.metadata?.duration),
         })
+
         dataStore?.upsertTemoData(nextResult)
-        editorRef?.commands.clearContent()
-        editorRef?.chain().insertContentAt(editorRef.state.selection.head, { type: 'editorCard' }).focus().run()
-        dataStore?.setEditorData('')
-        dataStore?.setBgm(null)
-        dataStore?.setTTSType('audio', true)
         appStore?.setTemoId(nextResult.uuid)
+
+        if (!currentFile) {
+          editorRef.commands.clearContent()
+          editorRef.chain().insertContentAt(editorRef.state.selection.head, { type: 'editorCard' }).focus().run()
+          dataStore?.setEditorData('')
+          dataStore?.setBgm(null)
+          dataStore?.setTTSType('audio', true)
+        }
+
         navigate(`/home/${nextResult.uuid}`)
       }
     } catch (error) {
@@ -180,30 +249,27 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
     window.AIM.tts.abortMergeTemo()
   }
 
-  const updateHistoryItem = (result: TemoData) => {
-    dataStore?.upsertTemoData(result)
-    appStore?.setTemoId(result.uuid)
-    navigate(`/home/${result.uuid}`)
-  }
-
   return (
-    <div className="flex flex-col h-full">
+    <div className='flex flex-col h-full'>
       <div className='flex flex-1 temo-draggable pt-4 overflow-hidden'>
         <div className='flex-1 pl-4 pb-4 flex temo-no-draggable'>
           <div className='flex flex-col flex-1 border h-full p-3 pr-0 rounded-md'>
             <Tiptap
               key={currentFile?.uuid || 'draft'}
               content={curEditorData}
-              type={ttsType}
               bgmData={bgm}
-              setEditor={isHistoryMode ? undefined : setEditorRef}
-              getBgm={setBgm}
-              from={isHistoryMode ? undefined : 'home'}
-              currentFile={currentFile}
-              updateList={isHistoryMode ? updateHistoryItem : undefined}
-              ttsProvider={isHistoryMode ? undefined : provider || selection?.provider}
-              onProviderChange={isHistoryMode ? undefined : setProvider}
+              setEditor={handleEditorChange}
+              getBgm={handleBgmChange}
+              ttsProvider={activeProvider}
+              onProviderChange={handleProviderChange}
+              onSynthesize={generateAudio}
+              onStopSynthesis={stopGenerateAudio}
+              synthesisActive={!!currentTTSUUID}
+              synthesisProgress={currentTTSProgress}
+              synthesisDisabled={synthesizing || !canSynthesize}
+              synthesisBusy={synthesizing}
             />
+
             {currentFile?.fileUrl && (
               <div className='mr-3 mt-4'>
                 {currentFile.type === 'video'
@@ -226,25 +292,6 @@ const HomePage = inject('settingStore', 'dataStore', 'appStore')(observer(({ dat
               </div>
             )}
           </div>
-          {!isHistoryMode && <div className='px-4 flex-shrink-0 tts-service-panel'>
-            <TTSPanel voiceOptions={selection} getOptions={setSelection} />
-            {currentTTSUUID ? (
-              <Button
-                variant="outline"
-                className='w-full mt-6 relative overflow-hidden'
-                onClick={stopGenerateAudio}
-              >
-                <IoStopCircleOutline size={16} />
-                <span>{t('tts.synthesis')}</span>
-                <span>{`${currentTTSProgress}%`}</span>
-                <div style={{ width: `${currentTTSProgress}%` }} className='left-0 top-0 h-full absolute opacity-50 bg-primary' />
-              </Button>
-            ) : (
-              <Button className='mt-6 w-full' disabled={synthesizing || !selection} onClick={generateAudio}>
-                <span>{t('tts.synthesis')}</span>
-              </Button>
-            )}
-          </div>}
         </div>
       </div>
     </div>

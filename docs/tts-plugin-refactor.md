@@ -103,7 +103,7 @@ Electron host responsibilities:
 1. plugin metadata is loaded through `window.AIM.plugin.readLocalPlugins()`
 2. frontend derives TTS provider list from installed plugin manifests
 3. user selects a provider
-4. frontend renders plugin-exposed fields using `memo-form-renderer`
+4. frontend renders plugin voice selection with the built-in `tts-panel` voice picker
 5. editor stores TTS config in a plugin-generic structure
 6. synthesis submits a generic payload containing:
    - provider

@@ -36,7 +36,7 @@
 | `src/app/interface.d.ts` 增加插件 TTS 桥接类型 | 部分完成 | 已补 `tts.mergeTemo`、`tts.synthesize`、`tts.getPluginEditorOptions` 等，但 `plugin.getProviders` 仍是可选，且部分返回值仍为 `Promise<any>` | `src/app/interface.d.ts` |
 | `pluginStore` 去掉内建默认 Provider，并从插件清单派生 Provider 列表 | 已完成 | 已从 `memoPlugins` 派生 `ttsProviders`，并自动选择首个可用 Provider | `src/app/stores/pluginStore.ts` |
 | `SelectTTSProvider` 去掉内建 Provider 选项，只显示插件 | 已完成 | 下拉列表完全来自 `ttsProviders` | `src/app/components/business/SelectTTSProvider.tsx` |
-| `tts-panel` 移除内建配置面板，只渲染插件暴露表单 | 已完成 | `EdgeConfig` / `OpenAIConfig` / `VolcanoConfig` 已离开活跃路径，面板统一使用 `memo-form-renderer` | `src/app/components/business/tts-panel.tsx` |
+| `tts-panel` 移除内建配置面板，改为内置插件语音选择器 | 已完成 | `EdgeConfig` / `OpenAIConfig` / `VolcanoConfig` 已离开活跃路径，面板现在复用 `tts-mention` 的动态 voice 路径选择 | `src/app/components/business/tts-panel.tsx` |
 | `tts-panel` 统一走 `window.AIM.tts.synthesize(...)` 试听 | 已完成 | 试听逻辑已改为统一 `synthesize` | `src/app/components/business/tts-panel.tsx` |
 | `editor-item` 不再写入 provider-specific 卡片对象 | 已完成 | 卡片内保存的是通用 `VoiceOptions/TTSSelection` | `src/app/components/business/editor-item.tsx` |
 | `tiptap` 的 Provider 类型放宽为 `string`，并持久化通用选择对象 | 已完成 | 当前编辑器上下文、历史恢复、legacy rebinding 都基于通用 `TTSSelection` | `src/app/components/business/tiptap.tsx` |

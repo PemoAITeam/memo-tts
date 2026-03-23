@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { inject, observer } from 'mobx-react'
 import { cloneDeep } from 'lodash-es'
 import { TbDownload, TbPlus } from 'react-icons/tb'
@@ -31,11 +31,6 @@ import './routes.scss'
 interface RouterPageProps {
   dataStore?: DataStore
   appStore?: AppStore
-}
-
-const HistoryRedirect = () => {
-  const { id } = useParams()
-  return <Navigate to={id ? `/home/${id}` : '/home'} replace />
 }
 
 const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore }: RouterPageProps) => {
@@ -334,7 +329,6 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
             <Route path='/' element={<Navigate to='/home' replace />} />
             <Route path='/home' element={<HomePage />} />
             <Route path='/home/:id' element={<HomePage />} />
-            <Route path='/history/:id?' element={<HistoryRedirect />} />
           </Routes>
         </div>
       </div>

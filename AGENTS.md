@@ -26,7 +26,6 @@ template-era documentation and does not describe the real runtime.
 - TipTap
 - Tailwind + SCSS
 - Radix UI
-- `memo-form-renderer`
 - `memo-plugin-manager`
 - `@memo/iframe-ipc` for fallback bridge mode
 
@@ -218,8 +217,9 @@ Practical consequence:
 - Built-in providers are `Edge`, `OpenAI`, and `Volcano`
 - plugin-backed TTS provider plumbing exists in `pluginStore`,
   `SelectTTSProvider`, and `tts-panel`
-- `tts-panel` can render exposed plugin configuration forms through
-  `memo-form-renderer`
+- `tts-panel` now uses an internal plugin voice selector built on the
+  `src/app/lib/tts-mention/` data pipeline instead of the old external form
+  renderer dependency
 
 Important current-state nuance:
 

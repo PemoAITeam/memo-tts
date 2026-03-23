@@ -296,7 +296,7 @@ export function buildSelectedVoiceConfig(path: MenuPath, item: TTSMenuItem): Sel
   }
 
   const { providerMeta } = getProviderContext(provider)
-  const voiceField = getField(provider, 'voice', 'segment')
+  const voiceField = getFieldByScopes(provider, 'voice', ['segment', 'card', 'global'])
   if (!providerMeta || !voiceField) {
     return undefined
   }
