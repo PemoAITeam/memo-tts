@@ -2,29 +2,24 @@ import './tiptap.scss'
 import './tts-mention-styles.scss'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useRef } from 'react'
 import { inject, observer } from 'mobx-react'
 import mammoth from 'mammoth'
 import { remark } from 'remark'
 import strip from 'strip-markdown'
 import { useTranslation } from 'react-i18next'
 import { TbEraser, TbLoader, TbWand } from 'react-icons/tb'
-import { MdOutlineMusicNote } from 'react-icons/md'
-import { BsPause, BsPlay } from 'react-icons/bs'
 import { IoStopCircleOutline } from 'react-icons/io5'
-import { IoIosClose } from 'react-icons/io'
 
 import { EditorCard } from '../extensions/editor-card'
 import { EventHandler } from '../extensions/paste-plugin'
 import { Button } from '../ui/button'
-import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
-import TTSDialog from './tts-dialog'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../ui/tooltip'
 import SelectTTSProvider from './SelectTTSProvider'
 import { TTSMenu } from './tts-menu'
 import { TTSBubbleMenu } from './tts-bubble-menu'
 import { toast } from '../ui/use-toast'
-import type { BgmData } from '@/app/interface'
-import { generateUUID, getLocalFileUrl, normalizeEditorDocument, secondsToHMS } from '@/app/lib/utils'
+import { generateUUID, normalizeEditorDocument } from '@/app/lib/utils'
 import type DataStore from '@/app/stores/dataStore'
 import type PluginStore from '@/app/stores/pluginStore'
 import {
@@ -57,9 +52,7 @@ function stableSerializeConfig(value: unknown): string {
 
 interface TiptapProps {
   setEditor?: (editor: Editor) => void
-  getBgm?: (bgm?: { name: string; path: string; duration: number }) => void
   content?: any
-  bgmData?: BgmData
   dataStore?: DataStore
   pluginStore?: PluginStore
   ttsProvider?: string
@@ -77,8 +70,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
   content,
   dataStore,
   pluginStore,
-  getBgm,
-  bgmData,
   ttsProvider,
   onProviderChange,
   onSynthesize,
@@ -88,11 +79,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
   synthesisDisabled,
   synthesisProgress,
 }: TiptapProps) => {
-  const [ttsType, setTtsType] = useState<'video' | 'audio'>('audio')
-  const [openDialog, setOpenDialog] = useState(false)
-  const [bgm, setBgm] = useState<BgmData | undefined>(bgmData)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const audioRef = useRef<HTMLAudioElement>(null)
   const { t } = useTranslation()
 
   const effectiveProvider = ttsProvider || pluginStore?.provider
@@ -164,16 +150,8 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
       setEditor(editor)
     }
 
-    const audio = audioRef.current
-
     return () => {
       editor?.destroy()
-
-      if (audio) {
-        audio.pause()
-        audio.src = ''
-        setIsPlaying(false)
-      }
     }
   }, [editor, setEditor])
 
@@ -197,21 +175,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
       editor.commands.setContent(nextContent || '<editor-card></editor-card>')
     })
   }, [content, editor])
-
-  useEffect(() => {
-    if (dataStore?.TTSType) {
-      setTtsType(dataStore.TTSType)
-    }
-
-    setBgm(bgmData || undefined)
-  }, [bgmData, dataStore?.TTSType])
-
-  useEffect(() => {
-    return () => {
-      dataStore?.setTTSType('audio')
-      setBgm(undefined)
-    }
-  }, [dataStore])
 
   const clear = () => {
     editor?.commands.clearContent()
@@ -274,63 +237,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
     })
   }
 
-  const selectBgm = (filePath: string) => {
-    const fileName = filePath.replace(/^.*[\\/]/, '')
-    const audio = audioRef.current
-
-    if (!audio) {
-      return
-    }
-
-    audio.src = getLocalFileUrl(filePath)
-
-    const handleLoadedMetadata = () => {
-      const duration = audio.duration
-      const nextBgm = { name: fileName, path: filePath, duration }
-
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
-      dataStore?.copyLibraryFile(filePath, secondsToHMS(duration))
-      dataStore?.setBgm(nextBgm)
-      getBgm?.(nextBgm)
-      setBgm(nextBgm)
-      setOpenDialog(false)
-    }
-
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
-  }
-
-  const playBgm = (event?: MouseEvent<SVGElement>) => {
-    event?.stopPropagation()
-
-    const audio = audioRef.current
-    if (!audio) {
-      return
-    }
-
-    if (isPlaying) {
-      audio.pause()
-    } else if (bgm?.path) {
-      audio.src = getLocalFileUrl(bgm.path)
-      void audio.play()
-    }
-
-    setIsPlaying(!isPlaying)
-  }
-
-  const deleteBgm = (event?: MouseEvent<SVGElement>) => {
-    event?.stopPropagation()
-
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.src = ''
-    }
-
-    setIsPlaying(false)
-    dataStore?.setBgm(null)
-    getBgm?.()
-    setBgm(undefined)
-  }
-
   const synthesisButton = synthesisActive
     ? (
       <Button
@@ -353,6 +259,7 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
       <Button
         aria-label={t('tts.synthesis')}
         size='sm'
+        variant='ghost'
         disabled={synthesisDisabled || !onSynthesize}
         onClick={onSynthesize}
       >
@@ -364,37 +271,25 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
     )
 
   return (
-    <>
+    <TooltipProvider delayDuration={0}>
       <div className='flex items-center flex-shrink-0 justify-between mb-4 pr-3'>
         <div className='flex flex-1 items-center gap-3 pr-3'>
-          {synthesisButton}
           <span className='text-sm whitespace-nowrap text-muted-foreground'>{t('tts.provider')}</span>
           <div className='w-full max-w-52'>
             <SelectTTSProvider onChange={onProviderChange || (() => undefined)} />
           </div>
         </div>
         <div className='flex items-center flex-shrink-0 gap-1'>
-          {ttsType === 'video' && (
-            <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-              <DialogTrigger asChild>
-                <Button aria-label={t('tts.select music')} variant='ghost' size='sm'>
-                  {!bgm && <MdOutlineMusicNote size={18} />}
-                  {(bgm && isPlaying) && <BsPause onClick={playBgm} size={18} />}
-                  {(bgm && !isPlaying) && <BsPlay onClick={playBgm} size={18} />}
-                  <span className='text-sm ml-1'>{bgm ? bgm.name : t('tts.select music')}</span>
-                  {!!bgm && <IoIosClose size={16} className='absolute -top-2 -right-3' onClick={deleteBgm} />}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className='pic-dialog w-2/3 h-2/3 max-w-none'>
-                <TTSDialog selectImage={selectBgm} />
-              </DialogContent>
-            </Dialog>
-          )}
-          <Button aria-label={t('app.clear')} variant='ghost' size='sm' onClick={clear}>
-            <TbEraser size={18} />
-            <span className='text-sm'>{t('app.clear')}</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button aria-label={t('app.clear')} variant='ghost' size='icon' onClick={clear}>
+                <TbEraser size={18} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('app.clear')}</TooltipContent>
+          </Tooltip>
         </div>
+          {synthesisButton}
       </div>
 
       <div
@@ -406,7 +301,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
       >
         <EditorContent editor={editor} />
       </div>
-      <audio className='audioRef' ref={audioRef} controls />
 
       <TTSMenu
         ref={ttsMenu.menuRef}
@@ -430,7 +324,7 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
         onFieldChange={ttsBubbleMenu.setFieldValue}
         onClear={ttsBubbleMenu.clearMark}
       />
-    </>
+    </TooltipProvider>
   )
 }))
 

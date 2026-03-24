@@ -1,11 +1,8 @@
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { TbMicrophone, TbX } from "react-icons/tb";
-import { cloneDeep } from "lodash-es";
 import { Button } from "../ui/button";
-import TTSPanel, { type VoiceOptions } from "./tts-panel";
 import { parseStoredTTSSelection } from "@/app/lib/tts-plugin";
 import { useEffect, useState } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { observer } from "mobx-react";
 import { useTranslation } from "react-i18next";
 
@@ -36,7 +33,6 @@ function getVoiceBadgeLabel(voice: any): string {
 const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
   const { t } = useTranslation();
   const [voice, setVoice] = useState<string>(() => getVoiceBadgeLabel(node.attrs.voice));
-  const [openTTS, setOpenTTS] = useState(false);
   const placeholderText = t("tts.editor placeholder", {
     defaultValue: "@你想要的角色，比如：旁白、小美、客服，然后输入你想合成的内容",
   });
@@ -44,18 +40,6 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
   useEffect(() => {
     setVoice(getVoiceBadgeLabel(node.attrs.voice));
   }, [node.attrs.voice]);
-
-  const addVoice = (data: VoiceOptions) => {
-    const jsonData = editor.getJSON();
-    if (jsonData.content) {
-      const curItem = jsonData.content?.find((item) => item.attrs?.id == node.attrs.id && item.type === "editorCard");
-      if (curItem && curItem.attrs) {
-        curItem.attrs.voice = cloneDeep(data);
-        setVoice(getVoiceBadgeLabel(curItem.attrs.voice));
-        editor.chain().setContent(jsonData, true).focus().run();
-      }
-    }
-  };
 
   const deleteVoice = (event: any) => {
     if (event) {
@@ -76,31 +60,24 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
   return (
     <NodeViewWrapper className="editor-card-item">
       {voice && (
-        <div className=" pl-7 mt-4 voice-item">
-          <Popover open={openTTS} onOpenChange={(open: boolean) => setOpenTTS(open)}>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"ghost"}
-                size={"sm"}
-                style={{ color: backgroundColor, backgroundColor: textColor }}
-                className="group relative h-6 px-2 bg-accent text-accent-foreground"
-              >
-                <TbMicrophone />
-                {voice}
-                <Button
-                  size={"icon"}
-                  className="absolute top-0 -right-7 w-6 h-6 group-hover:opacity-100 opacity-0 transform-gpu duration-200 transition-opacity"
-                  onClick={deleteVoice}
-                  variant={"destructive"}
-                >
-                  <TbX size={10} />
-                </Button>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent side="right" sideOffset={10} className="w-auto editor-card-tts">
-              <TTSPanel getVoiceOptions={addVoice} voiceOptions={parseStoredTTSSelection(node.attrs.voice)} showConfirmButton />
-            </PopoverContent>
-          </Popover>
+        <div className="pl-7 mt-4 voice-item">
+          <Button
+            variant={"ghost"}
+            size={"sm"}
+            style={{ color: backgroundColor, backgroundColor: textColor }}
+            className="group relative h-6 px-2 bg-accent text-accent-foreground pointer-events-none"
+          >
+            <TbMicrophone />
+            {voice}
+            <Button
+              size={"icon"}
+              className="absolute top-0 -right-7 w-6 h-6 group-hover:opacity-100 opacity-0 transform-gpu duration-200 transition-opacity pointer-events-auto"
+              onClick={deleteVoice}
+              variant={"destructive"}
+            >
+              <TbX size={10} />
+            </Button>
+          </Button>
         </div>
       )}
 

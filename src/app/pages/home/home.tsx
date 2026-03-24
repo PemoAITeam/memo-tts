@@ -16,7 +16,6 @@ import {
   resolveStoredTTSSelection,
 } from '@/app/lib/tts-plugin'
 import { generateUUID, getLocalFileUrl, secondsToHMS, updateTemoData } from '@/app/lib/utils'
-import type { BgmData } from '@/app/interface'
 import type AppStore from '@/app/stores/appStore'
 import type DataStore from '@/app/stores/dataStore'
 import type PluginStore from '@/app/stores/pluginStore'
@@ -41,7 +40,6 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
   const [provider, setProvider] = useState('')
   const [curEditorData, setCurEditorData] = useState<any>()
   const [editorRef, setEditorRef] = useState<Editor>()
-  const [bgm, setBgm] = useState<BgmData>()
 
   const { currentTTSProgress, currentTTSUUID, mergeTemo, synthesizing } = dataStore!
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -59,7 +57,6 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
   useEffect(() => {
     if (currentFile) {
       setCurEditorData(currentFile.editorData)
-      setBgm(currentFile.bgm || undefined)
 
       if (storedSelection?.provider) {
         const providerMeta = pluginStore?.findTTSProviderByValue(storedSelection.provider)
@@ -74,8 +71,7 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
     }
 
     setCurEditorData(dataStore?.editorData || '')
-    setBgm(dataStore?.bgm || undefined)
-  }, [currentFile, dataStore?.bgm, dataStore?.editorData, pluginStore, storedSelection?.provider])
+  }, [currentFile, dataStore?.editorData, pluginStore, storedSelection?.provider])
 
   useEffect(() => {
     if (currentFile?.type !== 'video' || !autoplayToken) {
@@ -155,10 +151,6 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
     setEditorRef(nextEditor)
   }, [])
 
-  const handleBgmChange = useCallback((nextBgm?: BgmData) => {
-    setBgm(nextBgm)
-  }, [])
-
   const handleProviderChange = useCallback((nextProvider: string) => {
     setProvider(nextProvider)
   }, [])
@@ -216,7 +208,6 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
         selection,
         uuid: currentFile?.uuid || generateUUID(),
         editorData: editorRef.getJSON(),
-        bgm,
       })
 
       if (result) {
@@ -234,7 +225,6 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
           editorRef.commands.clearContent()
           editorRef.chain().insertContentAt(editorRef.state.selection.head, { type: 'editorCard' }).focus().run()
           dataStore?.setEditorData('')
-          dataStore?.setBgm(null)
           dataStore?.setTTSType('audio', true)
         }
 
@@ -257,9 +247,7 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
             <Tiptap
               key={currentFile?.uuid || 'draft'}
               content={curEditorData}
-              bgmData={bgm}
               setEditor={handleEditorChange}
-              getBgm={handleBgmChange}
               ttsProvider={activeProvider}
               onProviderChange={handleProviderChange}
               onSynthesize={generateAudio}

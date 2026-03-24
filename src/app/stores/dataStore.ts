@@ -1,4 +1,4 @@
-import type { BgmData, EditorData, LibraryData, TemoData } from '@/app/interface';
+import type { EditorData, LibraryData, TemoData } from '@/app/interface';
 import {
   getJSONDataFromEditorContents,
   normalizeEditorDocument,
@@ -59,7 +59,6 @@ class DataStore {
         'editorData',
         'libraryData',
         'TTSType',
-        'bgm',
       ],
     });
   }
@@ -73,17 +72,6 @@ class DataStore {
   TTSType: 'audio' | 'video' = 'audio'
 
   CurTTSType: 'audio' | 'video' = 'audio'
-
-  bgm: BgmData | null = null
-
-  setBgm = (bgm: BgmData | null) => {
-    this.bgm = bgm ? cloneDeep(bgm) : null;
-    if (this.bgm) {
-      localStorage.setItem('temo-tts-bgm', JSON.stringify(this.bgm));
-    } else {
-      localStorage.removeItem('temo-tts-bgm');
-    }
-  }
 
   setTTSType = (type: 'audio' | 'video', needSave?: boolean) => {
     this.TTSType = type;
@@ -159,14 +147,12 @@ class DataStore {
     }
     const editorData = localStorage.getItem('temo-editor') || '';
     const ttsType = localStorage.getItem('temo-tts-type') || 'audio';
-    const bgm = localStorage.getItem('temo-tts-bgm');
     const libraryData = (await window.AIM.tts.getTemoLibrary() || []).filter((item: any) => item.type !== 'pic');
 
     runInAction(() => {
       this.temoData = temoData;
       this.editorData = editorData ? normalizeEditorDocument(JSON.parse(editorData)) || '' : '';
       this.CurTTSType = this.TTSType = ttsType as 'audio' | 'video';
-      this.bgm = bgm ? JSON.parse(bgm) : null;
       this.libraryData = libraryData;
     });
   }
@@ -180,7 +166,6 @@ class DataStore {
       selection?: TTSSelection,
       uuid: string,
       editorData: any,
-      bgm?: BgmData,
     }
   ) => {
     try {
@@ -272,7 +257,6 @@ class DataStore {
 
       const result = await window.AIM.tts.mergeTemo(cloneDeep(params), data.uuid, {
         editorData: cloneDeep(normalizedEditorData),
-        bgm: cloneDeep(data.bgm),
         type: this.TTSType,
         ttsOptions: cloneDeep(data.selection),
       });

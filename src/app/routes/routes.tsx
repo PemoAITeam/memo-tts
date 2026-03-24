@@ -26,7 +26,6 @@ import { getTextFragment } from '@/app/lib/utils'
 import type DataStore from '@/app/stores/dataStore'
 import type AppStore from '@/app/stores/appStore'
 import { useTranslation } from 'react-i18next'
-import './routes.scss'
 
 interface RouterPageProps {
   dataStore?: DataStore
@@ -124,7 +123,6 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
     const params: any = {
       type: curFile.type!,
       audioOffsetInSeconds: 0,
-      bgm: curFile.bgm || '',
       audioFileName: 'temo_audio.mp3',
       onlyDisplayCurrentSentence: true,
       subtitlesTextColor: 'rgba(255, 255, 255, 0.93)',
@@ -136,11 +134,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
       duration: Math.ceil(curFile.metadata?.duration),
     }
 
-    const copyFiles = [curFile.fileUrl]
-    if (params.bgm) {
-      copyFiles.push(params.bgm.path)
-    }
-    params.copyFiles = copyFiles
+    params.copyFiles = [curFile.fileUrl]
 
     try {
       setIsDownload(true)
@@ -251,8 +245,8 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
   return (
     <>
       <div className='flex h-full'>
-        <div className='history-sidebar bg-background border-r page-left-tabs'>
-          <div className='history-sidebar-header temo-no-draggable'>
+        <div className='flex flex-col h-full bg-background border-r w-80 box-border relative flex-shrink-0'>
+          <div className='px-3 pb-3 pt-4 border-b temo-no-draggable'>
             <Button
               variant={selectedHistoryId ? 'ghost' : 'default'}
               onClick={openDraft}
@@ -262,20 +256,20 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
               <span>{t('route.new script', { defaultValue: '新建脚本' })}</span>
             </Button>
           </div>
-          <div className='history-sidebar-body temo-no-draggable'>
+          <div className='flex-1 min-h-0 pl-3 py-3 temo-no-draggable'>
             {!!temoData.length && (
               <ScrollArea className='h-full pr-2'>
-                <div className='history-sidebar-list'>
+                <div className='flex flex-col gap-2'>
                   {temoData.map((item) => (
                     <div
                       key={item.uuid}
-                      className={`history-sidebar-item ${selectedHistoryId === item.uuid ? 'is-selected' : ''}`}
+                      className={`flex items-center gap-2 p-3 border rounded-md cursor-pointer transition-colors ${selectedHistoryId === item.uuid ? 'border-primary bg-primary/5' : ''}`}
                       onClick={() => openHistoryItem(item)}
                     >
                       <Button
                         title={t('history.play', { defaultValue: '播放' })}
                         variant='ghost'
-                        className='history-sidebar-play'
+                        className='w-8 h-8 p-0 rounded-full flex-shrink-0'
                         onClick={(event) => {
                           event.stopPropagation()
                           openHistoryItem(item, true)
@@ -283,9 +277,9 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
                       >
                         <FaPlay size={12} />
                       </Button>
-                      <div className='history-sidebar-copy'>
-                        <div className='history-sidebar-title'>{item.title}</div>
-                        <div className='history-sidebar-meta'>
+                      <div className='flex-1 min-w-0'>
+                        <div className='font-medium truncate'>{item.title}</div>
+                        <div className='flex gap-2 mt-1 text-xs text-muted-foreground whitespace-nowrap overflow-hidden'>
                           <span>{item.voiceLocalName}</span>
                           <span>{item.duration}</span>
                         </div>
@@ -297,7 +291,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
                             title={t('history.download')}
                             disabled={isDownload}
                             variant='ghost'
-                            className='history-sidebar-action'
+                            className='w-7 h-7 p-0 flex-shrink-0'
                             onClick={(event) => download(event, item)}
                           >
                             <TbDownload size={16} />
@@ -307,7 +301,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
                         title={t('history.delete')}
                         disabled={isDownload}
                         variant='ghost'
-                        className='history-sidebar-action'
+                        className='w-7 h-7 p-0 flex-shrink-0'
                         onClick={(event) => requestDelete(event, item)}
                       >
                         <HiOutlineTrash size={16} />
@@ -318,13 +312,13 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
               </ScrollArea>
             )}
             {!temoData.length && (
-              <div className='history-sidebar-empty'>
+              <div className='flex items-center justify-center h-full pr-3 text-muted-foreground text-sm text-center'>
                 {t('tts.no results')}
               </div>
             )}
           </div>
         </div>
-        <div className='flex-1 overflow-x-hidden h-full bg-background page-right-content'>
+        <div className='flex-1 overflow-x-hidden h-full bg-background'>
           <Routes>
             <Route path='/' element={<Navigate to='/home' replace />} />
             <Route path='/home' element={<HomePage />} />
@@ -344,7 +338,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
                 })
                 : t('history.permanent delete single', {
                   title: pendingDeleteItems[0]?.title || '',
-                  defaultValue: `这将永久删除“${pendingDeleteItems[0]?.title || ''}”，且无法恢复。`,
+                  defaultValue: `这将永久删除"${pendingDeleteItems[0]?.title || ''}"，且无法恢复。`,
                 })}
             </AlertDialogDescription>
           </AlertDialogHeader>

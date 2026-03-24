@@ -167,17 +167,10 @@ export interface TemoData {
   date?: number;
   duration?: string;
   editorData?: EditorData[];
-  bgm?: BgmData;
   type?: 'audio' | 'video';
   fileList: TemoFileList[],
   ttsOptions: TTSSelection | any,
   fileDuration: number,
-}
-
-export interface BgmData {
-  name: string,
-  path: string,
-  duration: number
 }
 
 export interface TemoFileList {
