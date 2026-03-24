@@ -160,6 +160,10 @@ function getDefaultFieldScope(role?: MemoTTSEditorRole): TTSConfigScope[] {
     return ["global", "card", "segment"];
   }
 
+  if (role === "speed" || role === "emotion") {
+    return ["global", "card", "segment"];
+  }
+
   return ["global", "card"];
 }
 
@@ -170,6 +174,59 @@ function getManifestEditorMeta(manifest?: Manifest): MemoTTSEditorMeta | undefin
 function normalizeTTSTarget(target?: unknown): TTSTarget {
   void target;
   return "original";
+}
+
+const RECOMMENDED_TTS_PROVIDER_ORDER = [
+  "edge",
+  "elevenlabs",
+  "volcengine",
+];
+
+function normalizeProviderSortKey(value?: string | null) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getRecommendedProviderOrder(provider: Pick<TTSProviderMeta, "provider" | "pluginId" | "label">) {
+  const sortSource = [
+    provider.provider,
+    provider.pluginId,
+    provider.label,
+  ].map((item) => normalizeProviderSortKey(item)).join(" ");
+
+  const matchedIndex = RECOMMENDED_TTS_PROVIDER_ORDER.findIndex((item) =>
+    sortSource.includes(normalizeProviderSortKey(item))
+  );
+
+  return matchedIndex === -1
+    ? RECOMMENDED_TTS_PROVIDER_ORDER.length
+    : matchedIndex;
+}
+
+function compareTTSProviders(left: TTSProviderMeta, right: TTSProviderMeta) {
+  const leftPriority = getRecommendedProviderOrder(left);
+  const rightPriority = getRecommendedProviderOrder(right);
+
+  if (leftPriority !== rightPriority) {
+    return leftPriority - rightPriority;
+  }
+
+  if (!!left.disabled !== !!right.disabled) {
+    return left.disabled ? 1 : -1;
+  }
+
+  const leftLabel = normalizeProviderSortKey(left.label || left.provider);
+  const rightLabel = normalizeProviderSortKey(right.label || right.provider);
+  const labelCompare = leftLabel.localeCompare(rightLabel);
+  if (labelCompare !== 0) {
+    return labelCompare;
+  }
+
+  const providerCompare = normalizeProviderSortKey(left.provider).localeCompare(normalizeProviderSortKey(right.provider));
+  if (providerCompare !== 0) {
+    return providerCompare;
+  }
+
+  return normalizeProviderSortKey(left.pluginId).localeCompare(normalizeProviderSortKey(right.pluginId));
 }
 
 export function getTTSProviderMetaList(memoPlugins?: PluginReturnType): TTSProviderMeta[] {
@@ -195,7 +252,8 @@ export function getTTSProviderMetaList(memoPlugins?: PluginReturnType): TTSProvi
         ttsInput: manifest?.ttsInput || [],
         editor: getManifestEditorMeta(manifest),
       };
-    });
+    })
+    .sort(compareTTSProviders);
 }
 
 export function getProviderEditorFields(
