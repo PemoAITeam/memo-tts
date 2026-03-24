@@ -54,7 +54,6 @@ export interface SelectedVoiceConfig {
   voice?: string
   rate?: number
   speed?: number | string
-  target?: 'original' | 'translate'
   rawData?: Record<string, any>
 }
 

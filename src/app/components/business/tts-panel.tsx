@@ -12,7 +12,6 @@ import {
   getDisplayFieldValue,
   getTTSHostErrorMessage,
   type MemoTTSEditorRole,
-  type TTSTarget,
   type TTSProviderEditorField,
   type TTSSelection,
 } from "@/app/lib/tts-plugin";
@@ -28,7 +27,6 @@ import {
 import { cn } from "@/app/lib/utils";
 import { toast } from "@/app/components/ui/use-toast";
 
-import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
@@ -37,7 +35,6 @@ export type VoiceOptions = TTSSelection;
 interface TTSPanelProps {
   pluginStore?: PluginStore;
   getOptions?: (data: VoiceOptions) => void;
-  getTarget?: (target: TTSTarget) => void;
   voiceOptions?: VoiceOptions;
   getVoiceOptions?: (options: VoiceOptions) => void;
   showConfirmButton?: boolean;
@@ -115,10 +112,13 @@ function resolveDisplayLabel(
   const providerMeta = providerValue
     ? pluginStore?.findTTSProviderByValue(providerValue)
     : undefined;
+  const manifest = providerValue
+    ? pluginStore?.findManifestByProviderValue(providerValue)
+    : undefined;
   const voiceValue = getFieldValueFromConfig(voiceField, config);
 
   if (voiceValue != null && voiceValue !== "") {
-    const displayValue = getDisplayFieldValue(voiceField, voiceValue, providerMeta?.pluginId);
+    const displayValue = getDisplayFieldValue(config, providerMeta, manifest);
     if (displayValue) {
       return displayValue;
     }
@@ -133,12 +133,10 @@ const TTSPanel = inject("pluginStore")(observer(({
   voiceOptions,
   getVoiceOptions,
   getOptions,
-  getTarget,
 }: TTSPanelProps) => {
   const { memoPlugins, provider, ttsProviders } = pluginStore!;
   const { t } = useTranslation();
 
-  const [target, setTarget] = useState<TTSTarget>(voiceOptions?.target || "original");
   const [config, setConfig] = useState<Record<string, any>>(voiceOptions?.config || {});
   const [voiceLabel, setVoiceLabel] = useState<string>("");
   const [path, setPath] = useState<MenuPath>({});
@@ -174,7 +172,6 @@ const TTSPanel = inject("pluginStore")(observer(({
 
   useEffect(() => {
     if (!currentProviderMeta) {
-      setTarget("original");
       setConfig((prev) => (Object.keys(prev).length ? {} : prev));
       setVoiceLabel("");
       setPath({});
@@ -193,9 +190,6 @@ const TTSPanel = inject("pluginStore")(observer(({
     const nextConfig = voiceOptions?.provider === currentProviderMeta.provider
       ? merge({}, baseConfig, cloneDeep(voiceOptions.config || {}))
       : baseConfig;
-    const nextTarget = voiceOptions?.provider === currentProviderMeta.provider
-      ? voiceOptions.target
-      : "original";
     const nextVoiceLabel = resolveDisplayLabel(
       currentProviderMeta.provider,
       pluginStore,
@@ -204,7 +198,6 @@ const TTSPanel = inject("pluginStore")(observer(({
     );
     const nextPath = buildInitialMenuPath(currentProviderMeta.provider, pluginStore, nextConfig);
 
-    setTarget((prev) => (prev === nextTarget ? prev : nextTarget));
     setConfig((prev) => (isEqual(prev, nextConfig) ? prev : nextConfig));
     setVoiceLabel((prev) => (prev === nextVoiceLabel ? prev : nextVoiceLabel));
     setPath((prev) => (isEqual(prev, nextPath) ? prev : nextPath));
@@ -240,7 +233,7 @@ const TTSPanel = inject("pluginStore")(observer(({
       });
   }, [currentProvider, path, query]);
 
-  const buildSelection = useCallback((nextConfig = config, nextTarget = target, nextVoiceLabel = voiceLabel) => {
+  const buildSelection = useCallback((nextConfig = config, nextVoiceLabel = voiceLabel) => {
     if (!currentProviderMeta) {
       return undefined;
     }
@@ -248,7 +241,7 @@ const TTSPanel = inject("pluginStore")(observer(({
     const selection = buildTTSSelection({
       providerMeta: currentProviderMeta,
       manifest: currentManifest,
-      target: nextTarget,
+      target: "original",
       config: nextConfig,
     });
     const resolvedLabel = resolveDisplayLabel(currentProviderMeta.provider, pluginStore, nextConfig, nextVoiceLabel);
@@ -257,7 +250,7 @@ const TTSPanel = inject("pluginStore")(observer(({
       ...selection,
       displayLabel: resolvedLabel || selection.displayLabel,
     } satisfies TTSSelection;
-  }, [config, currentManifest, currentProviderMeta, pluginStore, target, voiceLabel]);
+  }, [config, currentManifest, currentProviderMeta, pluginStore, voiceLabel]);
 
   useEffect(() => {
     if (!showConfirmButton) {
@@ -267,11 +260,6 @@ const TTSPanel = inject("pluginStore")(observer(({
       }
     }
   }, [buildSelection, getOptions, showConfirmButton]);
-
-  const handleTargetChange = (value: TTSTarget) => {
-    setTarget(value);
-    getTarget?.(value);
-  };
 
   const handleVoiceItemSelect = useCallback((item: TTSMenuItem) => {
     if (item.disabled) {
@@ -305,12 +293,12 @@ const TTSPanel = inject("pluginStore")(observer(({
     setPickerOpen(false);
 
     if (!showConfirmButton) {
-      const selection = buildSelection(nextConfig, target, nextVoiceLabel);
+      const selection = buildSelection(nextConfig, nextVoiceLabel);
       if (selection) {
         getOptions?.(selection);
       }
     }
-  }, [buildSelection, currentProviderMeta, getOptions, path, pluginStore, showConfirmButton, target]);
+  }, [buildSelection, currentProviderMeta, getOptions, path, pluginStore, showConfirmButton]);
 
   const handleGoBack = () => {
     if (!canGoBack) {
@@ -522,18 +510,6 @@ const TTSPanel = inject("pluginStore")(observer(({
           })}
         </div>
       )}
-
-      <div className="mb-1 mt-3 text-sm">{t("tts.text")}</div>
-      <Tabs value={target}>
-        <TabsList className="grid grid-cols-2">
-          <TabsTrigger className="px-1" value="original" onClick={() => handleTargetChange("original")}>
-            {t("tts.original text")}
-          </TabsTrigger>
-          <TabsTrigger className="px-1" value="translate" onClick={() => handleTargetChange("translate")}>
-            {t("tts.translate text")}
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
 
       <div className="mt-3 flex gap-2">
         <Button className="flex-1" type="button" variant="outline" onClick={audition} disabled={!currentProviderMeta}>

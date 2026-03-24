@@ -1,7 +1,7 @@
 import type { Manifest, ManifestConfiguration, PluginReturnType } from "@aim-packages/plugin-manager";
 import { translatePluginText } from "@/app/lib/plugin-i18n";
 
-export type TTSTarget = "original" | "translate";
+export type TTSTarget = "original";
 export type TTSConfigScope = "global" | "card" | "segment";
 
 export interface MemoTTSEditorFieldMeta {
@@ -165,6 +165,11 @@ function getDefaultFieldScope(role?: MemoTTSEditorRole): TTSConfigScope[] {
 
 function getManifestEditorMeta(manifest?: Manifest): MemoTTSEditorMeta | undefined {
   return (manifest as ManifestWithEditorMeta | undefined)?.memoTtsEditor;
+}
+
+function normalizeTTSTarget(target?: unknown): TTSTarget {
+  void target;
+  return "original";
 }
 
 export function getTTSProviderMetaList(memoPlugins?: PluginReturnType): TTSProviderMeta[] {
@@ -372,37 +377,38 @@ export function normalizeProviderFieldOptions(value: unknown): TTSProviderFieldO
     return [];
   }
 
-  return value
-    .map((item) => {
+  return value.reduce<TTSProviderFieldOption[]>((result, item) => {
       if (item == null) {
-        return undefined;
+        return result;
       }
 
       if (typeof item === "string" || typeof item === "number") {
-        return {
+        result.push({
           value: item,
           label: String(item),
-        } satisfies TTSProviderFieldOption;
+        });
+        return result;
       }
 
       if (typeof item !== "object") {
-        return undefined;
+        return result;
       }
 
       const option = item as Record<string, any>;
       const rawValue = option.value ?? option.id ?? option.key ?? option.code;
       if (rawValue == null) {
-        return undefined;
+        return result;
       }
 
-      return {
+      result.push({
         value: rawValue,
         label: String(option.label ?? option.name ?? rawValue),
         description: option.description ? String(option.description) : undefined,
         raw: option,
-      } satisfies TTSProviderFieldOption;
-    })
-    .filter((item): item is TTSProviderFieldOption => !!item);
+      });
+
+      return result;
+    }, []);
 }
 
 export async function getProviderFieldChoiceOptions(args: {
@@ -576,7 +582,7 @@ export function getDisplayFieldValue(
 export function buildTTSSelection(args: {
   providerMeta: TTSProviderMeta;
   manifest?: Manifest;
-  target: TTSTarget;
+  target?: TTSTarget | string;
   config: Record<string, any> | undefined;
 }): TTSSelection {
   const { providerMeta, manifest, target, config } = args;
@@ -586,7 +592,7 @@ export function buildTTSSelection(args: {
     schemaVersion: 2,
     provider: providerMeta.provider,
     pluginId: providerMeta.pluginId,
-    target,
+    target: normalizeTTSTarget(target),
     config: normalizedConfig,
     displayLabel: getDisplayFieldValue(normalizedConfig, providerMeta, manifest),
     editorFields: getProviderEditorFieldKeyMap(providerMeta, manifest, "segment"),
@@ -675,18 +681,6 @@ function getLegacyVoiceValue(voice: any) {
   }
 
   return voice.value ?? voice.shortName ?? voice.voiceName;
-}
-
-function getLegacyVoiceLabel(voice: any) {
-  if (!voice) {
-    return undefined;
-  }
-
-  if (typeof voice === "string") {
-    return voice;
-  }
-
-  return voice.label ?? voice.properties?.LocalName ?? voice.properties?.DisplayName ?? voice.value ?? voice.shortName;
 }
 
 function getLegacyEmotionValue(emotion: any) {
@@ -805,7 +799,7 @@ function buildLegacyTTSSelection(value: Record<string, any>) {
     schemaVersion: 2,
     provider,
     pluginId: getLegacyPluginId(provider),
-    target: value.target === "translate" || source.target === "translate" ? "translate" : "original",
+    target: normalizeTTSTarget(value.target ?? source.target),
     config: normalizeLegacySelectionConfig(provider, source),
     displayLabel: getLegacySelectionDisplayLabel(provider, source),
     legacy: true,
@@ -837,11 +831,14 @@ export function resolveStoredTTSSelection(
       ...nextEditorFields,
     }
     : selection.editorFields;
-  const { legacy: _legacy, legacyService: _legacyService, ...rest } = selection;
 
   return {
-    ...rest,
+    schemaVersion: selection.schemaVersion,
+    provider: selection.provider,
     pluginId: providerMeta.pluginId,
+    config: selection.config,
+    displayLabel: selection.displayLabel,
+    target: normalizeTTSTarget(selection.target),
     editorFields: mergedEditorFields,
   } satisfies TTSSelection;
 }
@@ -871,7 +868,10 @@ export function parseStoredTTSSelection(value: any): TTSSelection | undefined {
   }
 
   if (value.schemaVersion === 2 && value.provider && value.pluginId && value.config) {
-    return value as TTSSelection;
+    return {
+      ...value,
+      target: normalizeTTSTarget(value.target),
+    } as TTSSelection;
   }
 
   return buildLegacyTTSSelection(value);
@@ -933,18 +933,16 @@ export function getTTSSelectionConfig(
     return undefined;
   }
 
-  const {
-    provider: _provider,
-    pluginId: _pluginId,
-    schemaVersion: _schemaVersion,
-    displayLabel: _displayLabel,
-    target: _target,
-    ttsOptions: _ttsOptions,
-    rawData: _rawData,
-    legacy: _legacy,
-    legacyService: _legacyService,
-    ...rest
-  } = candidate;
+  const rest = { ...candidate };
+  delete rest.provider;
+  delete rest.pluginId;
+  delete rest.schemaVersion;
+  delete rest.displayLabel;
+  delete rest.target;
+  delete rest.ttsOptions;
+  delete rest.rawData;
+  delete rest.legacy;
+  delete rest.legacyService;
 
   return Object.keys(rest).length ? rest : undefined;
 }

@@ -2,12 +2,14 @@
     min-width: 292px;
 }
 
-.ProseMirror .is-empty::before {
-    content: 'Start writing';
+.ProseMirror .node-editorCard:first-child .editable-content.is-empty::before {
+    content: attr(data-placeholder);
     float: left;
     color: #ced4da;
     pointer-events: none;
     height: 0;
+    max-width: min(100%, 32rem);
+    white-space: normal;
 }
 
 .voice-type-content {

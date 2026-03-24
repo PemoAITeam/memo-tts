@@ -8,7 +8,6 @@ if (!window.AIM) {
     methods: [
       "getSetting",
       "openDialog",
-      "translateContent",
       "plugin.readLocalPlugins",
       "plugin.saveConfiguration",
       "plugin.getProviders",
@@ -27,7 +26,7 @@ if (!window.AIM) {
       "tts.temoDownload"
     ],
     appId: "memo-plugin-app-tts",
-  }) || {}
+  }) as unknown as Window["AIM"] || {}
 }
 
 

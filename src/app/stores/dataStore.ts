@@ -1,6 +1,7 @@
 import type { BgmData, EditorData, LibraryData, TemoData } from '@/app/interface';
 import {
   getJSONDataFromEditorContents,
+  normalizeEditorDocument,
   patchTemoData,
   splitString,
   updateTemoData,
@@ -101,8 +102,9 @@ class DataStore {
   }
 
   setEditorData = (data: any) => {
-    this.editorData = data;
-    localStorage.setItem('temo-editor', JSON.stringify(data));
+    const nextEditorData = normalizeEditorDocument(data) || data;
+    this.editorData = nextEditorData;
+    localStorage.setItem('temo-editor', JSON.stringify(nextEditorData));
   }
 
   removeTemoData = async (data: TemoData[]) => {
@@ -149,7 +151,10 @@ class DataStore {
         if (!item.fileList) {
           item.fileList = patchTemoData(item);
         }
-        return updateTemoData(item);
+        return updateTemoData({
+          ...item,
+          editorData: normalizeEditorDocument(item.editorData),
+        });
       });
     }
     const editorData = localStorage.getItem('temo-editor') || '';
@@ -159,7 +164,7 @@ class DataStore {
 
     runInAction(() => {
       this.temoData = temoData;
-      this.editorData = editorData ? JSON.parse(editorData) : '';
+      this.editorData = editorData ? normalizeEditorDocument(JSON.parse(editorData)) || '' : '';
       this.CurTTSType = this.TTSType = ttsType as 'audio' | 'video';
       this.bgm = bgm ? JSON.parse(bgm) : null;
       this.libraryData = libraryData;
@@ -197,15 +202,8 @@ class DataStore {
         return;
       }
 
-      console.log('========== mergeTemo 璋冭瘯 ==========');
-      console.log('data.editorData:', data.editorData);
-      console.log('data.editorData.content:', data.editorData?.content);
-      console.log('data.editorData.content[0]:', JSON.stringify(data.editorData?.content?.[0], null, 2));
-      console.log('data.target:', data.selection.target);
-
-      const jsonData: any[] = getJSONDataFromEditorContents(data.editorData?.content, data.selection.target);
-      console.log('jsonData:', jsonData);
-      console.log('====================================');
+      const normalizedEditorData = normalizeEditorDocument(data.editorData) || cloneDeep(data.editorData);
+      const jsonData: any[] = getJSONDataFromEditorContents(normalizedEditorData?.content);
 
       if (!jsonData?.length) {
         toast({
@@ -226,8 +224,6 @@ class DataStore {
           });
         });
       });
-
-      console.log('allSegments with marks:', allSegments);
 
       const params: TTSMergePayload = {
         mode: 'plugin',
@@ -273,13 +269,9 @@ class DataStore {
       }
 
       this.synthesizing = true;
-      console.log('========== TTS 鍚堟垚璋冭瘯 ==========');
-      console.log('鎻愬彇鐨勬枃鏈墖娈?allSegments:', allSegments);
-      console.log('鏈€缁堟彁浜ゅ弬鏁?params:', JSON.stringify(params, null, 2));
-      console.log('==================================');
 
       const result = await window.AIM.tts.mergeTemo(cloneDeep(params), data.uuid, {
-        editorData: cloneDeep(data.editorData),
+        editorData: cloneDeep(normalizedEditorData),
         bgm: cloneDeep(data.bgm),
         type: this.TTSType,
         ttsOptions: cloneDeep(data.selection),

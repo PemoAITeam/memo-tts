@@ -1,16 +1,13 @@
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
-import { TbMicrophone, TbX, TbLanguage } from "react-icons/tb";
-import { generateUUID } from "@/app/lib/utils";
-import TranslatePanel from "./translate-panel";
+import { TbMicrophone, TbX } from "react-icons/tb";
 import { cloneDeep } from "lodash-es";
-import type { WhisperSegments } from "@/app/interface";
 import { Button } from "../ui/button";
 import TTSPanel, { type VoiceOptions } from "./tts-panel";
 import { parseStoredTTSSelection } from "@/app/lib/tts-plugin";
 import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { useTranslation } from "react-i18next";
 import { observer } from "mobx-react";
+import { useTranslation } from "react-i18next";
 
 // Derive a stable badge color from the selected voice label.
 function hashStringToColor(str: string): string {
@@ -31,51 +28,22 @@ function getContrastingColor(color: string): string {
   return yiq >= 128 ? "#000000" : "#ffffff";
 }
 
-function getVoiceBadgeLabel(voice: any, t: any): string {
+function getVoiceBadgeLabel(voice: any): string {
   const selection = parseStoredTTSSelection(voice);
-  const displayLabel = selection?.displayLabel || voice?.displayLabel || voice?.voiceLocalName;
-  if (!displayLabel) {
-    return "";
-  }
-
-  const target = selection?.target || voice?.target || "original";
-  return `${displayLabel}(${target === "original" ? t("tts.original text") : t("tts.translate text")})`;
+  return selection?.displayLabel || voice?.displayLabel || voice?.voiceLocalName || "";
 }
 
 const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
   const { t } = useTranslation();
-  const [voice, setVoice] = useState<string>(() => getVoiceBadgeLabel(node.attrs.voice, t));
+  const [voice, setVoice] = useState<string>(() => getVoiceBadgeLabel(node.attrs.voice));
   const [openTTS, setOpenTTS] = useState(false);
-  const [openTranslate, setOpenTranslate] = useState(false);
+  const placeholderText = t("tts.editor placeholder", {
+    defaultValue: "@你想要的角色，比如：旁白、小美、客服，然后输入你想合成的内容",
+  });
 
   useEffect(() => {
-    setVoice(getVoiceBadgeLabel(node.attrs.voice, t));
-  }, [node.attrs.voice, t]);
-
-  const addTranslate = (translateData: WhisperSegments[]) => {
-    const jsonData = editor.getJSON();
-    if (jsonData.content) {
-      const index = jsonData.content?.findIndex((item) => item.attrs?.id == node.attrs.id);
-      if (index > -1) {
-        if (jsonData.content[index + 1]?.type === "translateCard") {
-          jsonData.content[index + 1].content = [{ type: "text", text: translateData[0].text }];
-          editor.chain().setContent({ type: "doc", content: cloneDeep(jsonData.content) }, true).focus().run();
-        } else {
-          const list = [
-            ...jsonData.content.slice(0, index + 1),
-            { type: "translateCard", attrs: { id: generateUUID() }, content: [{ type: "text", text: translateData[0].text }] },
-            ...jsonData.content.slice(index + 1),
-          ];
-          editor.chain().setContent({ type: "doc", content: list }, true).focus().run();
-        }
-      }
-    }
-    setOpenTranslate(false);
-  };
-
-  const getContent = () => {
-    return [{ text: node.content.toJSON()[0].text }];
-  };
+    setVoice(getVoiceBadgeLabel(node.attrs.voice));
+  }, [node.attrs.voice]);
 
   const addVoice = (data: VoiceOptions) => {
     const jsonData = editor.getJSON();
@@ -83,7 +51,7 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
       const curItem = jsonData.content?.find((item) => item.attrs?.id == node.attrs.id && item.type === "editorCard");
       if (curItem && curItem.attrs) {
         curItem.attrs.voice = cloneDeep(data);
-        setVoice(getVoiceBadgeLabel(curItem.attrs.voice, t));
+        setVoice(getVoiceBadgeLabel(curItem.attrs.voice));
         editor.chain().setContent(jsonData, true).focus().run();
       }
     }
@@ -137,21 +105,10 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
       )}
 
       <div className="flex items-start">
-        <Popover open={openTranslate} onOpenChange={setOpenTranslate}>
-          <PopoverTrigger asChild>
-            <button
-              title={t("app.translate")}
-              className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-              disabled={node.content.size == 0}
-            >
-              <TbLanguage size={18} />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent side="right" sideOffset={10} className="w-auto">
-            <TranslatePanel getTranslateData={addTranslate} getContent={getContent} />
-          </PopoverContent>
-        </Popover>
-        <NodeViewContent className={`content flex-1 px-2 editable-content ${node.content.size == 0 ? "is-empty" : ""}`} />
+        <NodeViewContent
+          data-placeholder={placeholderText}
+          className={`content flex-1 px-2 editable-content ${node.content.size == 0 ? "is-empty" : ""}`}
+        />
       </div>
     </NodeViewWrapper>
   );

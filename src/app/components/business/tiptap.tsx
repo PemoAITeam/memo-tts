@@ -4,12 +4,11 @@ import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { inject, observer } from 'mobx-react'
-import { cloneDeep } from 'lodash-es'
 import mammoth from 'mammoth'
 import { remark } from 'remark'
 import strip from 'strip-markdown'
 import { useTranslation } from 'react-i18next'
-import { TbEraser, TbLanguage, TbLoader, TbWand } from 'react-icons/tb'
+import { TbEraser, TbLoader, TbWand } from 'react-icons/tb'
 import { MdOutlineMusicNote } from 'react-icons/md'
 import { BsPause, BsPlay } from 'react-icons/bs'
 import { IoStopCircleOutline } from 'react-icons/io5'
@@ -17,18 +16,15 @@ import { IoIosClose } from 'react-icons/io'
 
 import { EditorCard } from '../extensions/editor-card'
 import { EventHandler } from '../extensions/paste-plugin'
-import { TranslateCard } from '../extensions/translate-card'
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog'
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import TTSDialog from './tts-dialog'
-import TranslatePanel from './translate-panel'
 import SelectTTSProvider from './SelectTTSProvider'
 import { TTSMenu } from './tts-menu'
 import { TTSBubbleMenu } from './tts-bubble-menu'
 import { toast } from '../ui/use-toast'
-import type { BgmData, WhisperSegments } from '@/app/interface'
-import { generateUUID, getLocalFileUrl, mergeTranslate, secondsToHMS } from '@/app/lib/utils'
+import type { BgmData } from '@/app/interface'
+import { generateUUID, getLocalFileUrl, normalizeEditorDocument, secondsToHMS } from '@/app/lib/utils'
 import type DataStore from '@/app/stores/dataStore'
 import type PluginStore from '@/app/stores/pluginStore'
 import {
@@ -37,7 +33,6 @@ import {
   TTSMark,
   useTTSBubbleMenu,
   useTTSMentionMenu,
-  type SelectedVoiceConfig,
 } from '@/app/lib/tts-mention'
 
 function stableSerializeConfig(value: unknown): string {
@@ -93,8 +88,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
   synthesisDisabled,
   synthesisProgress,
 }: TiptapProps) => {
-  const [openTranslate, setOpenTranslate] = useState(false)
-  const [translating, setTranslating] = useState(false)
   const [ttsType, setTtsType] = useState<'video' | 'audio'>('audio')
   const [openDialog, setOpenDialog] = useState(false)
   const [bgm, setBgm] = useState<BgmData | undefined>(bgmData)
@@ -114,7 +107,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
     extensions: [
       StarterKit,
       EditorCard,
-      TranslateCard,
       EventHandler,
       TTSMentionNode,
       TTSMentionSimple.configure({
@@ -145,7 +137,7 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
     },
   })
 
-  const handleVoiceSelect = (_config: SelectedVoiceConfig) => {}
+  const handleVoiceSelect = () => {}
 
   const ttsMenu = useTTSMentionMenu(editor, {
     initialProvider: effectiveProvider,
@@ -172,12 +164,14 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
       setEditor(editor)
     }
 
+    const audio = audioRef.current
+
     return () => {
       editor?.destroy()
 
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.src = ''
+      if (audio) {
+        audio.pause()
+        audio.src = ''
         setIsPlaying(false)
       }
     }
@@ -188,8 +182,10 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
       return
     }
 
-    if (content && typeof content === 'object') {
-      const nextContentKey = stableSerializeConfig(content)
+    const nextContent = normalizeEditorDocument(content) || content
+
+    if (nextContent && typeof nextContent === 'object') {
+      const nextContentKey = stableSerializeConfig(nextContent)
       const currentContentKey = stableSerializeConfig(editor.getJSON())
 
       if (nextContentKey === currentContentKey) {
@@ -198,7 +194,7 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
     }
 
     Promise.resolve().then(() => {
-      editor.commands.setContent(content || '<editor-card></editor-card>')
+      editor.commands.setContent(nextContent || '<editor-card></editor-card>')
     })
   }, [content, editor])
 
@@ -220,31 +216,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
   const clear = () => {
     editor?.commands.clearContent()
     editor?.chain().insertContentAt(editor.state.selection.head, { type: 'editorCard' }).focus().run()
-  }
-
-  const getContent = () => {
-    const jsonData = editor?.getJSON()
-    const originalData = jsonData?.content?.filter((item) => item.type === 'editorCard')
-    const data = originalData
-      ?.map((item, index) => ({ text: item.content ? item.content[0].text : '', index }))
-      .filter((item) => !!item.text?.length)
-
-    return data || []
-  }
-
-  const addTranslate = (translateData: WhisperSegments[]) => {
-    const jsonData = editor?.getJSON()
-    const editorContent = cloneDeep(jsonData?.content)
-
-    if (editorContent?.length) {
-      const list = mergeTranslate(
-        editorContent.filter((item) => item.type === 'editorCard'),
-        translateData,
-      ).map((item) => (item.content && !item.content[0].text.length ? { type: item.type, attrs: item.attrs } : item))
-
-      setTranslating(false)
-      editor?.chain().setContent({ type: 'doc', content: list }, true).focus().run()
-    }
   }
 
   const handleDrop = (event: any) => {
@@ -360,48 +331,49 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
     setBgm(undefined)
   }
 
+  const synthesisButton = synthesisActive
+    ? (
+      <Button
+        aria-label={t('tts.synthesis')}
+        variant='outline'
+        size='sm'
+        className='relative overflow-hidden'
+        onClick={onStopSynthesis}
+      >
+        <IoStopCircleOutline size={16} className='relative z-10' />
+        <span className='relative z-10'>{t('tts.synthesis')}</span>
+        <span className='relative z-10'>{`${synthesisProgress || 0}%`}</span>
+        <div
+          style={{ width: `${synthesisProgress || 0}%` }}
+          className='pointer-events-none absolute left-0 top-0 h-full bg-primary opacity-20'
+        />
+      </Button>
+    )
+    : (
+      <Button
+        aria-label={t('tts.synthesis')}
+        size='sm'
+        disabled={synthesisDisabled || !onSynthesize}
+        onClick={onSynthesize}
+      >
+        {synthesisBusy
+          ? <TbLoader className='transition-colors ease-linear animate-spin' size={16} />
+          : <TbWand size={16} />}
+        <span>{t('tts.synthesis')}</span>
+      </Button>
+    )
+
   return (
     <>
       <div className='flex items-center flex-shrink-0 justify-between mb-4 pr-3'>
         <div className='flex flex-1 items-center gap-3 pr-3'>
+          {synthesisButton}
           <span className='text-sm whitespace-nowrap text-muted-foreground'>{t('tts.provider')}</span>
           <div className='w-full max-w-52'>
             <SelectTTSProvider onChange={onProviderChange || (() => undefined)} />
           </div>
         </div>
         <div className='flex items-center flex-shrink-0 gap-1'>
-          {synthesisActive
-            ? (
-              <Button
-                aria-label={t('tts.synthesis')}
-                variant='outline'
-                size='sm'
-                className='relative overflow-hidden'
-                onClick={onStopSynthesis}
-              >
-                <IoStopCircleOutline size={16} className='relative z-10' />
-                <span className='relative z-10'>{t('tts.synthesis')}</span>
-                <span className='relative z-10'>{`${synthesisProgress || 0}%`}</span>
-                <div
-                  style={{ width: `${synthesisProgress || 0}%` }}
-                  className='pointer-events-none absolute left-0 top-0 h-full bg-primary opacity-20'
-                />
-              </Button>
-            )
-            : (
-              <Button
-                aria-label={t('tts.synthesis')}
-                size='sm'
-                disabled={synthesisDisabled || !onSynthesize}
-                onClick={onSynthesize}
-              >
-                {synthesisBusy
-                  ? <TbLoader className='transition-colors ease-linear animate-spin' size={16} />
-                  : <TbWand size={16} />}
-                <span>{t('tts.synthesis')}</span>
-              </Button>
-            )}
-
           {ttsType === 'video' && (
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>
               <DialogTrigger asChild>
@@ -418,24 +390,6 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
               </DialogContent>
             </Dialog>
           )}
-
-          <Popover open={openTranslate} onOpenChange={setOpenTranslate}>
-            <PopoverTrigger asChild>
-              <Button aria-label={t('app.translate')} variant='ghost' size='sm'>
-                {translating ? <TbLoader className='transition-colors ease-linear animate-spin' /> : <TbLanguage />}
-                <span className='text-sm'>{t('app.translate')}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className='w-auto'>
-              <TranslatePanel
-                startTranslate={setTranslating}
-                getTranslateData={addTranslate}
-                getContent={getContent}
-                closePanel={() => setOpenTranslate(false)}
-              />
-            </PopoverContent>
-          </Popover>
-
           <Button aria-label={t('app.clear')} variant='ghost' size='sm' onClick={clear}>
             <TbEraser size={18} />
             <span className='text-sm'>{t('app.clear')}</span>

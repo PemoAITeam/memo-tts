@@ -1,4 +1,3 @@
-import { LanguageCode } from '@/app/types'
 import de from './de.json'
 import en from './en.json'
 import es from './es.json'
@@ -70,36 +69,6 @@ export const supportLangs: Array<{
       label: 'Italiano'
     }
   ]
-
-export const translateLangs: { value: LanguageCode, label: string, disabled?: boolean }[] = [
-  { value: "zh_cn", label: "translate.langs.zh_cn" },
-  { value: "zh_tw", label: "translate.langs.zh_tw" },
-  { value: "yue", label: "translate.langs.yue" },
-  { value: "en", label: "translate.langs.en" }, // English
-  { value: "ja", label: "translate.langs.ja" },
-  { value: "ko", label: "translate.langs.ko" }, // 한국어
-  { value: "fr", label: "translate.langs.fr" },
-  { value: "es", label: "translate.langs.es" }, // Español
-  { value: "ru", label: "translate.langs.ru" },
-  { value: "de", label: "translate.langs.de" }, // Deutsch
-  { value: "it", label: "translate.langs.it" }, // Italiano
-  { value: "tr", label: "translate.langs.tr" },
-  { value: "pt", label: "translate.langs.pt" },
-  { value: "vi", label: "translate.langs.vi" },
-  { value: "id", label: "translate.langs.id" },
-  { value: "th", label: "translate.langs.th" },
-  { value: "ms", label: "translate.langs.ms" },
-  { value: "ar", label: "translate.langs.ar" },
-  { value: "hi", label: "translate.langs.hi" }, // (印度的官方语言)
-  { value: "ro", label: "translate.langs.ro" },
-  { value: "ug", label: "translate.langs.ug" },
-  { value: "uz", label: "translate.langs.uz" },
-  { value: "kk", label: "translate.langs.kk" },
-  { value: "az", label: "translate.langs.az" },
-  { value: "ky", label: "translate.langs.ky" },
-  { value: "fa", label: "translate.langs.fa" },
-  { value: "tg", label: "translate.langs.tg" },
-]
 
 export const transcriptLangs = [
   { value: "auto", label: "transcript.langs.auto" },

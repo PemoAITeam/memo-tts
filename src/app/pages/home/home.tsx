@@ -186,7 +186,7 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
       return buildTTSSelection({
         providerMeta,
         manifest,
-        target: resolvedSelection?.target || 'original',
+        target: 'original',
         config: merge({}, manifest?.defaultsConfiguration || {}, storedPluginConfig, resolvedSelection?.config || {}, runtimeConfig),
       })
     }
@@ -194,7 +194,7 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
     return buildTTSSelection({
       providerMeta,
       manifest,
-      target: storedSelection?.target || 'original',
+      target: 'original',
       config: merge({}, manifest?.defaultsConfiguration || {}, storedPluginConfig, runtimeConfig),
     })
   }, [activeProvider, pluginStore, storedSelection])

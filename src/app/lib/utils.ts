@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { cloneDeep } from 'lodash-es';
-import { TemoData, TemoFileList, WhisperSegments } from "@/app/interface";
+import { TemoData, TemoFileList } from "@/app/interface";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -216,45 +216,6 @@ export function getSpeed(speed: string) {
   return rate
 }
 
-export function resultItemString(
-  strArray: string[],
-  convertResult: WhisperSegments[],
-  translateResult?: WhisperSegments[]
-) {
-  const result = translateResult && translateResult.length ? cloneDeep(translateResult) : cloneDeep(convertResult)
-  strArray.forEach((str) => {
-    if (str) {
-      const regex = /^\[(\d+)\]([\s\S]*)/
-      const matches = regex.exec(str.trim())
-      if (matches) {
-        const number = matches[1]
-        const text = matches[2]
-        const index = Number(number)
-        if (index >= 0 && index < convertResult.length) {
-          result[index] = result[index] || {}
-          result[index].text = text
-          result[index].st = convertResult[index].st
-          result[index].et = convertResult[index].et
-        }
-      }
-    }
-  })
-
-  return result
-}
-
-export function mergeTranslate(array1: Record<string, any>[], array2: Record<string, any>[]) {
-  return array1.flatMap((item: any, index: number) => {
-    const matchingObject = array2.find(obj => obj.index === index);
-    if (matchingObject) {
-      return [item, { type: 'translateCard', content: [{ type: 'text', text: matchingObject.text }] }];
-    }
-
-    return item;
-  });
-}
-
-
 export function hasDuplicateId(arr: any[]) {
   const idSet = new Set();
   for (const item of arr) {
@@ -290,7 +251,8 @@ export function lowercaseFirstLetter(str: string) {
 export function updateTemoData(result: TemoData) {
   let from = 0, duration = 0;
   const fileList: TemoFileList[] = result.fileList?.map((file: any) => {
-    const { pic: _pic, ...rest } = file
+    const rest = { ...file }
+    delete rest.pic
     const newObj = {
       ...rest,
       from,
@@ -306,7 +268,8 @@ export function updateTemoData(result: TemoData) {
 
 export function patchTemoData(data: TemoData) {
   const fileList = (data.infoData!.order as string[]).map(item => {
-    const { pic: _pic, ...rest } = data.infoData![item] as Record<string, any>
+    const rest = { ...(data.infoData![item] as Record<string, any>) }
+    delete rest.pic
     return rest as TemoFileList
   })
   return fileList
@@ -368,41 +331,66 @@ export function splitString(str: string, chunkSize: number = 1000) {
   return result;
 }
 
-export function getJSONDataFromEditorContents(editorContent: any, target: string) {
-  console.log('getJSONDataFromEditorContents called, editorContent:', editorContent, 'target:', target)
-  const jsonData: any[] = [];
-  if (editorContent?.length) {
-      editorContent.forEach((item: { type: string; attrs: { voice: any } }, index: number) => {
-          if (item.type == 'editorCard' && editorContent[index + 1]?.type == 'translateCard') {
-              if (item.attrs?.voice) {
-                  editorContent[index + 1].attrs!.voice = item.attrs.voice
-              } else {
-                  delete editorContent[index + 1].attrs!.voice
-              }
-          }
-      })
+function normalizeVoiceTarget(value: any) {
+  if (!value || typeof value !== 'object') {
+    return value
   }
-  editorContent.forEach((item: { attrs: { id: string, voice?: any }, content: string | any[]; type: string; }) => {
-      console.log('checking item:', item.type, 'hasContent:', !!item.content?.length, 'attrs:', item.attrs)
-      // 检查是否有任何文本内容（不要求第一个元素必须是 text）
-      const hasTextContent = Array.isArray(item.content) && item.content.some((child: any) => child.type === 'text' && child.text)
-      if (hasTextContent && (item.type === 'editorCard' || item.type === 'translateCard')) {
-          console.log('passed first check, voice:', item.attrs?.voice)
-          if (item.attrs.voice && (item.attrs.voice?.target === 'original' && item.type === 'editorCard' || (item.attrs.voice?.target !== 'original' && item.type === 'translateCard'))) {
-              console.log('pushing with voice')
-              jsonData.push(item)
-          } else if (!item.attrs.voice && (target === 'original' && item.type === 'editorCard' || (target !== 'original' && item.type === 'translateCard'))) {
-              console.log('pushing without voice, target:', target, 'type:', item.type)
-              jsonData.push(item)
-          } else {
-              console.log('not matched, voice condition failed')
-          }
-      } else {
-          console.log('first check failed, hasTextContent:', hasTextContent)
+
+  const nextValue = cloneDeep(value)
+  if ('target' in nextValue) {
+    nextValue.target = 'original'
+  }
+
+  return nextValue
+}
+
+export function normalizeEditorDocument(value: any) {
+  if (!value || typeof value !== 'object') {
+    return value
+  }
+
+  const sourceContent = Array.isArray(value)
+    ? value
+    : Array.isArray(value.content)
+      ? value.content
+      : []
+
+  const content = sourceContent
+    .filter((item: any) => item?.type === 'editorCard')
+    .map((item: any) => {
+      const nextItem = cloneDeep(item)
+      const attrs = { ...(nextItem.attrs || {}) }
+
+      if (!attrs.id) {
+        attrs.id = generateUUID()
       }
+
+      if (attrs.voice) {
+        attrs.voice = normalizeVoiceTarget(attrs.voice)
+      }
+
+      nextItem.type = 'editorCard'
+      nextItem.attrs = attrs
+      return nextItem
+    })
+
+  if (!content.length) {
+    content.push({ type: 'editorCard', attrs: { id: generateUUID() } })
+  }
+
+  return { type: 'doc', content }
+}
+
+export function getJSONDataFromEditorContents(editorContent: any) {
+  const normalizedEditorData = normalizeEditorDocument(editorContent)
+  const content = Array.isArray(normalizedEditorData?.content) ? normalizedEditorData.content : []
+
+  return content.filter((item: { content?: any[]; type: string }) => {
+    const hasTextContent = Array.isArray(item.content)
+      && item.content.some((child: any) => child.type === 'text' && child.text)
+
+    return item.type === 'editorCard' && hasTextContent
   })
-  console.log('getJSONDataFromEditorContents result:', jsonData)
-  return jsonData
 }
 
 /**

@@ -1,7 +1,4 @@
 import type { TTSMergePayload, TTSSelection } from "./lib/tts-plugin";
-import { AllServiceType, RequiredByKey } from "./types";
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 type AllLanguage = string;
 
 declare global {
@@ -15,7 +12,6 @@ interface AIMBridge {
   isMac?: boolean;
   getSetting: () => Promise<AppSettings>;
   openDialog: (...args: any[]) => Promise<any>;
-  translateContent: (...args: any[]) => Promise<any>;
   handleMessage: (handler: (...args: any[]) => void, key: string) => void;
   removeHandler: (key: string) => void;
   plugin: {
@@ -65,34 +61,6 @@ interface WhisperSegments {
   md5?: string;
 }
 
-
-
-interface TranslateStart {
-  type: "translate:start";
-  data: {
-    type: AllServiceType;
-    message: string;
-  };
-}
-
-interface TranslateProgress {
-  type: "translate:progress";
-  data: RequiredByKey<Partial<WhisperSegments>, "index">[];
-}
-
-interface TranslateMessage {
-  type: "translate:message";
-  data: RequiredByKey<Partial<WhisperSegments>, "index">[];
-}
-
-interface TranslateComplete {
-  type: "translate:complete";
-  data: {
-    type: AllServiceType;
-    result: TranslateResult;
-  };
-}
-
 export interface AppSettings {
   openAI?: {
     apiKey: string;
@@ -138,7 +106,6 @@ export interface AppSettings {
   themeSource?: typeof nativeTheme.themeSource;
   macOSWhisperMode?: "CPU" | "coreML" | "CLBlast" | "Metal";
   windowsWhisperMode?: "CPU" | "GPU" | "CUDA" | "cuBLAS";
-  translateProvider?: SupportProviders;
   language?: string;
   httpProxy?: {
     port?: number;
@@ -184,7 +151,6 @@ export interface AppSettings {
   externalResourceMode?: "0" | "1" | "2";
   enableRSS?: boolean;
   enableCoreML?: boolean;
-  useMultiTranslate?: boolean;
   useSubtitleWindow?: boolean;
 }
 
@@ -225,7 +191,7 @@ export interface TemoFileList {
 export interface EditorData {
   content?: { type: "text", text: string }[],
   attrs?: Record<string, any>,
-  type: "editorCard" | "translateCard"
+  type: "editorCard"
 }
 
 export interface LibraryData {

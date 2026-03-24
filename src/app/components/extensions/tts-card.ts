@@ -5,7 +5,7 @@ export const TTSCard = Node.create({
 
     group: 'block',
 
-    content: 'editorCard translateCard?',
+    content: 'editorCard',
 
     parseHTML() {
         return [

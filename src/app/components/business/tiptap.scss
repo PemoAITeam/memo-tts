@@ -4,23 +4,13 @@
   }
 }
 
-.editor-card-item,
-.translate-card-item {
+.editor-card-item {
   position: relative;
 
   .editable-content {
     line-height: 1.2;
   }
 
-}
-
-.translate-card-item {
-  color: gray;
-
-  .is-none {
-    height: 20px;
-    overflow: hidden;
-  }
 }
 
 #drop-area {
