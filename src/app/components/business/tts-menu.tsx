@@ -1,12 +1,13 @@
 import { ForwardedRef, forwardRef, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IoIosFemale, IoIosMale } from 'react-icons/io'
-import { MdOutlineLocalFireDepartment } from 'react-icons/md'
+import { MdOutlineLocalFireDepartment, MdHistory } from 'react-icons/md'
 import { TbBrandEdge, TbBrandOpenai, TbMicrophone, TbSearch, TbVolume } from 'react-icons/tb'
 
 import { buildSelectedVoiceConfig, getBreadcrumb, getLoadingMenuItems, getMenuItems } from '../../lib/tts-mention/data'
 import { getTTSHostErrorMessage } from '../../lib/tts-plugin'
 import { MenuPath, TTSMenuItem } from '../../lib/tts-mention/types'
+import { RecentVoiceEntry } from '../../lib/tts-mention/recent-voices-store'
 import { cn } from '../../lib/utils'
 import { toast } from '../ui/use-toast'
 
@@ -17,10 +18,12 @@ interface TTSMenuProps {
   path: MenuPath
   selectedIndex: number
   position: { x: number; y: number }
+  recentVoices?: RecentVoiceEntry[]
   onQueryChange: (query: string) => void
   onSelect: (item: TTSMenuItem) => void
   onGoBack: () => boolean
   onClose: () => void
+  onSelectRecentVoice?: (entry: RecentVoiceEntry) => void
 }
 
 const iconMap: Record<string, ReactNode> = {
@@ -28,6 +31,17 @@ const iconMap: Record<string, ReactNode> = {
   TbBrandOpenai: <TbBrandOpenai className="h-4 w-4" />,
   TbVolcano: <MdOutlineLocalFireDepartment className="h-4 w-4 text-orange-500" />,
   TbMicrophone: <TbMicrophone className="h-4 w-4" />,
+}
+
+const PROVIDER_ICON_MAP: Array<{ match: RegExp; icon: string }> = [
+  { match: /edge/i, icon: 'TbBrandEdge' },
+  { match: /openai/i, icon: 'TbBrandOpenai' },
+  { match: /volc|volcano/i, icon: 'TbVolcano' },
+]
+
+function resolveProviderIcon(provider: string, pluginId?: string): string {
+  const source = `${provider} ${pluginId || ''}`
+  return PROVIDER_ICON_MAP.find((item) => item.match.test(source))?.icon || 'TbMicrophone'
 }
 
 const hasChildren = (item: TTSMenuItem) => {
@@ -56,9 +70,11 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
       path,
       selectedIndex,
       position,
+      recentVoices = [],
       onQueryChange,
       onSelect,
       onGoBack,
+      onSelectRecentVoice,
     },
     ref: ForwardedRef<HTMLDivElement>
   ) => {
@@ -76,6 +92,12 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
     const [subMenuItems, setSubMenuItems] = useState<TTSMenuItem[]>([])
     const [hoveredMainIndex, setHoveredMainIndex] = useState<number | null>(null)
     const [hoveredSubIndex, setHoveredSubIndex] = useState<number | null>(null)
+    const [isInRecentSection, setIsInRecentSection] = useState(false)
+    const [recentIndex, setRecentIndex] = useState(0)
+
+    const recentItemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+    const isRootLevel = !path.language && !path.scene && !path.model
+    const showRecentSection = recentVoices.length > 0 && isRootLevel
 
     const cleanupPreview = () => {
       previewAudioRef.current?.pause()
@@ -211,18 +233,29 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
     }, [subIndex])
 
     useEffect(() => {
+      const item = recentItemRefs.current.get(recentIndex)
+      if (item) {
+        item.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
+    }, [recentIndex])
+
+    useEffect(() => {
       setMainIndex(0)
       setSubIndex(0)
       setIsInSubMenu(false)
       setSubMenuItems([])
       setHoveredMainIndex(null)
       setHoveredSubIndex(null)
+      setIsInRecentSection(false)
+      setRecentIndex(0)
     }, [path])
 
     useEffect(() => {
       setMainIndex(0)
       setIsInSubMenu(false)
       setSubMenuItems([])
+      setIsInRecentSection(false)
+      setRecentIndex(0)
     }, [parentItems])
 
     const currentMainItem = parentItems[mainIndex]
@@ -261,6 +294,44 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
 
       const handleKeyDown = (e: KeyboardEvent) => {
         const nextSubMenuPath = getChildPath(currentMainItem)
+        const hasRecentVoices = showRecentSection
+
+        if (isInRecentSection && hasRecentVoices) {
+          if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            setRecentIndex((prev) => (prev - 1 + recentVoices.length) % recentVoices.length)
+            return
+          }
+
+          if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            const nextIndex = recentIndex + 1
+            if (nextIndex >= recentVoices.length) {
+              setIsInRecentSection(false)
+              setMainIndex(0)
+            } else {
+              setRecentIndex(nextIndex)
+            }
+            return
+          }
+
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault()
+            onGoBack()
+            return
+          }
+
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            const recentEntry = recentVoices[recentIndex]
+            if (recentEntry && onSelectRecentVoice) {
+              onSelectRecentVoice(recentEntry)
+            }
+            return
+          }
+
+          return
+        }
 
         if (isInSubMenu) {
           if (e.key === 'ArrowUp') {
@@ -314,20 +385,41 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
         }
 
         if (e.key === 'ArrowUp') {
-          if (parentItems.length === 0) {
+          if (parentItems.length === 0 && !hasRecentVoices) {
             return
           }
           e.preventDefault()
-          setMainIndex((prev) => (prev - 1 + parentItems.length) % parentItems.length)
+          const prevIndex = mainIndex - 1
+          if (prevIndex < 0 && hasRecentVoices) {
+            setIsInRecentSection(true)
+            setRecentIndex(recentVoices.length - 1)
+          } else {
+            setMainIndex((prev) => (prev - 1 + parentItems.length) % parentItems.length)
+          }
           return
         }
 
         if (e.key === 'ArrowDown') {
-          if (parentItems.length === 0) {
+          if (parentItems.length === 0 && !hasRecentVoices) {
             return
           }
           e.preventDefault()
-          setMainIndex((prev) => (prev + 1) % parentItems.length)
+          if (parentItems.length === 0 && hasRecentVoices) {
+            setIsInRecentSection(true)
+            setRecentIndex(0)
+          } else {
+            const nextIndex = mainIndex + 1
+            if (nextIndex >= parentItems.length && hasRecentVoices) {
+              // Already at bottom, do nothing or cycle
+              setMainIndex(0)
+              if (hasRecentVoices) {
+                setIsInRecentSection(true)
+                setRecentIndex(0)
+              }
+            } else {
+              setMainIndex((prev) => (prev + 1) % parentItems.length)
+            }
+          }
           return
         }
 
@@ -365,7 +457,7 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
 
       window.addEventListener('keydown', handleKeyDown)
       return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [currentMainItem, isInSubMenu, isOpen, mainIndex, onGoBack, onSelect, parentItems, path.language, path.model, path.provider, path.scene, subIndex, subMenuItems])
+    }, [currentMainItem, isInRecentSection, isInSubMenu, isOpen, mainIndex, onGoBack, onSelect, onSelectRecentVoice, parentItems, recentIndex, recentVoices, showRecentSection, subIndex, subMenuItems])
 
     useEffect(() => {
       if (!isInSubMenu && selectedIndex >= 0 && selectedIndex < parentItems.length) {
@@ -442,6 +534,48 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
                 tabIndex={-1}
               />
             </div>
+
+            {/* Recent Voices Section */}
+            {showRecentSection && (
+              <div className="border-b">
+                <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
+                  <MdHistory className="h-3.5 w-3.5" />
+                  {t('tts.recent_voices') || 'Recent'}
+                </div>
+                <div
+                  className="max-h-[120px] overflow-y-auto p-1"
+                  onMouseLeave={() => setIsInRecentSection(false)}
+                >
+                  {recentVoices.map((entry, index) => (
+                    <div
+                      key={`recent-${entry.pluginId}-${index}`}
+                      ref={(el) => {
+                        if (el) {
+                          recentItemRefs.current.set(index, el)
+                        }
+                      }}
+                      className={cn(
+                        'flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
+                        isInRecentSection && index === recentIndex && 'bg-accent text-accent-foreground'
+                      )}
+                      onClick={() => {
+                        if (onSelectRecentVoice) {
+                          onSelectRecentVoice(entry)
+                        }
+                      }}
+                      onMouseEnter={() => {
+                        setIsInRecentSection(true)
+                        setRecentIndex(index)
+                        setHoveredMainIndex(null)
+                      }}
+                    >
+                      <span className="flex-shrink-0">{iconMap[resolveProviderIcon(entry.config.provider, entry.config.pluginId)]}</span>
+                      <span className="truncate">{entry.config.displayLabel || entry.config.voiceLocalName}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div
               className="max-h-[280px] overflow-y-auto p-1"

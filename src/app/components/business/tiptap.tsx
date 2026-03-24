@@ -310,10 +310,12 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
         path={ttsMenu.path}
         selectedIndex={ttsMenu.selectedIndex}
         position={ttsMenu.position}
+        recentVoices={ttsMenu.recentVoices}
         onQueryChange={ttsMenu.setQuery}
         onSelect={ttsMenu.selectItem}
         onGoBack={ttsMenu.goBack}
         onClose={ttsMenu.closeMenu}
+        onSelectRecentVoice={ttsMenu.selectRecentVoice}
       />
 
       <TTSBubbleMenu

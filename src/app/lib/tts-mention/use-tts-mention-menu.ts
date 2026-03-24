@@ -1,13 +1,11 @@
-/**
- * TTS Mention Menu Hook
- * 鐢ㄤ簬鍦?React 缁勪欢涓鐞?@ 鑿滃崟鐨勭姸鎬?
- */
-
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import type { Editor } from '@tiptap/react'
+
+import { pluginStore } from '@/app/stores'
 
 import type { MenuPath, SelectedVoiceConfig, TTSMenuItem } from './types'
 import { buildSelectedVoiceConfig, getLoadingMenuItems, getMenuItems, getNextMenuPath } from './data'
+import { recentVoicesStore, type RecentVoiceEntry } from './recent-voices-store'
 
 export interface TTSMenuState {
   isOpen: boolean
@@ -46,11 +44,18 @@ export function useTTSMentionMenu(
 
   const menuRef = useRef<HTMLDivElement>(null)
   const loadRequestIdRef = useRef(0)
+  const [recentVoicesVersion, setRecentVoicesVersion] = useState(0)
+
+  useEffect(() => {
+    return recentVoicesStore.subscribe(() => {
+      setRecentVoicesVersion((version) => version + 1)
+    })
+  }, [])
 
   const loadItems = useCallback((path: MenuPath, query: string) => {
     const requestId = ++loadRequestIdRef.current
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       path,
       query,
@@ -64,7 +69,7 @@ export function useTTSMentionMenu(
           return
         }
 
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           path,
           query,
@@ -77,7 +82,7 @@ export function useTTSMentionMenu(
           return
         }
 
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           path,
           query,
@@ -111,7 +116,7 @@ export function useTTSMentionMenu(
 
   const closeMenu = useCallback(() => {
     loadRequestIdRef.current += 1
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isOpen: false,
       path: initialProvider ? { provider: initialProvider } : {},
@@ -120,6 +125,33 @@ export function useTTSMentionMenu(
       items: [],
     }))
   }, [initialProvider])
+
+  const insertVoiceMention = useCallback((config: SelectedVoiceConfig) => {
+    const { range } = state
+    if (!range) {
+      return
+    }
+
+    const { from } = range
+    const to = editor?.state.selection.from || from
+
+    editor
+      ?.chain()
+      .focus()
+      .deleteRange({ from, to })
+      .insertContent({
+        type: 'ttsMention',
+        attrs: {
+          provider: config.provider,
+          config: JSON.stringify(config),
+          label: config.displayLabel || config.voiceLocalName,
+        },
+      })
+      .run()
+
+    onVoiceSelect?.(config)
+    closeMenu()
+  }, [state, editor, onVoiceSelect, closeMenu])
 
   const selectItem = useCallback((item: TTSMenuItem) => {
     if (item.disabled) {
@@ -141,27 +173,10 @@ export function useTTSMentionMenu(
         return
       }
 
-      const { from } = range
-      const to = editor?.state.selection.from || from
-
-      editor
-        ?.chain()
-        .focus()
-        .deleteRange({ from, to })
-        .insertContent({
-          type: 'ttsMention',
-          attrs: {
-            provider: config.provider,
-            config: JSON.stringify(config),
-            label: config.displayLabel || config.voiceLocalName,
-          },
-        })
-        .run()
-
-      onVoiceSelect?.(config)
-      closeMenu()
+      recentVoicesStore.addRecentVoice(config)
+      insertVoiceMention(config)
     }
-  }, [state, editor, onVoiceSelect, closeMenu, loadItems])
+  }, [state, insertVoiceMention, loadItems])
 
   const goBack = useCallback(() => {
     const { path } = state
@@ -196,68 +211,22 @@ export function useTTSMentionMenu(
     loadItems(state.path, query)
   }, [loadItems, state.path])
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!state.isOpen) return false
-
-    const { items, selectedIndex } = state
-
-    switch (event.key) {
-      case 'ArrowDown':
-        if (items.length === 0) return true
-        event.preventDefault()
-        setState(prev => ({
-          ...prev,
-          selectedIndex: (prev.selectedIndex + 1) % items.length,
-        }))
-        return true
-
-      case 'ArrowUp':
-        if (items.length === 0) return true
-        event.preventDefault()
-        setState(prev => ({
-          ...prev,
-          selectedIndex: (prev.selectedIndex - 1 + items.length) % items.length,
-        }))
-        return true
-
-      case 'ArrowLeft':
-        if (!state.query) {
-          event.preventDefault()
-          goBack()
-          return true
-        }
-        return false
-
-      case 'Backspace':
-        if (!state.query) {
-          closeMenu()
-          return false
-        }
-        return false
-
-      case 'Enter':
-        event.preventDefault()
-        if (items.length > 0) {
-          selectItem(items[selectedIndex])
-        }
-        return true
-
-      case 'Escape':
-        event.preventDefault()
-        closeMenu()
-        return true
-
-      default:
-        return false
+  const recentVoices = useMemo(() => {
+    const currentProvider = state.path.provider || initialProvider
+    if (currentProvider) {
+      const currentPluginId = pluginStore.findTTSProviderByValue(currentProvider)?.pluginId
+      return currentPluginId
+        ? recentVoicesStore.getRecentVoices(currentPluginId)
+        : []
     }
-  }, [state, goBack, selectItem, closeMenu])
 
-  useEffect(() => {
-    if (!state.isOpen) return
+    return recentVoicesStore.getAllMostRecentVoices()
+  }, [initialProvider, recentVoicesVersion, state.path.provider])
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [state.isOpen, handleKeyDown])
+  const selectRecentVoice = useCallback((entry: RecentVoiceEntry) => {
+    recentVoicesStore.addRecentVoice(entry.config)
+    insertVoiceMention(entry.config)
+  }, [insertVoiceMention])
 
   useEffect(() => {
     if (!state.isOpen) return
@@ -282,5 +251,7 @@ export function useTTSMentionMenu(
     setQuery,
     closeMenu,
     openMenu,
+    recentVoices,
+    selectRecentVoice,
   }
 }

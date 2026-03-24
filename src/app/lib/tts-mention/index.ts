@@ -38,3 +38,6 @@ export {
 } from './data'
 
 export { TTSMentionPluginKey, createTTSMentionPlugin } from './tts-mention-plugin'
+
+export { recentVoicesStore } from './recent-voices-store'
+export type { RecentVoiceEntry } from './recent-voices-store'
