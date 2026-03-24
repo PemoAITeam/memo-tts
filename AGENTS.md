@@ -2,20 +2,23 @@
 
 ## Project Identity
 
-`memo-tts` is the TTS editor frontend used by the Memo/Temo desktop workflow.
-Despite the stale `package.json` name (`realtime-recorder`) and the generic
-`README.md`, this repository is not a starter template. It is a real React
-application for:
+`memo-tts` is the current TTS authoring frontend used by the Memo desktop
+workflow.
 
-- editing TTS script blocks with TipTap
-- attaching per-block voice settings and per-segment speed/emotion marks
-- translating script blocks before synthesis
-- generating host-managed TTS records
-- reviewing history and local media library assets
-- exporting audio bundles or rendered video through the desktop host
+The real app in the current
+codebase is a plugin-driven TTS editor that now focuses on:
 
-Treat this file as the reliable project briefing. The current `README.md` is
-template-era documentation and does not describe the real runtime.
+- editing script blocks with TipTap
+- selecting host-installed TTS plugin providers
+- inserting inline voice mentions with `@`
+- applying segment-level speed/emotion/other plugin fields to selected text
+- synthesizing host-managed audio or video records
+- browsing, previewing, exporting, and deleting history items from a left
+  sidebar
+
+Treat this file as the source of truth for the repo. `README.md` has improved,
+but it still mixes in older architecture assumptions and is not fully aligned
+with the latest code.
 
 ## Stack
 
@@ -25,11 +28,23 @@ template-era documentation and does not describe the real runtime.
 - MobX + `mobx-persist-store`
 - TipTap
 - Tailwind + SCSS
-- Radix UI
-- `memo-plugin-manager`
-- `@memo/iframe-ipc` for fallback bridge mode
+- Radix UI / shadcn-style primitives in `src/app/components/ui/`
+- `@aim-packages/plugin-manager`
+- `@aim-packages/iframe-ipc`
 
 Package manager: `pnpm`
+
+Other useful build facts:
+
+- path alias `@/* -> ./src/*`
+- `vite.config.ts` sets `base: './'`
+- routing uses `HashRouter`
+- `tsconfig.json` is strict and enables `noUnusedLocals` /
+  `noUnusedParameters`
+- there is currently no automated test suite in this repo
+
+`HashRouter` and `base: './'` are intentional because this app is often loaded
+from a local file path inside Electron.
 
 ## Useful Commands
 
@@ -42,204 +57,313 @@ Package manager: `pnpm`
 - `pnpm preview`
   Serves the built bundle locally
 
-Important build details:
+## Current App Shape
 
-- `vite.config.ts` sets `base: './'`
-- routing uses `HashRouter`
+The current app is a single routed surface, not a multi-page editor/history
+split.
 
-Those two choices are intentional because this app is often loaded from a local
-file path inside Electron, not just from a web server.
+- `src/app/routes/routes.tsx` renders a permanent left sidebar plus a right
+  content panel
+- route `/` redirects to `/home`
+- routes `/home` and `/home/:id` both render `HomePage`
+- the left sidebar is the history list
+- the right panel is the editor plus preview for the active draft/history item
+
+There is no standalone `history.tsx` page in the current repo.
+
+There is also no active translation page, no active `translateCard` document
+flow, and no active BGM/library picker UI in the current interface.
 
 ## Runtime Modes
 
 ### 1. Normal desktop-hosted mode
 
-This is the main production/runtime path.
+This is the main runtime path.
 
-- A sibling Electron app opens this frontend
-- In that mode, `window.AIM` is injected by the Electron preload bridge
-- Host APIs under `window.AIM`, `window.AIM.tts`, and `window.AIM.plugin` do the
-  real work
+- an Electron host injects `window.AIM`
+- the host provides settings, plugin metadata, TTS merge, preview, export, and
+  file dialogs
 
 Practical consequence:
 
-changing code in this repo alone does not update the host's production TTS page
-until the bundle is rebuilt and synced into the Electron host project.
+changing code in this repo alone does not update the production host UI until
+the frontend bundle is rebuilt and synced into the host project.
 
 ### 2. Fallback iframe/web mode
 
-`src/app/main.tsx` creates a `new Bridge(...)` from `@memo/iframe-ipc` only when
-`window.AIM` does not already exist.
+`src/app/main.tsx` creates a `new Bridge(...)` from
+`@aim-packages/iframe-ipc` only when `window.AIM` does not already exist.
 
-This path is best-effort only. The fallback bridge currently declares only a
-subset of the methods the app now uses. For example, the app also calls host
-APIs such as:
+The fallback bridge currently declares these methods:
 
-- `window.AIM.tts.getTemoLibrary`
-- `window.AIM.tts.copyTemoFile`
-- `window.AIM.tts.abortMergeTemo`
-- `window.AIM.plugin.readLocalPlugins`
-- `window.AIM.plugin.saveConfiguration`
+- top-level: `getSetting`, `openDialog`
+- plugin: `readLocalPlugins`, `saveConfiguration`, `getProviders`
+- tts: `getTemoData`, `updateTemoData`, `deleteTemoData`, `getTemoLibrary`,
+  `saveTemoLibrary`, `copyTemoFile`, `mergeTemo`, `abortMergeTemo`,
+  `getTemoAudition`, `synthesize`, `getPluginEditorOptions`, `renderMedia`,
+  `temoDownload`
 
-Do not assume standalone iframe mode supports the whole feature set unless both
-sides are updated together.
+This mode is still host-dependent in practice. Voice preview, dynamic editor
+options, export, and plugin synthesis all require the other side of the bridge
+to support the same APIs.
 
 ## Boot And Initialization
 
 1. `src/app/stores/index.ts`
-   Configures `mobx-persist-store` to use `window.localStorage` with a 24 hour
-   expiration window, then instantiates `settingStore`, `pluginStore`,
-   `dataStore`, and `appStore`.
+   Configures `mobx-persist-store` with `window.localStorage`, 24 hour expiry,
+   then instantiates `settingStore`, `pluginStore`, `dataStore`, and
+   `appStore`.
 2. `src/app/main.tsx`
-   Creates fallback `window.AIM` when needed, mounts React, then posts
+   Creates the fallback bridge when needed, mounts React, then posts
    `removeLoading`.
 3. `src/app/App.tsx`
-   Starts `dataStore.initData()` and `settingStore.initSetting()` in parallel,
-   then registers app/plugin/data message listeners after settings init.
-4. `src/app/routes/routes.tsx`
-   Uses `HashRouter` and exposes `/home` and `/history/:id?`.
-5. `src/app/pages/home/home.tsx`
-   Drives the main authoring and synthesis flow.
+   Starts `dataStore.initData()` and `settingStore.initSetting()` in parallel.
+4. After settings init completes, `App.tsx` registers:
+   `appStore.handleMessage()`, `pluginStore.handlePluginMessage()`, and
+   `dataStore.handleDataMessage()`.
+5. `src/app/routes/routes.tsx`
+   mounts the sidebar/history shell.
+6. `src/app/pages/home/home.tsx`
+   drives both new-draft editing and existing-history-item editing.
 
-Important nuance:
+Important nuances:
 
-- `App.tsx` sets `ready` to `true` in both init promises. That means the router
-  can render as soon as either data init or settings init completes. Do not
-  assume i18n, plugin loading, and data hydration are fully synchronized.
+- `App.tsx` sets `ready` to `true` in both init promises, so routing can render
+  before both settings and data are fully ready.
+- `settingStore.initSetting()` is the only place that currently loads settings
+  in practice.
+- `SettingStore.handleMessage()` contains logic for `setting:change`, but that
+  listener is not wired anywhere in `App.tsx`. Live setting changes are not
+  currently subscribed in the UI.
 
 ## Core Data Model
 
 ### Editor document model
 
-- The TipTap document is effectively a flat sequence of `editorCard` nodes with
-  optional adjacent `translateCard` nodes.
-- `editorCard` attributes hold the stable card `id` and optional card-level
-  `voice` config.
-- `translateCard` is usually inserted immediately after its source `editorCard`.
-- `Tiptap` ensures at least one `editorCard` exists after edits or clear actions.
-- Multi-line paste is intercepted by `paste-plugin.ts` and split into multiple
-  `editorCard` blocks.
-- Drag and drop import supports `.txt`, `.docx`, and `.md`.
+The current document model is much simpler than older docs suggest.
 
-### Block-level vs segment-level TTS controls
+- `normalizeEditorDocument()` in `src/app/lib/utils.ts` is the authoritative
+  normalization step
+- normalized editor data is always `{ type: 'doc', content: editorCard[] }`
+- only `editorCard` nodes survive normalization
+- any old `translateCard` or other block types are dropped during
+  normalization
+- `editorCard.attrs.id` is generated if missing
+- `editorCard.attrs.voice` is preserved and normalized to target `original`
+- the app guarantees at least one `editorCard`
+- multi-line paste is split into multiple `editorCard` nodes by
+  `src/app/components/extensions/paste-plugin.ts`
+- drag-and-drop import supports `.txt`, `.doc`, `.docx`, and `.md`
 
-- Card-level voice overrides are attached to `editorCard.attrs.voice`.
-- TipTap also includes `TTSMention` and `TTSBubbleMenu` support from
-  `src/app/lib/tts-mention/`.
-- Those inline marks are converted into text segments with per-segment `speed`
-  and `emotion` by `extractTextSegmentsFromNode()` in `src/app/lib/utils.ts`.
-- `dataStore.mergeTemo()` uses those extracted segments when it builds the final
-  provider payload.
+### Voice and segment control layers
 
-### Media and library model
+There are now four relevant configuration layers during synthesis:
 
-- `dataStore.libraryData` stores imported media assets for reuse.
-- `TTSDialog` is the library picker used for BGM selection.
-- `copyLibraryFile()` delegates file copying to `window.AIM.tts.copyTemoFile`.
+1. global selection config from the chosen TTS provider
+2. card-level config from `editorCard.attrs.voice`
+3. inline voice mention config from `ttsMention`
+4. selected-text segment config from `ttsMark`
+
+The live merge path is in `dataStore.mergeTemo()`, which combines options in
+this order:
+
+- base selection config
+- card voice config
+- inline voice mention config
+- segment runtime config derived from the selected-text mark
+
+Later layers override earlier ones.
+
+### Inline voice mention model
+
+- typing `@` opens the custom TTS mention menu
+- choosing a voice inserts a `ttsMention` inline atom node
+- the selected voice config is stored as serialized JSON in the node attrs
+- menus are powered by `src/app/lib/tts-mention/`
+
+### Segment-level mark model
+
+- selecting text opens the bubble menu
+- the bubble menu exposes segment-scoped plugin fields except voice
+- the selected values are stored in `ttsMark.attrs.config`
+- `speed` / `emotion` are also mirrored for UI labeling when applicable
+
+### History model
+
+- history is stored in `dataStore.temoData`
+- the active history item is selected by route param `/home/:id`
+- `TemoData.ttsOptions` stores either:
+  - the current plugin-style `schemaVersion: 2` selection
+  - or a normalized legacy selection parsed by `parseStoredTTSSelection()`
+
+## Plugin TTS Reality
+
+The current app is plugin-first.
+
+- provider options shown in the UI come from `pluginStore.ttsProviders`
+- `pluginStore` builds that list from host plugin metadata
+- `src/app/lib/tts-plugin.ts` interprets plugin manifests,
+  `memoTtsEditor`, exposed fields, and option loading
+- `SelectTTSProvider` only renders plugin-backed providers
+
+Legacy built-in providers still matter only for compatibility:
+
+- old Edge/OpenAI/Volcengine records can still be parsed into a normalized
+  legacy selection
+- new synthesis refuses to run with a legacy selection
+- the user must reselect a plugin voice before synthesizing legacy items
+
+Dynamic provider features:
+
+- `window.AIM.tts.getPluginEditorOptions()` can provide dynamic field options
+  for mention menus and bubble menus
+- `window.AIM.tts.synthesize()` can provide voice preview from the mention menu
+
+Important current-state nuance:
+
+- `pluginStore` still has configuration-checking state
+  (`checkPlugin`, `showPluginConfiguration`, `saveConfiguration`)
+- but the current repo has no active configuration form or modal wired to that
+  state
 
 ## Core Flows
 
 ### Initialization flow
 
-- `settingStore.initSetting()` loads settings from `window.AIM.getSetting()`
-- i18n is initialized from the loaded language
-- `pluginStore` waits for `settingStore.i18nInit` before loading local plugins
-  and injecting plugin i18n strings
-- `dataStore.initData()` loads TTS history, library assets, editor draft,
-  persisted media type, and persisted BGM
-- legacy/older TTS records are normalized through `patchTemoData()` and
-  `updateTemoData()`
+- `settingStore.initSetting()` loads `window.AIM.getSetting()` and initializes
+  i18n
+- `pluginStore` waits for `settingStore.i18nInit`, then calls
+  `window.AIM.plugin.readLocalPlugins()`
+- plugin translations are registered through
+  `src/app/lib/plugin-i18n.ts`
+- `dataStore.initData()` loads:
+  - host history via `window.AIM.tts.getTemoData()`
+  - host library via `window.AIM.tts.getTemoLibrary()`
+  - local draft editor JSON from `localStorage['temo-editor']`
+  - local persisted media type from `localStorage['temo-tts-type']`
+- old/legacy records are normalized through `patchTemoData()`,
+  `updateTemoData()`, and `normalizeEditorDocument()`
+
+### Draft and history editing flow
+
+- the sidebar in `routes.tsx` renders `dataStore.temoData`
+- clicking an item navigates to `/home/:id`
+- `HomePage` loads either:
+  - the selected history item's `editorData`
+  - or the persisted draft `dataStore.editorData`
+- the same screen also previews the current record if it already has a
+  generated media file
 
 ### Synthesis flow
 
-1. The user edits content in TipTap.
-2. `home.tsx` or the history editor collects provider, speed, target, editor
-   JSON, and optional BGM.
-3. `getJSONDataFromEditorContents()` filters blocks based on synthesis target
-   and any card-level voice override.
-4. `extractTextSegmentsFromNode()` preserves inline speed/emotion marks.
-5. `dataStore.mergeTemo()` builds provider-specific params for `Edge`,
-   `OpenAI`, or `Volcano`.
-6. The real synthesis request is delegated to
-   `window.AIM.tts.mergeTemo(...)`.
-7. Progress and completion updates return through host message handlers.
-8. On success, the result is normalized and inserted into history.
+1. The user chooses a provider in `SelectTTSProvider`.
+2. The user types script content into TipTap.
+3. The user can:
+   - type `@` to insert an inline voice mention
+   - select text to add segment-level marks
+4. `HomePage.buildHomeSelection()` merges:
+   - plugin manifest defaults
+   - stored host plugin configuration
+   - runtime config cached in `pluginStore`
+   - current item's stored selection when it matches the active provider
+5. `dataStore.mergeTemo()` normalizes the editor JSON and extracts
+   `editorCard` segments through
+   `extractTextSegmentsFromNodeWithMentions()`.
+6. Long text segments over 1000 chars are split with `splitString()`.
+7. The host request is delegated to:
+   `window.AIM.tts.mergeTemo(payload, uuid, extra)`.
+8. Shared renderer messages update `currentTTSUUID` and
+   `currentTTSProgress`.
+9. On success, the record is inserted at the top of history and the route jumps
+   to `/home/:uuid`.
+10. If synthesis came from a new draft, the editor is cleared back to a single
+    empty `editorCard`, persisted draft JSON is reset, and `TTSType` is reset
+    to `audio`.
 
-### Translation flow
+### Preview flow
 
-- `translate-panel.tsx` uses `window.AIM.translateContent(...)`
-- supported translation providers in the UI are Microsoft, Google, OpenAI,
-  ZhipuAI, Volctrans, DeepL, and Baidu
-- translation results are merged back into adjacent `translateCard` nodes
+- audio history items use `HistoryAudioPlayer`
+- video history items use a native `<video>` element
+- autoplay is coordinated by route state tokens
 
-### History and export flow
+### Export flow
 
-- `history.tsx` loads a record by route param or defaults to the newest item
-- the left panel is the history list, the right panel previews audio plus the
-  editable script
-- re-synthesis from history uses the same `mergeTemo()` path against the
-  existing record UUID
-- audio export calls `window.AIM.tts.temoDownload(...)` and packages subtitle
-  data derived from `infoData`
-- video export calls `window.AIM.tts.renderMedia(...)`
-- delete now uses a shadcn `AlertDialog` confirmation and permanently removes
-  records without a recycle-bin step
+- the sidebar download button branches on `TemoData.type`
+- audio export:
+  - generates subtitle text from `infoData` via `getTextFragment()`
+  - calls `window.AIM.tts.temoDownload(...)`
+- video export:
+  - opens a save dialog
+  - builds a render payload from `fileList` and metadata
+  - calls `window.AIM.tts.renderMedia(...)`
+
+### Delete flow
+
+- delete is permanent
+- the sidebar uses a Radix `AlertDialog`
+- `dataStore.removeTemoData()` performs an optimistic local removal
+- then it calls both:
+  - `window.AIM.tts.updateTemoData(...)`
+  - `window.AIM.tts.deleteTemoData(...)`
+- on failure, it restores the previous local list
+
+### Plugin refresh flow
+
+- `pluginStore` listens for `memo:plugins:refresh`
+- refreshed plugin data replaces `memoPlugins`
+- provider list and plugin i18n bundles are rebuilt from the new payload
 
 ## Message Flow
 
-- `appStore` registers `window.AIM.handleMessage(..., 'TemoApp')`
+- `appStore.handleMessage()` registers `window.AIM.handleMessage(..., 'TemoApp')`
 - `appStore` forwards host renderer messages into the local `eventBus`
-- `dataStore` and `pluginStore` subscribe to `customEvents.RendererMessage`
-- `home.tsx`, `history.tsx`, and `translate-panel.tsx` also register their own
-  direct `window.AIM.handleMessage(...)` listeners with separate handler keys
+- `dataStore` listens on `customEvents.RendererMessage` for:
+  - `temo:audio:start`
+  - `temo:audio:progress`
+  - `temo:audio:error`
+  - `temo:audio:abort`
+  - `temo:audio:end`
+- `pluginStore` listens on the same bus for `memo:plugins:refresh`
+- `HomePage` also registers a direct handler with key `MemoTTSContent`
+  for immediate audio error display
+- `routes.tsx` registers a direct handler with key `MemoTTSSidebar`
+  for export progress and completion
 
 Practical consequence:
 
-- message handling is split between the shared event bus path and page-local
-  direct listeners, so changes to host events usually need a repo-wide check
+message handling is split between the shared event bus and direct page-level
+handlers, so host event changes still require a repo-wide audit.
 
 ## Main Stores
 
 - `src/app/stores/settingStore.ts`
-  Loads app settings, initializes i18n, and exposes settings-dependent helpers
-- `src/app/stores/dataStore.ts`
-  Owns TTS records, library data, persisted editor draft, media type,
-  BGM, synthesis progress, and merge/export actions
-- `src/app/stores/appStore.ts`
-  Bridges host messages into the local event bus and persists the active route
-  tab id
+  Loads settings, initializes i18n, and registers plugin translations.
 - `src/app/stores/pluginStore.ts`
-  Loads local plugin metadata after i18n is ready, injects plugin translations,
-  and manages plugin configuration state
-
-## Provider And Plugin Reality
-
-- Built-in providers are `Edge`, `OpenAI`, and `Volcano`
-- plugin-backed TTS provider plumbing exists in `pluginStore`,
-  `SelectTTSProvider`, and `tts-panel`
-- `tts-panel` now uses an internal plugin voice selector built on the
-  `src/app/lib/tts-mention/` data pipeline instead of the old external form
-  renderer dependency
-
-Important current-state nuance:
-
-- the UI currently hardcodes `usePlugin.current = false` in
-  `SelectTTSProvider`, `tts-panel`, and `tiptap`
-- that means plugin-backed provider selection is effectively dormant in the
-  current interface even though the plugin store still loads plugin metadata
+  Loads local plugins after i18n is ready, builds `ttsProviders`, exposes
+  manifest/provider helpers, and stores runtime TTS config.
+- `src/app/stores/dataStore.ts`
+  Owns history data, draft editor JSON, library data, persisted media type,
+  synthesis progress state, merge calls, and delete/export helpers.
+- `src/app/stores/appStore.ts`
+  Bridges host renderer messages into the local event bus and persists the
+  current route-level `temoId`.
 
 ## Host API Surface Used By This Repo
 
-Top-level `window.AIM` calls seen in the current codebase include:
+Top-level `window.AIM` calls currently used:
 
 - `getSetting`
 - `openDialog`
-- `translateContent`
 - `handleMessage`
 - `removeHandler`
-- platform flags like `isWindows` / `isMac`
+- platform flags: `isWindows`, `isMac`
 
-`window.AIM.tts` calls seen in the current codebase include:
+`window.AIM.plugin` calls currently used:
+
+- `readLocalPlugins`
+- `saveConfiguration`
+
+`window.AIM.tts` calls currently used:
 
 - `getTemoData`
 - `updateTemoData`
@@ -249,42 +373,24 @@ Top-level `window.AIM` calls seen in the current codebase include:
 - `copyTemoFile`
 - `mergeTemo`
 - `abortMergeTemo`
-- `getTemoAudition`
+- `synthesize`
+- `getPluginEditorOptions`
 - `renderMedia`
 - `temoDownload`
 
-`window.AIM.plugin` calls seen in the current codebase include:
+Bridged in `main.tsx` but not currently used by active app code:
 
-- `readLocalPlugins`
-- `saveConfiguration`
+- `plugin.getProviders`
+- `tts.getTemoAudition`
 
-If you add a new host call, verify all of these together:
+If you add or change a host call, verify all of these together:
 
-- this frontend usage
+- the frontend usage in this repo
+- `src/app/interface.d.ts`
+- the fallback bridge in `src/app/main.tsx`
 - the Electron preload/main-process bridge in the host project
-- the fallback bridge setup in `src/app/main.tsx`
 
-## Key UI Files
-
-- `src/app/pages/home/home.tsx`
-  Main authoring and synthesis page
-- `src/app/pages/history/history.tsx`
-  History list, preview, re-edit, export, and render flow
-- `src/app/components/business/tiptap.tsx`
-  Editor shell, import behavior, translate popover, BGM handling, and inline
-  TTS mark integration
-- `src/app/components/business/editor-item.tsx`
-  `editorCard` node view with per-card translate and voice controls
-- `src/app/components/business/translate-item.tsx`
-  `translateCard` node view
-- `src/app/components/business/tts-panel.tsx`
-  Provider options, target selection, speed selection, and voice audition
-- `src/app/components/business/translate-panel.tsx`
-  Translation provider and target-language flow
-- `src/app/components/business/tts-dialog.tsx`
-  Media library picker for BGM
-
-## File Map For Common Changes
+## Active File Map
 
 If you need to change startup or host integration behavior:
 
@@ -293,89 +399,86 @@ If you need to change startup or host integration behavior:
 - `src/app/routes/routes.tsx`
 - `src/app/stores/index.ts`
 - `src/app/stores/appStore.ts`
+- `src/app/interface.d.ts`
 
-If you need to change the editor block model or card behavior:
+If you need to change provider loading or plugin metadata behavior:
+
+- `src/app/stores/pluginStore.ts`
+- `src/app/lib/tts-plugin.ts`
+- `src/app/lib/plugin-i18n.ts`
+- `src/app/components/business/SelectTTSProvider.tsx`
+
+If you need to change editor block behavior:
 
 - `src/app/components/business/tiptap.tsx`
 - `src/app/components/business/editor-item.tsx`
-- `src/app/components/business/translate-item.tsx`
 - `src/app/components/extensions/editor-card.ts`
-- `src/app/components/extensions/translate-card.ts`
 - `src/app/components/extensions/paste-plugin.ts`
 - `src/app/lib/utils.ts`
 
-If you need to change inline TTS mark or segment behavior:
+If you need to change inline voice mention behavior:
 
-- `src/app/lib/tts-mention/`
+- `src/app/lib/tts-mention/data.ts`
+- `src/app/lib/tts-mention/use-tts-mention-menu.ts`
+- `src/app/lib/tts-mention/tts-mention-simple.ts`
+- `src/app/lib/tts-mention/tts-mention-plugin.ts`
 - `src/app/components/business/tts-menu.tsx`
+
+If you need to change selected-text segment controls:
+
+- `src/app/lib/tts-mention/use-tts-bubble-menu.ts`
+- `src/app/lib/tts-mention/tts-mark.ts`
 - `src/app/components/business/tts-bubble-menu.tsx`
+
+If you need to change synthesis payload building:
+
+- `src/app/stores/dataStore.ts`
+- `src/app/lib/tts-segments.ts`
+- `src/app/lib/tts-plugin.ts`
 - `src/app/lib/utils.ts`
+
+If you need to change preview, export, or history-shell behavior:
+
+- `src/app/routes/routes.tsx`
+- `src/app/pages/home/home.tsx`
+- `src/app/components/business/history-audio-player.tsx`
 - `src/app/stores/dataStore.ts`
-
-If you need to change provider-specific synthesis payloads:
-
-- `src/app/stores/dataStore.ts`
-- `src/app/lib/tts.ts`
-- `src/app/components/business/SelectTTSProvider.tsx`
-- `src/app/components/business/tts-panel.tsx`
-- `src/app/components/business/edge-config.tsx`
-- `src/app/components/business/openAI-config.tsx`
-- `src/app/components/business/volcano-config.tsx`
-- `src/app/stores/pluginStore.ts`
-
-If you need to change translation behavior:
-
-- `src/app/components/business/translate-panel.tsx`
-- `src/app/components/business/editor-item.tsx`
-- `src/app/lib/utils.ts`
-- `src/app/locales/`
-
-If you need to change export or history behavior:
-
-- `src/app/pages/history/history.tsx`
-- `src/app/stores/dataStore.ts`
-- `src/app/components/business/tts-dialog.tsx`
 
 If you need to change settings or localization:
 
 - `src/app/stores/settingStore.ts`
 - `src/app/locales/`
-- `src/app/interface.d.ts`
-
-If you need to change plugin behavior:
-
-- `src/app/stores/pluginStore.ts`
-- `src/app/components/business/SelectTTSProvider.tsx`
-- `src/app/components/business/tts-panel.tsx`
+- `src/app/lib/plugin-i18n.ts`
 
 ## Known Gotchas
 
-- `README.md` is outdated and should not be trusted as project documentation.
-- `package.json` still uses the legacy name `realtime-recorder`.
-- `App.tsx` initializes settings and data in parallel, and `ready` can flip true
-  before both sides are finished.
-- The fallback bridge path in `main.tsx` does not cover the full host API
-  surface used by the current app.
-- Plugin-backed TTS provider UI is present in code but effectively disabled by
-  `usePlugin.current = false`.
-- `TTSType` still exists in store and editor code, but the home-page media type
-  switch UI is currently commented out.
-- translation and TTS use different Volctrans settings locations:
-  translation reads `settings.volctrans`, while TTS reads `settings.tts.volctrans`.
-- History export is split: audio uses `temoDownload`, video uses `renderMedia`.
-- Some comments and labels contain mojibake or stale wording; prefer runtime
-  behavior and call sites over old comments.
-- `src/app/lib/tts.ts` is a very large static voice catalog file. Avoid reading
-  the whole file unless you actually need the catalog contents.
-- Message listeners are registered in multiple places with different handler
-  keys. Be careful when changing host event names or cleanup behavior.
-- Multi-line paste and Enter key behavior in the editor create/split
-  `editorCard` nodes automatically. Changes to the block model can have
-  surprising side effects.
-- `HashRouter` and `base: './'` are intentional. Do not change them casually
-  without checking the Electron loading path.
-- This repo can be dirty during active work. Avoid reverting unrelated changes
-  in business files.
+- `README.md` is still not fully trustworthy for current architecture.
+- `package.json` 
+- The app is plugin-first now. Older built-in provider names mainly survive in
+  legacy-selection compatibility code.
+- There is no standalone history page anymore.
+- There is no active translation UI and no current `window.AIM.translateContent`
+  call in this repo.
+- There is no active BGM/library picker UI, even though `dataStore` still
+  persists `libraryData` and exposes `copyLibraryFile()`.
+- `editorCard.attrs.voice` still affects synthesis and can be cleared from old
+  content, but the current UI has no active control for creating/updating a
+  card-level voice override.
+- `normalizeEditorDocument()` drops non-`editorCard` blocks. Old
+  `translateCard` content will not survive normalization.
+- `App.tsx` can render before both init paths are complete.
+- `SettingStore.handleMessage()` exists but is not currently registered.
+- `src/app/lib/utils.ts` still contains older duplicated text-segmentation
+  helpers. The live synthesis path uses `src/app/lib/tts-segments.ts`.
+- `src/app/components/extensions/tts-card.ts` looks like leftover legacy code
+  and is not part of the active editor pipeline.
+- `src/app/components/business/web-page-text.tsx` is an unused helper.
+- `TTSMentionMark` and the mark-based `selectVoice()` path are compatibility
+  leftovers; the active UI inserts `ttsMention` nodes through
+  `useTTSMentionMenu()`.
+- `TTSType` still exists and is sent to the host merge API, but the current UI
+  does not expose an audio/video mode switch.
+- This repo can be dirty during active work. Avoid reverting unrelated changes.
 
 ## First Places To Read As A New Agent
 
@@ -387,10 +490,13 @@ Start here in order:
 4. `src/app/routes/routes.tsx`
 5. `src/app/pages/home/home.tsx`
 6. `src/app/components/business/tiptap.tsx`
-7. `src/app/components/business/editor-item.tsx`
-8. `src/app/stores/dataStore.ts`
-9. `src/app/stores/pluginStore.ts`
-10. `src/app/pages/history/history.tsx`
+7. `src/app/stores/dataStore.ts`
+8. `src/app/stores/pluginStore.ts`
+9. `src/app/lib/tts-plugin.ts`
+10. `src/app/lib/tts-segments.ts`
+11. `src/app/lib/tts-mention/data.ts`
+12. `src/app/components/business/editor-item.tsx`
 
-That sequence gives the fastest path to understanding boot, routing, host
-integration, editor structure, synthesis payload building, and export behavior.
+That sequence gives the fastest path to understanding boot, routing, plugin
+provider discovery, editor behavior, synthesis payload building, and the
+history/export shell that exists in the current code.
