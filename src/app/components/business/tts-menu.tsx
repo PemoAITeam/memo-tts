@@ -26,6 +26,8 @@ interface TTSMenuProps {
   onSelectRecentVoice?: (entry: RecentVoiceEntry) => void
 }
 
+const RECENT_VOICE_SHORTCUT_KEYS = ['1', '2', '3'] as const
+
 const iconMap: Record<string, ReactNode> = {
   TbBrandEdge: <TbBrandEdge className="h-4 w-4" />,
   TbBrandOpenai: <TbBrandOpenai className="h-4 w-4" />,
@@ -74,6 +76,7 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
       onQueryChange,
       onSelect,
       onGoBack,
+      onClose,
       onSelectRecentVoice,
     },
     ref: ForwardedRef<HTMLDivElement>
@@ -293,8 +296,25 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
       }
 
       const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+          e.preventDefault()
+          cleanupPreview()
+          onClose()
+          return
+        }
+
         const nextSubMenuPath = getChildPath(currentMainItem)
         const hasRecentVoices = showRecentSection
+        const shortcutIndex = RECENT_VOICE_SHORTCUT_KEYS.indexOf(e.key as typeof RECENT_VOICE_SHORTCUT_KEYS[number])
+
+        if (hasRecentVoices && shortcutIndex >= 0 && !e.ctrlKey && !e.metaKey && !e.altKey && !query.trim()) {
+          const recentEntry = recentVoices[shortcutIndex]
+          if (recentEntry && onSelectRecentVoice) {
+            e.preventDefault()
+            onSelectRecentVoice(recentEntry)
+            return
+          }
+        }
 
         if (isInRecentSection && hasRecentVoices) {
           if (e.key === 'ArrowUp') {
@@ -457,7 +477,7 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
 
       window.addEventListener('keydown', handleKeyDown)
       return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [currentMainItem, isInRecentSection, isInSubMenu, isOpen, mainIndex, onGoBack, onSelect, onSelectRecentVoice, parentItems, recentIndex, recentVoices, showRecentSection, subIndex, subMenuItems])
+    }, [currentMainItem, isInRecentSection, isInSubMenu, isOpen, mainIndex, onClose, onGoBack, onSelect, onSelectRecentVoice, parentItems, query, recentIndex, recentVoices, showRecentSection, subIndex, subMenuItems])
 
     useEffect(() => {
       if (!isInSubMenu && selectedIndex >= 0 && selectedIndex < parentItems.length) {
@@ -540,7 +560,10 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
               <div className="border-b">
                 <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
                   <MdHistory className="h-3.5 w-3.5" />
-                  {t('tts.recent_voices') || 'Recent'}
+                  <span className="flex-1">{t('tts.recent_voices') || 'Recent'}</span>
+                  <span className="rounded border border-border/80 bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none">
+                    1-3
+                  </span>
                 </div>
                 <div
                   className="max-h-[120px] overflow-y-auto p-1"
@@ -570,7 +593,12 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
                       }}
                     >
                       <span className="flex-shrink-0">{iconMap[resolveProviderIcon(entry.config.provider, entry.config.pluginId)]}</span>
-                      <span className="truncate">{entry.config.displayLabel || entry.config.voiceLocalName}</span>
+                      <span className="min-w-0 flex-1 truncate">{entry.config.displayLabel || entry.config.voiceLocalName}</span>
+                      {RECENT_VOICE_SHORTCUT_KEYS[index] && (
+                        <span className="ml-auto rounded border border-border/80 bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
+                          {RECENT_VOICE_SHORTCUT_KEYS[index]}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

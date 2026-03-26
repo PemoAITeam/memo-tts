@@ -6,6 +6,7 @@ import { pluginStore } from '@/app/stores'
 import type { MenuPath, SelectedVoiceConfig, TTSMenuItem } from './types'
 import { buildSelectedVoiceConfig, getLoadingMenuItems, getMenuItems, getNextMenuPath } from './data'
 import { recentVoicesStore, type RecentVoiceEntry } from './recent-voices-store'
+import { closeMentionMenu, isMentionMenuActive } from './tts-mention-plugin'
 
 export interface TTSMenuState {
   isOpen: boolean
@@ -116,6 +117,11 @@ export function useTTSMentionMenu(
 
   const closeMenu = useCallback(() => {
     loadRequestIdRef.current += 1
+
+    if (editor && isMentionMenuActive(editor)) {
+      closeMentionMenu(editor)
+    }
+
     setState((prev) => ({
       ...prev,
       isOpen: false,
@@ -124,7 +130,7 @@ export function useTTSMentionMenu(
       range: null,
       items: [],
     }))
-  }, [initialProvider])
+  }, [editor, initialProvider])
 
   const insertVoiceMention = useCallback((config: SelectedVoiceConfig) => {
     const { range } = state
@@ -242,6 +248,38 @@ export function useTTSMentionMenu(
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [state.isOpen, closeMenu])
+
+  useEffect(() => {
+    if (!editor || !state.isOpen || !state.range) {
+      return
+    }
+
+    const { from } = state.range
+
+    const syncMenuVisibility = () => {
+      const selectionFrom = editor.state.selection.from
+      let triggerExists = false
+
+      try {
+        triggerExists = editor.state.doc.textBetween(from, from + 1) === '@'
+      } catch {
+        triggerExists = false
+      }
+
+      if (!triggerExists || selectionFrom <= from) {
+        closeMenu()
+      }
+    }
+
+    syncMenuVisibility()
+    editor.on('transaction', syncMenuVisibility)
+    editor.on('selectionUpdate', syncMenuVisibility)
+
+    return () => {
+      editor.off('transaction', syncMenuVisibility)
+      editor.off('selectionUpdate', syncMenuVisibility)
+    }
+  }, [closeMenu, editor, state.isOpen, state.range])
 
   return {
     ...state,

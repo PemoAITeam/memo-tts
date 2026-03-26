@@ -19,6 +19,12 @@ export const TTSMentionPluginKey = new PluginKey('ttsMention')
 const TRIGGER_CHAR = '@'
 
 export function createTTSMentionPlugin(options: TTSMentionPluginOptions) {
+  const deactivateMention = (view: any) => {
+    const tr = view.state.tr.setMeta(TTSMentionPluginKey, { active: false, range: null, query: '' })
+    view.dispatch(tr)
+    options.onClose()
+  }
+
   return new Plugin({
     key: TTSMentionPluginKey,
 
@@ -45,11 +51,29 @@ export function createTTSMentionPlugin(options: TTSMentionPluginOptions) {
         const pluginState = TTSMentionPluginKey.getState(state)
 
         // 处理 Escape 键
-        if (event.key === 'Escape' && pluginState?.active) {
-          const tr = state.tr.setMeta(TTSMentionPluginKey, { active: false, range: null, query: '' })
-          view.dispatch(tr)
-          options.onClose()
+        if ((event.key === 'Escape' || event.key === 'Esc') && pluginState?.active) {
+          event.preventDefault()
+          event.stopPropagation()
+          deactivateMention(view)
           return true
+        }
+
+        if (event.key === 'Backspace' && pluginState?.active && pluginState.range) {
+          const { from } = pluginState.range
+          const selection = state.selection
+
+          if (selection.empty && pluginState.query === '' && selection.from === from + TRIGGER_CHAR.length) {
+            event.preventDefault()
+            event.stopPropagation()
+
+            const tr = state.tr
+              .delete(from, selection.from)
+              .setMeta(TTSMentionPluginKey, { active: false, range: null, query: '' })
+
+            view.dispatch(tr)
+            options.onClose()
+            return true
+          }
         }
 
         return false
@@ -78,9 +102,7 @@ export function createTTSMentionPlugin(options: TTSMentionPluginOptions) {
       handleClick(view) {
         const pluginState = TTSMentionPluginKey.getState(view.state)
         if (pluginState?.active) {
-          const tr = view.state.tr.setMeta(TTSMentionPluginKey, { active: false, range: null, query: '' })
-          view.dispatch(tr)
-          options.onClose()
+          deactivateMention(view)
         }
         return false
       },
@@ -96,12 +118,17 @@ export function createTTSMentionPlugin(options: TTSMentionPluginOptions) {
           if (pluginState?.active && pluginState.range) {
             const { from } = pluginState.range
             const selection = state.selection
+            let triggerExists = false
+
+            try {
+              triggerExists = state.doc.textBetween(from, from + TRIGGER_CHAR.length) === TRIGGER_CHAR
+            } catch {
+              triggerExists = false
+            }
 
             // 如果光标移动到了 @ 之前或正好在 @ 位置（@ 被删除），关闭菜单
-            if (selection.from <= from) {
-              const tr = state.tr.setMeta(TTSMentionPluginKey, { active: false, range: null, query: '' })
-              view.dispatch(tr)
-              options.onClose()
+            if (selection.from <= from || !triggerExists) {
+              deactivateMention(view)
               return
             }
 
