@@ -5,25 +5,7 @@ import { parseStoredTTSSelection } from "@/app/lib/tts-plugin";
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { useTranslation } from "react-i18next";
-
-// Derive a stable badge color from the selected voice label.
-function hashStringToColor(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const color = `#${((hash >> 24) & 0xff).toString(16).padStart(2, "0")}${((hash >> 16) & 0xff).toString(16).padStart(2, "0")}${((hash >> 8) & 0xff).toString(16).padStart(2, "0")}`;
-  return color;
-}
-
-// Pick a readable foreground color for the badge background.
-function getContrastingColor(color: string): string {
-  const r = parseInt(color.slice(1, 3), 16);
-  const g = parseInt(color.slice(3, 5), 16);
-  const b = parseInt(color.slice(5, 7), 16);
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-  return yiq >= 128 ? "#000000" : "#ffffff";
-}
+import { getVoiceBadgeColors } from "@/app/lib/voice-badge-colors";
 
 function getVoiceBadgeLabel(voice: any): string {
   const selection = parseStoredTTSSelection(voice);
@@ -54,8 +36,7 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
     }
   };
 
-  const textColor = hashStringToColor(voice);
-  const backgroundColor = getContrastingColor(textColor);
+  const { backgroundColor, foregroundColor } = getVoiceBadgeColors(voice);
 
   return (
     <NodeViewWrapper className="editor-card-item">
@@ -64,7 +45,7 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
           <Button
             variant={"ghost"}
             size={"sm"}
-            style={{ color: backgroundColor, backgroundColor: textColor }}
+            style={{ color: foregroundColor, backgroundColor }}
             className="group relative h-6 px-2 bg-accent text-accent-foreground pointer-events-none"
           >
             <TbMicrophone />

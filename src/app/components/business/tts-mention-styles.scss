@@ -235,14 +235,19 @@
 /* TTS Mark 文本样式 - 荧光笔效果 */
 .tts-mark {
   // 有标记的文字显示荧光笔背景
-  background: linear-gradient(120deg, rgba(139, 92, 246, 0.25) 0%, rgba(167, 139, 250, 0.25) 100%);
-  border-radius: 3px;
-  padding: 1px 2px;
-  margin: -1px -2px;
+  padding: 0 0.08em;
+  margin: 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  background-image: linear-gradient(120deg, rgba(139, 92, 246, 1) 0%, rgba(167, 139, 250, 1) 100%);
+  background-repeat: no-repeat;
+  background-position: 0 calc(100% - 0.03em);
+  background-size: 100% 8px;
 
   &.tts-mark--has-label {
     // 有标签时背景稍微明显一点
-    background: linear-gradient(120deg, rgba(139, 92, 246, 0.35) 0%, rgba(167, 139, 250, 0.35) 100%);
+    background-image: linear-gradient(120deg, rgba(139, 92, 246, 1) 0%, rgba(167, 139, 250, 1) 100%);
+    background-size: 100% 2px;
   }
 }
 
@@ -252,13 +257,8 @@
   display: inline-flex;
   align-items: center;
   padding: 0 6px;
-  background: linear-gradient(135deg, #8b5cf6, #a78bfa);
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 500;
-  line-height: 1.4;
-  border-radius: 4px;
-  margin-right: 4px;
+  background-color: #8b5cf6;
+  font-size: 1em;
   vertical-align: baseline;
   white-space: nowrap;
   user-select: none;

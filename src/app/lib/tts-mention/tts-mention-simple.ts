@@ -5,6 +5,7 @@
 
 import { Extension, Node } from '@tiptap/react'
 import { SelectedVoiceConfig, MenuPath, TTSMenuItem, TTSProvider } from './types'
+import { buildVoiceBadgeSeed, getVoiceBadgeColors } from '@/app/lib/voice-badge-colors'
 import {
   createTTSMentionPlugin,
   selectVoice,
@@ -16,6 +17,22 @@ import {
 
 // 导出工具函数
 export { selectVoice, closeMentionMenu, isMentionMenuActive, getCurrentQuery, getCurrentRange }
+
+function buildMentionInlineStyle(attributes: Record<string, any>) {
+  const seed = buildVoiceBadgeSeed([
+    attributes['data-provider'],
+    attributes['data-config'],
+    attributes['data-label'],
+  ])
+  const { backgroundColor, foregroundColor } = getVoiceBadgeColors(seed)
+  const existingStyle = String(attributes.style || '').trim()
+  const nextStyle = `background-color: ${backgroundColor}; color: ${foregroundColor};`
+  const normalizedExistingStyle = existingStyle && !existingStyle.endsWith(';')
+    ? `${existingStyle};`
+    : existingStyle
+
+  return normalizedExistingStyle ? `${normalizedExistingStyle} ${nextStyle}` : nextStyle
+}
 
 // Inline Node 类型，用于 @ 语音标签
 export const TTSMentionNode = Node.create({
@@ -67,6 +84,7 @@ export const TTSMentionNode = Node.create({
         ...HTMLAttributes,
         'data-tts-mention': '',
         class: 'tts-mention',
+        style: buildMentionInlineStyle(HTMLAttributes),
       },
       ['span', { class: 'tts-mention-label' }, `@${HTMLAttributes['data-label'] || ''}`],
     ]

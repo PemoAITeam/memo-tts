@@ -241,7 +241,7 @@ export const TTSMark = Mark.create<TTSMarkOptions>({
         ...this.options.HTMLAttributes,
         ...HTMLAttributes,
         'data-tts-mark': '',
-        'data-label': hasLabel ? label : undefined,
+        'data-label': hasLabel ? `[${label}]` : undefined,
         class: `tts-mark${hasLabel ? ' tts-mark--has-label' : ''}`,
       },
       0,

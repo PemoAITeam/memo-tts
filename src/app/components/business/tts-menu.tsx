@@ -27,6 +27,10 @@ interface TTSMenuProps {
 }
 
 const RECENT_VOICE_SHORTCUT_KEYS = ['1', '2', '3'] as const
+const MENU_PANEL_WIDTH = 220
+const MENU_PANEL_HEIGHT = 420
+const MENU_VIEWPORT_MARGIN = 20
+const RECENT_SECTION_MAX_HEIGHT = 120
 
 const iconMap: Record<string, ReactNode> = {
   TbBrandEdge: <TbBrandEdge className="h-4 w-4" />,
@@ -493,22 +497,31 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
     const activeMainIndex = hoveredMainIndex ?? mainIndex
     const activeSubIndex = hoveredSubIndex ?? subIndex
 
-    const menuWidth = 220
-    const subMenuWidth = 220
-    const totalWidth = subMenuItems.length > 0 ? menuWidth + subMenuWidth + 4 : menuWidth
+    const totalWidth = subMenuItems.length > 0
+      ? MENU_PANEL_WIDTH * 2 + 4
+      : MENU_PANEL_WIDTH
 
     return (
       <div
         ref={ref}
         className="fixed z-[9999]"
         style={{
-          left: Math.min(position.x, window.innerWidth - totalWidth - 20),
-          top: Math.min(position.y, window.innerHeight - 400),
+          left: Math.max(
+            MENU_VIEWPORT_MARGIN,
+            Math.min(position.x, window.innerWidth - totalWidth - MENU_VIEWPORT_MARGIN)
+          ),
+          top: Math.max(
+            MENU_VIEWPORT_MARGIN,
+            Math.min(position.y, window.innerHeight - MENU_PANEL_HEIGHT - MENU_VIEWPORT_MARGIN)
+          ),
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex gap-1">
-          <div className="min-w-[220px] overflow-hidden rounded-md border bg-popover p-0 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+        <div className="flex items-start gap-1">
+          <div
+            className="flex min-w-[220px] flex-col overflow-hidden rounded-md border bg-popover p-0 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+            style={{ height: MENU_PANEL_HEIGHT }}
+          >
             {breadcrumbs.length > 0 ? (
               <div className="flex items-center gap-1 border-b bg-muted/30 px-2 py-1.5">
                 <button className="rounded p-0.5 transition-colors hover:bg-accent" onClick={onGoBack}>
@@ -555,132 +568,135 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
               />
             </div>
 
-            {/* Recent Voices Section */}
-            {showRecentSection && (
-              <div className="border-b">
-                <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
-                  <MdHistory className="h-3.5 w-3.5" />
-                  <span className="flex-1">{t('tts.recent_voices') || 'Recent'}</span>
-                  <span className="rounded border border-border/80 bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none">
-                    1-3
-                  </span>
+            <div className="flex min-h-0 flex-1 flex-col">
+              {/* Recent Voices Section */}
+              {showRecentSection && (
+                <div className="flex-shrink-0 border-b">
+                  <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
+                    <MdHistory className="h-3.5 w-3.5" />
+                    <span className="flex-1">{t('tts.recent_voices') || 'Recent'}</span>
+                    <span className="rounded border border-border/80 bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none">
+                      1-3
+                    </span>
+                  </div>
+                  <div
+                    className="overflow-y-auto p-1"
+                    style={{ maxHeight: RECENT_SECTION_MAX_HEIGHT }}
+                    onMouseLeave={() => setIsInRecentSection(false)}
+                  >
+                    {recentVoices.map((entry, index) => (
+                      <div
+                        key={`recent-${entry.pluginId}-${index}`}
+                        ref={(el) => {
+                          if (el) {
+                            recentItemRefs.current.set(index, el)
+                          }
+                        }}
+                        className={cn(
+                          'flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
+                          isInRecentSection && index === recentIndex && 'bg-accent text-accent-foreground'
+                        )}
+                        onClick={() => {
+                          if (onSelectRecentVoice) {
+                            onSelectRecentVoice(entry)
+                          }
+                        }}
+                        onMouseEnter={() => {
+                          setIsInRecentSection(true)
+                          setRecentIndex(index)
+                          setHoveredMainIndex(null)
+                        }}
+                      >
+                        <span className="flex-shrink-0">{iconMap[resolveProviderIcon(entry.config.provider, entry.config.pluginId)]}</span>
+                        <span className="min-w-0 flex-1 truncate">{entry.config.displayLabel || entry.config.voiceLocalName}</span>
+                        {RECENT_VOICE_SHORTCUT_KEYS[index] && (
+                          <span className="ml-auto rounded border border-border/80 bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
+                            {RECENT_VOICE_SHORTCUT_KEYS[index]}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div
-                  className="max-h-[120px] overflow-y-auto p-1"
-                  onMouseLeave={() => setIsInRecentSection(false)}
-                >
-                  {recentVoices.map((entry, index) => (
+              )}
+
+              <div
+                className="min-h-0 flex-1 overflow-y-auto p-1"
+                onMouseLeave={() => {
+                  setHoveredMainIndex(null)
+                  setHoveredSubIndex(null)
+                }}
+              >
+                {parentItems.length === 0 ? (
+                  <div className="py-4 text-center text-sm text-muted-foreground">
+                    {t('tts.no_voice_found') || 'No voice found'}
+                  </div>
+                ) : (
+                  parentItems.map((item, index) => (
                     <div
-                      key={`recent-${entry.pluginId}-${index}`}
+                      key={item.id}
                       ref={(el) => {
                         if (el) {
-                          recentItemRefs.current.set(index, el)
+                          mainItemRefs.current.set(index, el)
                         }
                       }}
                       className={cn(
-                        'flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
-                        isInRecentSection && index === recentIndex && 'bg-accent text-accent-foreground'
+                        'relative flex cursor-default select-none items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
+                        item.disabled && 'cursor-not-allowed opacity-50',
+                        index === activeMainIndex && 'bg-accent text-accent-foreground',
+                        index === activeMainIndex && isInSubMenu && 'bg-accent/70'
                       )}
                       onClick={() => {
-                        if (onSelectRecentVoice) {
-                          onSelectRecentVoice(entry)
+                        if (item.disabled) {
+                          return
                         }
+
+                        if (hasChildren(item)) {
+                          setIsInSubMenu(true)
+                          setSubIndex(0)
+                          return
+                        }
+
+                        onSelect(item)
                       }}
                       onMouseEnter={() => {
-                        setIsInRecentSection(true)
-                        setRecentIndex(index)
-                        setHoveredMainIndex(null)
+                        setHoveredMainIndex(index)
+                        setMainIndex(index)
+                        setIsInSubMenu(false)
                       }}
                     >
-                      <span className="flex-shrink-0">{iconMap[resolveProviderIcon(entry.config.provider, entry.config.pluginId)]}</span>
-                      <span className="min-w-0 flex-1 truncate">{entry.config.displayLabel || entry.config.voiceLocalName}</span>
-                      {RECENT_VOICE_SHORTCUT_KEYS[index] && (
-                        <span className="ml-auto rounded border border-border/80 bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
-                          {RECENT_VOICE_SHORTCUT_KEYS[index]}
-                        </span>
-                      )}
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {item.icon && (
+                          <span className="flex-shrink-0">{iconMap[item.icon]}</span>
+                        )}
+                        <span className="truncate">{item.label}</span>
+                        {(item.gender === 'Female' || item.gender === 'female') && (
+                          <IoIosFemale className="h-3.5 w-3.5 flex-shrink-0 text-pink-500" />
+                        )}
+                        {(item.gender === 'Male' || item.gender === 'male') && (
+                          <IoIosMale className="h-3.5 w-3.5 flex-shrink-0 text-blue-500" />
+                        )}
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-1">
+                        {item.type === 'voice' && (
+                          <TbVolume
+                            className="h-4 w-4 text-muted-foreground transition-colors hover:text-foreground"
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              await auditionItem(item, path)
+                            }}
+                          />
+                        )}
+                        {hasChildren(item) && (
+                          <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M9 18l6-6-6-6" />
+                          </svg>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
-            )}
-
-            <div
-              className="max-h-[280px] overflow-y-auto p-1"
-              onMouseLeave={() => {
-                setHoveredMainIndex(null)
-                setHoveredSubIndex(null)
-              }}
-            >
-              {parentItems.length === 0 ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">
-                  {t('tts.no_voice_found') || 'No voice found'}
-                </div>
-              ) : (
-                parentItems.map((item, index) => (
-                  <div
-                    key={item.id}
-                    ref={(el) => {
-                      if (el) {
-                        mainItemRefs.current.set(index, el)
-                      }
-                    }}
-                    className={cn(
-                      'relative flex cursor-default select-none items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
-                      item.disabled && 'cursor-not-allowed opacity-50',
-                      index === activeMainIndex && 'bg-accent text-accent-foreground',
-                      index === activeMainIndex && isInSubMenu && 'bg-accent/70'
-                    )}
-                    onClick={() => {
-                      if (item.disabled) {
-                        return
-                      }
-
-                      if (hasChildren(item)) {
-                        setIsInSubMenu(true)
-                        setSubIndex(0)
-                        return
-                      }
-
-                      onSelect(item)
-                    }}
-                    onMouseEnter={() => {
-                      setHoveredMainIndex(index)
-                      setMainIndex(index)
-                      setIsInSubMenu(false)
-                    }}
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      {item.icon && (
-                        <span className="flex-shrink-0">{iconMap[item.icon]}</span>
-                      )}
-                      <span className="truncate">{item.label}</span>
-                      {(item.gender === 'Female' || item.gender === 'female') && (
-                        <IoIosFemale className="h-3.5 w-3.5 flex-shrink-0 text-pink-500" />
-                      )}
-                      {(item.gender === 'Male' || item.gender === 'male') && (
-                        <IoIosMale className="h-3.5 w-3.5 flex-shrink-0 text-blue-500" />
-                      )}
-                    </div>
-                    <div className="flex flex-shrink-0 items-center gap-1">
-                      {item.type === 'voice' && (
-                        <TbVolume
-                          className="h-4 w-4 text-muted-foreground transition-colors hover:text-foreground"
-                          onClick={async (e) => {
-                            e.stopPropagation()
-                            await auditionItem(item, path)
-                          }}
-                        />
-                      )}
-                      {hasChildren(item) && (
-                        <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M9 18l6-6-6-6" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
             </div>
 
             <div className="-mx-1 my-1 h-px bg-muted" />
@@ -691,12 +707,15 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
           </div>
 
           {subMenuItems.length > 0 && (
-            <div className="min-w-[220px] overflow-hidden rounded-md border bg-popover p-0 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+            <div
+              className="flex min-w-[220px] flex-col overflow-hidden rounded-md border bg-popover p-0 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+              style={{ height: MENU_PANEL_HEIGHT }}
+            >
               <div className="border-b bg-muted/30 px-2 py-1.5 text-xs font-semibold">
                 {currentMainItem?.label || 'Select'}
               </div>
 
-              <div className="max-h-[280px] overflow-y-auto p-1" onMouseLeave={() => setHoveredSubIndex(null)}>
+              <div className="min-h-0 flex-1 overflow-y-auto p-1" onMouseLeave={() => setHoveredSubIndex(null)}>
                 {subMenuItems.map((item, index) => (
                   <div
                     key={item.id}
