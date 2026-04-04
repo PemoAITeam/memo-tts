@@ -235,6 +235,14 @@
         "trash": "ごみ箱",
         "new script": "新規スクリプト"
     },
+    "editor": {
+        "empty": {
+            "title": "始めましょう",
+            "mention": "@ を入力してキャラクターまたは音声を選択",
+            "selection": "テキストを選択して詳細パラメータを設定",
+            "drag": "txt、docx、mdファイルのドラッグ＆ドロップに対応"
+        }
+    },
     "history": {
         "download file": "ダウンロードするファイルを選択してください",
         "save success": "保存成功",

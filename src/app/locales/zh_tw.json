@@ -235,6 +235,14 @@
         "trash": "垃圾桶",
         "new script": "新建腳本"
     },
+    "editor": {
+        "empty": {
+            "title": "開始創作",
+            "mention": "輸入 @ 選擇角色或聲音",
+            "selection": "選取文字可設定詳細參數",
+            "drag": "支援拖放 txt、docx、md 檔案"
+        }
+    },
     "history": {
         "download file": "請先選擇要下載的文件",
         "save success": "保存成功",

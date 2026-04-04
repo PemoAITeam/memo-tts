@@ -235,6 +235,14 @@
         "trash": "Papierkorb",
         "new script": "Neues Skript"
     },
+    "editor": {
+        "empty": {
+            "title": "Loslegen",
+            "mention": "@ eingeben um Charakter oder Stimme auszuwählen",
+            "selection": "Text auswählen um detaillierte Parameter einzustellen",
+            "drag": "Unterstützt Drag & Drop von txt, docx, md Dateien"
+        }
+    },
     "history": {
         "download file": "Bitte wählen Sie zuerst die herunterzuladende Datei aus",
         "save success": "Erfolgreich gespeichert",

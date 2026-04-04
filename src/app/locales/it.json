@@ -235,6 +235,14 @@
         "trash": "Cestino",
         "new script": "Nuovo script"
     },
+    "editor": {
+        "empty": {
+            "title": "Inizia",
+            "mention": "Digita @ per selezionare un personaggio o una voce",
+            "selection": "Seleziona il testo per impostare parametri dettagliati",
+            "drag": "Supporta il trascinamento di file txt, docx, md"
+        }
+    },
     "history": {
         "download file": "Selezionare prima il file da scaricare",
         "save success": "Salvataggio riuscito",

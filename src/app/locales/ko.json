@@ -235,6 +235,14 @@
         "trash": "휴지통",
         "new script": "새 스크립트"
     },
+    "editor": {
+        "empty": {
+            "title": "시작하기",
+            "mention": "@를 입력하여 캐릭터 또는 음성 선택",
+            "selection": "텍스트를 선택하여 상세 매개변수 설정",
+            "drag": "txt, docx, md 파일 드래그 앤 드롭 지원"
+        }
+    },
     "history": {
         "download file": "다운로드할 파일을 먼저 선택하십시오",
         "save success": "저장 성공",

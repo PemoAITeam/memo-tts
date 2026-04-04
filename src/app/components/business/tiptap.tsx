@@ -2,13 +2,13 @@ import './tiptap.scss'
 import './tts-mention-styles.scss'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { inject, observer } from 'mobx-react'
 import mammoth from 'mammoth'
 import { remark } from 'remark'
 import strip from 'strip-markdown'
 import { useTranslation } from 'react-i18next'
-import { TbEraser, TbLoader, TbWand } from 'react-icons/tb'
+import { TbEraser, TbLoader, TbWand, TbAt, TbFileImport, TbLetterT } from 'react-icons/tb'
 import { IoStopCircleOutline } from 'react-icons/io5'
 
 import { EditorCard } from '../extensions/editor-card'
@@ -80,6 +80,7 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
   synthesisProgress,
 }: TiptapProps) => {
   const { t } = useTranslation()
+  const [isEmpty, setIsEmpty] = useState(true)
 
   const effectiveProvider = ttsProvider || pluginStore?.provider
   const effectiveProviderConfigKey = effectiveProvider
@@ -118,6 +119,11 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
           .focus()
           .run()
       }
+
+      // Check if editor is empty (only has empty editorCard)
+      const editorCards = jsonData.content?.filter((item) => item.type === 'editorCard') || []
+      const hasContent = editorCards.some((card) => card.content && card.content.length > 0)
+      setIsEmpty(!hasContent)
 
       dataStore?.setEditorData(props.editor.getJSON())
     },
@@ -294,12 +300,33 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
 
       <div
         id='drop-area'
-        className='flex-1 overflow-y-auto pr-3'
+        className='flex-1 overflow-y-auto pr-3 relative'
         onDrop={handleDrop}
         onDragOver={(event) => event.preventDefault()}
         onDragEnter={(event) => event.preventDefault()}
       >
         <EditorContent editor={editor} />
+        {isEmpty && (
+          <div className='absolute inset-0 flex items-center justify-center pointer-events-none'>
+            <div className='text-center text-muted-foreground space-y-4 p-6 max-w-md'>
+              <h3 className='text-lg font-medium'>{t('editor.empty.title', { defaultValue: '开始创作' })}</h3>
+              <div className='space-y-3 text-sm'>
+                <div className='flex items-center gap-3 p-3 bg-muted/50 rounded-lg'>
+                  <TbAt size={20} className='text-primary flex-shrink-0' />
+                  <span>{t('editor.empty.mention')}</span>
+                </div>
+                <div className='flex items-center gap-3 p-3 bg-muted/50 rounded-lg'>
+                  <TbLetterT size={20} className='text-primary flex-shrink-0' />
+                  <span>{t('editor.empty.selection')}</span>
+                </div>
+                <div className='flex items-center gap-3 p-3 bg-muted/50 rounded-lg'>
+                  <TbFileImport size={20} className='text-primary flex-shrink-0' />
+                  <span>{t('editor.empty.drag')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <TTSMenu

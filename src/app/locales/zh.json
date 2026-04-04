@@ -235,6 +235,14 @@
         "trash": "回收站",
         "new script": "新建脚本"
     },
+    "editor": {
+        "empty": {
+            "title": "开始创作",
+            "mention": "输入 @ 选择角色或声音",
+            "selection": "选中文本可设置详细参数",
+            "drag": "支持拖放 txt、docx、md 文件"
+        }
+    },
     "history": {
         "download file": "请先选择要下载的文件",
         "save success": "保存成功",

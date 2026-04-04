@@ -235,6 +235,14 @@
         "trash": "Papelera",
         "new script": "Nuevo guion"
     },
+    "editor": {
+        "empty": {
+            "title": "Comenzar",
+            "mention": "Escribe @ para seleccionar un personaje o voz",
+            "selection": "Selecciona texto para configurar parámetros detallados",
+            "drag": "Soporta arrastrar y soltar archivos txt, docx, md"
+        }
+    },
     "history": {
         "download file": "Por favor, seleccione el archivo para descargar",
         "save success": "Guardado exitoso",

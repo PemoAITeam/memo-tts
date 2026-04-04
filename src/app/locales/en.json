@@ -235,6 +235,14 @@
         "trash": "Trash",
         "new script": "New Script"
     },
+    "editor": {
+        "empty": {
+            "title": "Get Started",
+            "mention": "Type @ to select a character or voice",
+            "selection": "Select text to set detailed parameters",
+            "drag": "Supports drag & drop of txt, docx, md files"
+        }
+    },
     "history": {
         "download file": "Please select a file to download first",
         "save success": "Save Success",
