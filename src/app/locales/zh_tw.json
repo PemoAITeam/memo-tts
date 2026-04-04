@@ -186,6 +186,9 @@
         "select img": "選擇圖片",
         "select music": "選擇背景音樂",
         "music": "音樂",
+        "editor placeholder": "@角色或聲音",
+        "recent_voices": "最近使用",
+        "search": "搜尋...",
         "tts": "語音",
         "my library": "我的素材",
         "generate": "生成",
@@ -223,7 +226,8 @@
     },
     "route": {
         "media list": "媒體列表",
-        "trash": "垃圾桶"
+        "trash": "垃圾桶",
+        "new script": "新建腳本"
     },
     "history": {
         "download file": "請先選擇要下載的文件",

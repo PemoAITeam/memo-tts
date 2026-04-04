@@ -186,6 +186,9 @@
         "select img": "Select image",
         "select music": "Select music",
         "music": "Music",
+        "editor placeholder": "@Role or Voice",
+        "recent_voices": "Recent",
+        "search": "Search...",
         "tts": "Text-to-Speech",
         "my library": "My Library",
         "generate": "Generate",
@@ -223,7 +226,8 @@
     },
     "route": {
         "media list": "Media List",
-        "trash": "Trash"
+        "trash": "Trash",
+        "new script": "New Script"
     },
     "history": {
         "download file": "Please select a file to download first",

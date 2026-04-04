@@ -15,9 +15,6 @@ function getVoiceBadgeLabel(voice: any): string {
 const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
   const { t } = useTranslation();
   const [voice, setVoice] = useState<string>(() => getVoiceBadgeLabel(node.attrs.voice));
-  const placeholderText = t("tts.editor placeholder", {
-    defaultValue: "@你想要的角色，比如：旁白、小美、客服，然后输入你想合成的内容",
-  });
 
   useEffect(() => {
     setVoice(getVoiceBadgeLabel(node.attrs.voice));
@@ -64,7 +61,7 @@ const EditorCardItem = observer(({ node, editor }: NodeViewProps) => {
 
       <div className="flex items-start">
         <NodeViewContent
-          data-placeholder={placeholderText}
+          data-placeholder={t("tts.editor placeholder")}
           className={`content flex-1 px-2 editable-content ${node.content.size == 0 ? "is-empty" : ""}`}
         />
       </div>

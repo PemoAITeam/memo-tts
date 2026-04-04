@@ -186,6 +186,9 @@
         "select img": "Seleziona immagine",
         "select music": "Seleziona musica",
         "music": "Musica",
+        "editor placeholder": "@Personaggio o Voce",
+        "recent_voices": "Recenti",
+        "search": "Cerca...",
         "tts": "Sintesi vocale",
         "my library": "La mia libreria",
         "generate": "Genera",
@@ -223,7 +226,8 @@
     },
     "route": {
         "media list": "Elenco media",
-        "trash": "Cestino"
+        "trash": "Cestino",
+        "new script": "Nuovo script"
     },
     "history": {
         "download file": "Selezionare prima il file da scaricare",

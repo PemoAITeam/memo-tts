@@ -186,6 +186,9 @@
         "select img": "이미지 선택",
         "select music": "음악 선택",
         "music": "음악",
+        "editor placeholder": "@캐릭터 또는 음성",
+        "recent_voices": "최근 사용",
+        "search": "검색...",
         "tts": "음성 합성",
         "my library": "내 라이브러리",
         "generate": "생성",
@@ -223,7 +226,8 @@
     },
     "route": {
         "media list": "미디어 목록",
-        "trash": "휴지통"
+        "trash": "휴지통",
+        "new script": "새 스크립트"
     },
     "history": {
         "download file": "다운로드할 파일을 먼저 선택하십시오",

@@ -253,7 +253,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
               className='w-full justify-start'
             >
               <TbPlus size={18} />
-              <span>{t('route.new script', { defaultValue: '新建脚本' })}</span>
+              <span>{t('route.new script')}</span>
             </Button>
           </div>
           <div className='flex-1 min-h-0 pl-3 py-3 temo-no-draggable'>
@@ -329,23 +329,21 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
       <AlertDialog open={deleteDialogOpen} onOpenChange={handleDeleteDialogOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('history.permanent delete title', { defaultValue: '永久删除？' })}</AlertDialogTitle>
+            <AlertDialogTitle>{t('history.permanent delete title')}</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDeleteItems.length > 1
                 ? t('history.permanent delete multiple', {
                   count: pendingDeleteItems.length,
-                  defaultValue: `这将永久删除 ${pendingDeleteItems.length} 项内容，且无法恢复。`,
                 })
                 : t('history.permanent delete single', {
                   title: pendingDeleteItems[0]?.title || '',
-                  defaultValue: `这将永久删除"${pendingDeleteItems[0]?.title || ''}"，且无法恢复。`,
                 })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('history.cancel', { defaultValue: '取消' })}</AlertDialogCancel>
+            <AlertDialogCancel>{t('history.cancel')}</AlertDialogCancel>
             <AlertDialogAction className='bg-red-600 hover:bg-red-600/90' onClick={confirmDelete}>
-              {t('history.permanent delete confirm', { defaultValue: '永久删除' })}
+              {t('history.permanent delete confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

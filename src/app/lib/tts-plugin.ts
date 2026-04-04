@@ -182,6 +182,33 @@ const RECOMMENDED_TTS_PROVIDER_ORDER = [
   "volcengine",
 ];
 
+/**
+ * 可见的TTS提供商白名单
+ * 如果列表为空，则显示所有提供商
+ * 如果列表不为空，则只显示列表中匹配的提供商
+ */
+const VISIBLE_TTS_PROVIDERS = [
+  "edge",
+  // "elevenlabs",
+  "volcengine",
+];
+
+function isProviderVisible(provider: Pick<TTSProviderMeta, "provider" | "pluginId" | "label">) {
+  if (VISIBLE_TTS_PROVIDERS.length === 0) {
+    return true;
+  }
+
+  const searchSource = [
+    provider.provider,
+    provider.pluginId,
+    provider.label,
+  ].map((item) => normalizeProviderSortKey(item)).join(" ");
+
+  return VISIBLE_TTS_PROVIDERS.some((item) =>
+    searchSource.includes(normalizeProviderSortKey(item))
+  );
+}
+
 function normalizeProviderSortKey(value?: string | null) {
   return String(value || "").trim().toLowerCase();
 }
@@ -253,6 +280,7 @@ export function getTTSProviderMetaList(memoPlugins?: PluginReturnType): TTSProvi
         editor: getManifestEditorMeta(manifest),
       };
     })
+    .filter(isProviderVisible)
     .sort(compareTTSProviders);
 }
 

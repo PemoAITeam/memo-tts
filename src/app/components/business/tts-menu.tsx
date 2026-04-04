@@ -561,7 +561,7 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
                 ref={inputRef}
                 type="text"
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                placeholder={t('tts.search') || 'Search...'}
+                placeholder={t('tts.search')}
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}
                 tabIndex={-1}
@@ -574,7 +574,7 @@ export const TTSMenu = forwardRef<HTMLDivElement, TTSMenuProps>(
                 <div className="flex-shrink-0 border-b">
                   <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
                     <MdHistory className="h-3.5 w-3.5" />
-                    <span className="flex-1">{t('tts.recent_voices') || 'Recent'}</span>
+                    <span className="flex-1">{t('tts.recent_voices')}</span>
                     <span className="rounded border border-border/80 bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none">
                       1-3
                     </span>

@@ -186,6 +186,9 @@
         "select img": "Bild auswählen",
         "select music": "Musik auswählen",
         "music": "Musik",
+        "editor placeholder": "@Rolle oder Stimme",
+        "recent_voices": "Zuletzt verwendet",
+        "search": "Suchen...",
         "tts": "Sprachsynthese",
         "my library": "Meine Bibliothek",
         "generate": "Generieren",
@@ -223,7 +226,8 @@
     },
     "route": {
         "media list": "Medienliste",
-        "trash": "Papierkorb"
+        "trash": "Papierkorb",
+        "new script": "Neues Skript"
     },
     "history": {
         "download file": "Bitte wählen Sie zuerst die herunterzuladende Datei aus",

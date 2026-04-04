@@ -186,6 +186,9 @@
         "select img": "画像を選択",
         "select music": "音楽を選択",
         "music": "音楽",
+        "editor placeholder": "@キャラクターまたは音声",
+        "recent_voices": "最近使用",
+        "search": "検索...",
         "tts": "音声",
         "my library": "マイライブラリ",
         "generate": "生成",
@@ -223,7 +226,8 @@
     },
     "route": {
         "media list": "メディアリスト",
-        "trash": "ごみ箱"
+        "trash": "ごみ箱",
+        "new script": "新規スクリプト"
     },
     "history": {
         "download file": "ダウンロードするファイルを選択してください",

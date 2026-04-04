@@ -186,6 +186,9 @@
         "select img": "Seleccionar imagen",
         "select music": "Seleccionar música",
         "music": "Música",
+        "editor placeholder": "@Personaje o Voz",
+        "recent_voices": "Recientes",
+        "search": "Buscar...",
         "tts": "Síntesis de voz",
         "my library": "Mi biblioteca",
         "generate": "Generar",
@@ -223,7 +226,8 @@
     },
     "route": {
         "media list": "Lista de medios",
-        "trash": "Papelera"
+        "trash": "Papelera",
+        "new script": "Nuevo guion"
     },
     "history": {
         "download file": "Por favor, seleccione el archivo para descargar",
