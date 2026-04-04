@@ -189,6 +189,12 @@
         "editor placeholder": "@캐릭터 또는 음성",
         "recent_voices": "최근 사용",
         "search": "검색...",
+        "select voice": "먼저 TTS 플러그인과 음성을 선택하세요",
+        "no plugin providers": "사용 가능한 TTS 플러그인이 없습니다",
+        "preview not supported": "Electron 호스트가 플러그인 음성 미리보기를 노출하지 않았습니다",
+        "preview failed": "음성 미리보기 실패. 호스트의 플러그인 설정을 확인하세요",
+        "select_voice": "음성 선택",
+        "no_voice_found": "음성을 찾을 수 없습니다",
         "tts": "음성 합성",
         "my library": "내 라이브러리",
         "generate": "생성",
@@ -237,6 +243,9 @@
         "play": "재생",
         "download": "다운로드",
         "delete": "삭제",
-        "batch actions": "일괄 작업"
+        "batch actions": "일괄 작업",
+        "play fail": "오디오 재생 실패",
+        "playback progress": "재생 진행률",
+        "permanent delete fail": "삭제 실패. 다시 시도하십시오"
     }
 }

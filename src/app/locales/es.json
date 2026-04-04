@@ -189,6 +189,12 @@
         "editor placeholder": "@Personaje o Voz",
         "recent_voices": "Recientes",
         "search": "Buscar...",
+        "select voice": "Por favor, seleccione primero un plugin TTS y una voz",
+        "no plugin providers": "No hay plugins TTS disponibles",
+        "preview not supported": "El host de Electron aún no ha expuesto la vista previa de voz del plugin",
+        "preview failed": "Vista previa de voz fallida. Por favor, verifique la configuración del plugin en el host",
+        "select_voice": "Seleccionar voz",
+        "no_voice_found": "No se encontró ninguna voz",
         "tts": "Síntesis de voz",
         "my library": "Mi biblioteca",
         "generate": "Generar",
@@ -237,6 +243,9 @@
         "play": "Reproducir",
         "download": "Descargar",
         "delete": "Eliminar",
-        "batch actions": "Acciones por lote"
+        "batch actions": "Acciones por lote",
+        "play fail": "Error de reproducción de audio",
+        "playback progress": "Progreso de reproducción",
+        "permanent delete fail": "Error al eliminar. Por favor, inténtelo de nuevo"
     }
 }

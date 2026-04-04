@@ -189,6 +189,12 @@
         "editor placeholder": "@キャラクターまたは音声",
         "recent_voices": "最近使用",
         "search": "検索...",
+        "select voice": "先にTTSプラグインと音声を選択してください",
+        "no plugin providers": "利用可能なTTSプラグインがありません",
+        "preview not supported": "Electronホストがプラグイン音声プレビューを公開していません",
+        "preview failed": "音声プレビューに失敗しました。ホストのプラグイン設定を確認してください",
+        "select_voice": "音声を選択",
+        "no_voice_found": "音声が見つかりません",
         "tts": "音声",
         "my library": "マイライブラリ",
         "generate": "生成",
@@ -237,6 +243,9 @@
         "play": "再生",
         "download": "ダウンロード",
         "delete": "削除",
-        "batch actions": "バッチ操作"
+        "batch actions": "バッチ操作",
+        "play fail": "オーディオの再生に失敗しました",
+        "playback progress": "再生進捗",
+        "permanent delete fail": "削除に失敗しました。再試行してください"
     }
 }

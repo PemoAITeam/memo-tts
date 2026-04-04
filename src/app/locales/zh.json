@@ -189,6 +189,12 @@
         "editor placeholder": "@角色或声音",
         "recent_voices": "最近使用",
         "search": "搜索...",
+        "select voice": "请先选择 TTS 插件和声音",
+        "no plugin providers": "没有可用的 TTS 插件",
+        "preview not supported": "Electron 宿主尚未暴露插件语音预览功能",
+        "preview failed": "语音预览失败，请检查宿主中的插件配置",
+        "select_voice": "选择声音",
+        "no_voice_found": "未找到声音",
         "tts": "语音",
         "my library": "我的素材",
         "generate": "合成",
@@ -237,6 +243,9 @@
         "play": "播放",
         "download": "下载",
         "delete": "删除",
-        "batch actions": "批量操作"
+        "batch actions": "批量操作",
+        "play fail": "音频播放失败",
+        "playback progress": "播放进度",
+        "permanent delete fail": "删除失败，请重试"
     }
 }

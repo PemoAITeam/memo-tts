@@ -189,6 +189,12 @@
         "editor placeholder": "@Rolle oder Stimme",
         "recent_voices": "Zuletzt verwendet",
         "search": "Suchen...",
+        "select voice": "Bitte wählen Sie zuerst ein TTS-Plugin und eine Stimme",
+        "no plugin providers": "Keine TTS-Plugins verfügbar",
+        "preview not supported": "Der Electron-Host hat die Plugin-Stimmenvorschau noch nicht bereitgestellt",
+        "preview failed": "Stimmenvorschau fehlgeschlagen. Bitte überprüfen Sie die Plugin-Konfiguration im Host",
+        "select_voice": "Stimme auswählen",
+        "no_voice_found": "Keine Stimme gefunden",
         "tts": "Sprachsynthese",
         "my library": "Meine Bibliothek",
         "generate": "Generieren",
@@ -237,6 +243,9 @@
         "play": "Abspielen",
         "download": "Herunterladen",
         "delete": "Löschen",
-        "batch actions": "Stapelaktionen"
+        "batch actions": "Stapelaktionen",
+        "play fail": "Audiowiedergabe fehlgeschlagen",
+        "playback progress": "Wiedergabefortschritt",
+        "permanent delete fail": "Löschen fehlgeschlagen. Bitte versuchen Sie es erneut"
     }
 }

@@ -189,6 +189,12 @@
         "editor placeholder": "@Role or Voice",
         "recent_voices": "Recent",
         "search": "Search...",
+        "select voice": "Please select a TTS plugin and voice first",
+        "no plugin providers": "No TTS plugins available",
+        "preview not supported": "The Electron host has not exposed plugin voice preview yet",
+        "preview failed": "Voice preview failed. Please check the plugin configuration in the host",
+        "select_voice": "Select voice",
+        "no_voice_found": "No voice found",
         "tts": "Text-to-Speech",
         "my library": "My Library",
         "generate": "Generate",
@@ -242,6 +248,9 @@
         "play": "Play",
         "download": "Download",
         "delete": "Delete",
-        "batch actions": "Batch Actions"
+        "batch actions": "Batch Actions",
+        "play fail": "Audio playback failed",
+        "playback progress": "Playback progress",
+        "permanent delete fail": "Delete failed, please try again"
     }
 }
