@@ -3,7 +3,7 @@ import {
   getJSONDataFromEditorContents,
   normalizeEditorDocument,
   patchTemoData,
-  splitString,
+  splitTextForTTS,
   updateTemoData,
 } from '@/app/lib/utils';
 import { extractTextSegmentsFromNodeWithMentions, type TextSegment } from '@/app/lib/tts-segments';
@@ -24,7 +24,9 @@ import i18n from 'i18next';
 
 import { customEvents, eventBus } from '@/events/eventBus';
 
+const SOFT_TEXT_LENGTH = 300;
 const MAX_TEXT_LENGTH = 1000;
+const TTS_CHUNK_STRATEGY_VERSION = 'role-aware-v1';
 
 function buildSegmentRuntimeConfig(
   segment: TextSegment,
@@ -216,6 +218,13 @@ class DataStore {
         pluginId: data.selection.pluginId,
         data: allSegments.map((seg) => {
           const text = sanitizeSegmentText(seg.text);
+          const textChunks = text.length > SOFT_TEXT_LENGTH
+            ? splitTextForTTS(text, {
+              preferredChunkSize: SOFT_TEXT_LENGTH,
+              maxChunkSize: MAX_TEXT_LENGTH,
+            })
+            : [];
+          const normalizedTextChunks = textChunks.length > 1 ? textChunks : undefined;
           const segmentOptions = mergePluginConfigLayers(
             data.selection?.config,
             getTTSSelectionConfig(seg.cardOptions, data.selection),
@@ -230,14 +239,20 @@ class DataStore {
               pluginId: data.selection?.pluginId,
               options: segmentOptions,
               text,
+              ...(normalizedTextChunks
+                ? {
+                  textChunks: normalizedTextChunks,
+                  chunkStrategy: TTS_CHUNK_STRATEGY_VERSION,
+                }
+                : {}),
             })),
             options: segmentOptions,
           };
 
-          if (text.length > MAX_TEXT_LENGTH) {
+          if (normalizedTextChunks) {
             return {
               ...item,
-              textChunks: splitString(text),
+              textChunks: normalizedTextChunks,
             };
           }
 

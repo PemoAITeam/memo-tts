@@ -331,6 +331,170 @@ export function splitString(str: string, chunkSize: number = 1000) {
   return result;
 }
 
+export interface SplitTextForTTSOptions {
+  preferredChunkSize?: number
+  maxChunkSize?: number
+}
+
+const SENTENCE_BOUNDARY_CHARS = new Set(['\n', '。', '！', '？', '!', '?', '；', ';', '…'])
+const CLAUSE_BOUNDARY_CHARS = new Set(['，', ',', '、', '：', ':'])
+const BOUNDARY_TRAILING_CHARS = new Set(['”', '’', '"', "'", ')', '）', '】', '》', '」', '』'])
+
+function advanceBoundaryEnd(text: string, index: number) {
+  let end = index + 1
+
+  if (text[index] === '\n') {
+    while (end < text.length && text[end] === '\n') {
+      end += 1
+    }
+    return end
+  }
+
+  while (end < text.length && BOUNDARY_TRAILING_CHARS.has(text[end])) {
+    end += 1
+  }
+
+  while (end < text.length && text[end] !== '\n' && /\s/.test(text[end])) {
+    end += 1
+  }
+
+  return end
+}
+
+function findBoundaryAfter(
+  text: string,
+  start: number,
+  from: number,
+  to: number,
+  boundaryChars: Set<string>,
+) {
+  const searchStart = Math.max(start, from)
+  const searchEnd = Math.min(text.length, to)
+
+  for (let index = searchStart; index < searchEnd; index += 1) {
+    if (boundaryChars.has(text[index])) {
+      return Math.min(advanceBoundaryEnd(text, index), searchEnd)
+    }
+  }
+
+  return -1
+}
+
+function findWhitespaceBacktrackIndex(text: string, start: number, fallbackEnd: number) {
+  const searchStart = Math.max(start, fallbackEnd - 40)
+
+  for (let index = fallbackEnd - 1; index > searchStart; index -= 1) {
+    if (/\s/.test(text[index])) {
+      return index + 1
+    }
+  }
+
+  return fallbackEnd
+}
+
+function pushNonEmptyChunk(chunks: string[], value: string) {
+  const nextValue = value.trim()
+  if (nextValue) {
+    chunks.push(nextValue)
+  }
+}
+
+export function splitTextForTTS(
+  str: string,
+  options: SplitTextForTTSOptions = {},
+) {
+  const preferredChunkSize = Math.max(1, options.preferredChunkSize ?? 300)
+  const maxChunkSize = Math.max(preferredChunkSize, options.maxChunkSize ?? 1000)
+  const nearbySentenceSearchEnd = preferredChunkSize + Math.max(80, Math.floor(preferredChunkSize / 2))
+  const nearbyClauseSearchEnd = preferredChunkSize + Math.max(40, Math.floor(preferredChunkSize / 3))
+  const normalizedText = str.replace(/\r/g, '').trim()
+
+  if (!normalizedText) {
+    return []
+  }
+
+  if (normalizedText.length <= preferredChunkSize) {
+    return [normalizedText]
+  }
+
+  const chunks: string[] = []
+  let start = 0
+
+  while (start < normalizedText.length) {
+    const remainingLength = normalizedText.length - start
+
+    if (remainingLength <= preferredChunkSize) {
+      pushNonEmptyChunk(chunks, normalizedText.slice(start))
+      break
+    }
+
+    const preferredStart = start + preferredChunkSize - 1
+    const nearbySentenceBoundary = findBoundaryAfter(
+      normalizedText,
+      start,
+      preferredStart,
+      start + Math.min(maxChunkSize, nearbySentenceSearchEnd),
+      SENTENCE_BOUNDARY_CHARS,
+    )
+
+    if (nearbySentenceBoundary > start) {
+      pushNonEmptyChunk(chunks, normalizedText.slice(start, nearbySentenceBoundary))
+      start = nearbySentenceBoundary
+      continue
+    }
+
+    const nearbyClauseBoundary = findBoundaryAfter(
+      normalizedText,
+      start,
+      preferredStart,
+      start + Math.min(maxChunkSize, nearbyClauseSearchEnd),
+      CLAUSE_BOUNDARY_CHARS,
+    )
+
+    if (nearbyClauseBoundary > start) {
+      pushNonEmptyChunk(chunks, normalizedText.slice(start, nearbyClauseBoundary))
+      start = nearbyClauseBoundary
+      continue
+    }
+
+    const farSentenceBoundary = findBoundaryAfter(
+      normalizedText,
+      start,
+      preferredStart,
+      start + maxChunkSize,
+      SENTENCE_BOUNDARY_CHARS,
+    )
+
+    if (farSentenceBoundary > start) {
+      pushNonEmptyChunk(chunks, normalizedText.slice(start, farSentenceBoundary))
+      start = farSentenceBoundary
+      continue
+    }
+
+    const farClauseBoundary = findBoundaryAfter(
+      normalizedText,
+      start,
+      preferredStart,
+      start + maxChunkSize,
+      CLAUSE_BOUNDARY_CHARS,
+    )
+
+    if (farClauseBoundary > start) {
+      pushNonEmptyChunk(chunks, normalizedText.slice(start, farClauseBoundary))
+      start = farClauseBoundary
+      continue
+    }
+
+    const fallbackEnd = Math.min(start + preferredChunkSize, normalizedText.length)
+    const splitIndex = findWhitespaceBacktrackIndex(normalizedText, start, fallbackEnd)
+
+    pushNonEmptyChunk(chunks, normalizedText.slice(start, splitIndex))
+    start = splitIndex
+  }
+
+  return chunks
+}
+
 function normalizeVoiceTarget(value: any) {
   if (!value || typeof value !== 'object') {
     return value
