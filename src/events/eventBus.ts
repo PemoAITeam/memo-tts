@@ -1,7 +1,13 @@
-import { WhisperSegments } from "electron/types";
 import mitt, { type Emitter } from "mitt";
 
-import { PlayerSpeedUpdate, PlayerTimeUpdate, RendererMessage, SearchIndexChange } from "@/types";
+type PlayerSpeedUpdate = Record<string, any>
+type PlayerTimeUpdate = Record<string, any>
+type WhisperSegments = Record<string, any>
+type RendererMessage = {
+  event?: unknown
+  ipcData?: any
+}
+type SearchIndexChange = Record<string, any>
 
 export const customEvents = {
   PlayerSeek: "player:seek",

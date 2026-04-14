@@ -26,6 +26,7 @@ import {
   TTSMentionSimple,
   TTSMentionNode,
   TTSMark,
+  sanitizeUnsupportedSegmentMarks,
   useTTSBubbleMenu,
   useTTSMentionMenu,
 } from '@/app/lib/tts-mention'
@@ -181,6 +182,41 @@ const Tiptap = inject('dataStore', 'pluginStore')(observer(({
       editor.commands.setContent(nextContent || '<editor-card></editor-card>')
     })
   }, [content, editor])
+
+  useEffect(() => {
+    if (!editor) {
+      return
+    }
+
+    let cancelled = false
+    let scheduled = false
+
+    const scheduleCleanup = () => {
+      if (scheduled || cancelled) {
+        return
+      }
+
+      scheduled = true
+
+      Promise.resolve().then(() => {
+        scheduled = false
+
+        if (cancelled) {
+          return
+        }
+
+        sanitizeUnsupportedSegmentMarks(editor, effectiveProvider)
+      })
+    }
+
+    scheduleCleanup()
+    editor.on('update', scheduleCleanup)
+
+    return () => {
+      cancelled = true
+      editor.off('update', scheduleCleanup)
+    }
+  }, [editor, effectiveProvider])
 
   const clear = () => {
     editor?.commands.clearContent()

@@ -13,6 +13,8 @@ export type { TTSMentionSimpleOptions, SelectedVoiceConfig, MenuPath, TTSMenuIte
 export { TTSMark, TTS_SPEED_OPTIONS, SPEED_LABEL_MAP, EMOTION_LABEL_MAP, getSpeedLabel, getEmotionLabel } from './tts-mark'
 export type { TTSMarkOptions, EmotionOption } from './tts-mark'
 
+export { sanitizeUnsupportedSegmentMarks } from './sanitize-segment-marks'
+
 export { useTTSBubbleMenu } from './use-tts-bubble-menu'
 export type { TTSBubbleMenuState } from './use-tts-bubble-menu'
 

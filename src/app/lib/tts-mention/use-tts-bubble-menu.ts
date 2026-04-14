@@ -214,7 +214,7 @@ export function useTTSBubbleMenu(
     const { providerMeta } = getProviderContext()
     const selectionFilter = providerMeta
       ? { provider: activeProvider, pluginId: providerMeta.pluginId }
-      : { provider: activeProvider }
+      : undefined
     const { $from } = editor.state.selection
     const cardConfig = getTTSSelectionConfig($from.parent?.attrs?.voice, selectionFilter)
     const inlineVoiceValue = getActiveTTSMentionValueBeforeOffset($from.parent, $from.parentOffset)
@@ -277,7 +277,7 @@ export function useTTSBubbleMenu(
           return
         }
 
-        const nextFields = results.filter((item): item is TTSSegmentFieldControl => !!item)
+        const nextFields = results.filter(Boolean) as TTSSegmentFieldControl[]
         setFields((prev) => (isSameControls(nextFields, prev) ? prev : nextFields))
       })
       .catch(() => {
