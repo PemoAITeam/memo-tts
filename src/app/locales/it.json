@@ -235,6 +235,9 @@
         "trash": "Cestino",
         "new script": "Nuovo script"
     },
+    "welcome": {
+        "plugin voices": "I plugin sono ora integrati e supportano il doppiaggio misto con più ruoli da più fornitori."
+    },
     "editor": {
         "empty": {
             "title": "Inizia",

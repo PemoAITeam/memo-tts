@@ -1,12 +1,14 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 
 import { pluginStore } from '@/app/stores'
 
 import type { MenuPath, SelectedVoiceConfig, TTSMenuItem } from './types'
-import { buildSelectedVoiceConfig, getLoadingMenuItems, getMenuItems, getNextMenuPath } from './data'
+import { buildMenuPathFromSelectedVoiceConfig, buildSelectedVoiceConfig, getLoadingMenuItems, getMenuItems, getNextMenuPath } from './data'
 import { recentVoicesStore, type RecentVoiceEntry } from './recent-voices-store'
 import { closeMentionMenu, isMentionMenuActive } from './tts-mention-plugin'
+
+type TTSMenuMode = 'trigger' | 'edit'
 
 export interface TTSMenuState {
   isOpen: boolean
@@ -16,11 +18,30 @@ export interface TTSMenuState {
   items: TTSMenuItem[]
   selectedIndex: number
   position: { x: number; y: number }
+  providerScope?: string
+  mode: TTSMenuMode
 }
 
 interface UseTTSMentionMenuOptions {
   initialProvider?: string
   onVoiceSelect?: (config: SelectedVoiceConfig) => void
+}
+
+interface OpenTTSMenuOptions {
+  range: { from: number; to: number }
+  query: string
+  path?: MenuPath
+  providerScope?: string
+  mode?: TTSMenuMode
+}
+
+interface OpenEditTTSMenuOptions {
+  range: { from: number; to: number }
+  config?: SelectedVoiceConfig | null
+}
+
+function buildInitialPath(provider?: string) {
+  return provider ? { provider } : {}
 }
 
 export function useTTSMentionMenu(
@@ -37,15 +58,17 @@ export function useTTSMentionMenu(
     isOpen: false,
     query: '',
     range: null,
-    path: initialProvider ? { provider: initialProvider } : {},
+    path: buildInitialPath(initialProvider),
     items: [],
     selectedIndex: 0,
     position: { x: 0, y: 0 },
+    providerScope: initialProvider,
+    mode: 'trigger',
   })
 
   const menuRef = useRef<HTMLDivElement>(null)
   const loadRequestIdRef = useRef(0)
-  const [recentVoicesVersion, setRecentVoicesVersion] = useState(0)
+  const [, setRecentVoicesVersion] = useState(0)
 
   useEffect(() => {
     return recentVoicesStore.subscribe(() => {
@@ -53,7 +76,7 @@ export function useTTSMentionMenu(
     })
   }, [])
 
-  const loadItems = useCallback((path: MenuPath, query: string) => {
+  const loadItems = useCallback((path: MenuPath, query: string, providerScope?: string) => {
     const requestId = ++loadRequestIdRef.current
 
     setState((prev) => ({
@@ -64,7 +87,7 @@ export function useTTSMentionMenu(
       selectedIndex: 0,
     }))
 
-    void getMenuItems(path, query, initialProvider)
+    void getMenuItems(path, query, providerScope)
       .then((items) => {
         if (loadRequestIdRef.current !== requestId) {
           return
@@ -91,29 +114,45 @@ export function useTTSMentionMenu(
           selectedIndex: 0,
         }))
       })
-  }, [initialProvider])
+  }, [])
 
-  const openMenu = useCallback((props: { range: { from: number; to: number }; query: string }) => {
-    const { range, query } = props
+  const openMenu = useCallback((props: OpenTTSMenuOptions) => {
+    const { range, query, mode = 'trigger' } = props
     const { from } = range
     const coords = editor?.view.coordsAtPos(from)
-
-    const initialPath = initialProvider ? { provider: initialProvider } : {}
+    const providerScope = props.providerScope ?? props.path?.provider ?? initialProvider
+    const nextPath = props.path || buildInitialPath(providerScope)
 
     setState({
       isOpen: true,
       query,
       range,
-      path: initialPath,
+      path: nextPath,
       items: getLoadingMenuItems(),
       selectedIndex: 0,
       position: {
         x: coords?.left || 0,
         y: (coords?.bottom || coords?.top || 0) + 5,
       },
+      providerScope,
+      mode,
     })
-    loadItems(initialPath, query)
+    loadItems(nextPath, query, providerScope)
   }, [editor, initialProvider, loadItems])
+
+  const openEditMenu = useCallback((props: OpenEditTTSMenuOptions) => {
+    const providerScope = props.config?.provider
+    const nextPath = buildMenuPathFromSelectedVoiceConfig(props.config)
+      || buildInitialPath(providerScope)
+
+    openMenu({
+      range: props.range,
+      query: '',
+      path: nextPath,
+      providerScope,
+      mode: 'edit',
+    })
+  }, [openMenu])
 
   const closeMenu = useCallback(() => {
     loadRequestIdRef.current += 1
@@ -125,10 +164,12 @@ export function useTTSMentionMenu(
     setState((prev) => ({
       ...prev,
       isOpen: false,
-      path: initialProvider ? { provider: initialProvider } : {},
+      path: buildInitialPath(initialProvider),
       query: '',
       range: null,
       items: [],
+      providerScope: initialProvider,
+      mode: 'trigger',
     }))
   }, [editor, initialProvider])
 
@@ -138,14 +179,17 @@ export function useTTSMentionMenu(
       return
     }
 
-    const { from } = range
-    const to = editor?.state.selection.from || from
+    const replaceRange = state.mode === 'edit'
+      ? range
+      : {
+        from: range.from,
+        to: Math.max(editor?.state.selection.from || range.to, range.to),
+      }
 
     editor
       ?.chain()
       .focus()
-      .deleteRange({ from, to })
-      .insertContent({
+      .insertContentAt(replaceRange, {
         type: 'ttsMention',
         attrs: {
           provider: config.provider,
@@ -169,7 +213,7 @@ export function useTTSMentionMenu(
     const nextPath = getNextMenuPath(itemPath, item)
 
     if (nextPath) {
-      loadItems(nextPath, '')
+      loadItems(nextPath, '', state.providerScope)
       return
     }
 
@@ -185,7 +229,7 @@ export function useTTSMentionMenu(
   }, [state, insertVoiceMention, loadItems])
 
   const goBack = useCallback(() => {
-    const { path } = state
+    const { path, providerScope } = state
 
     if (path.language || path.scene || path.model) {
       const newPath = { ...path }
@@ -196,38 +240,36 @@ export function useTTSMentionMenu(
       } else if (path.language) {
         delete newPath.language
       }
-      loadItems(newPath, '')
+      loadItems(newPath, '', providerScope)
       return true
     }
 
-    if (path.provider && !initialProvider) {
-      loadItems({}, '')
+    if (path.provider && !providerScope) {
+      loadItems({}, '', undefined)
       return true
     }
 
-    if (path.provider && initialProvider) {
+    if (path.provider && providerScope) {
       closeMenu()
       return true
     }
 
     return false
-  }, [state, initialProvider, closeMenu, loadItems])
+  }, [state, closeMenu, loadItems])
 
   const setQuery = useCallback((query: string) => {
-    loadItems(state.path, query)
-  }, [loadItems, state.path])
+    loadItems(state.path, query, state.providerScope)
+  }, [loadItems, state.path, state.providerScope])
 
-  const recentVoices = useMemo(() => {
-    const currentProvider = state.path.provider || initialProvider
-    if (currentProvider) {
-      const currentPluginId = pluginStore.findTTSProviderByValue(currentProvider)?.pluginId
+  const currentRecentProvider = state.providerScope || state.path.provider || initialProvider
+  const recentVoices = currentRecentProvider
+    ? (() => {
+      const currentPluginId = pluginStore.findTTSProviderByValue(currentRecentProvider)?.pluginId
       return currentPluginId
         ? recentVoicesStore.getRecentVoices(currentPluginId)
         : []
-    }
-
-    return recentVoicesStore.getAllMostRecentVoices()
-  }, [initialProvider, recentVoicesVersion, state.path.provider])
+    })()
+    : recentVoicesStore.getAllMostRecentVoices()
 
   const selectRecentVoice = useCallback((entry: RecentVoiceEntry) => {
     recentVoicesStore.addRecentVoice(entry.config)
@@ -238,7 +280,16 @@ export function useTTSMentionMenu(
     if (!state.isOpen) return
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target instanceof Element ? event.target : null
+      if (menuRef.current?.contains(target)) {
+        return
+      }
+
+      if (target?.closest('[data-tts-mention]')) {
+        return
+      }
+
+      if (menuRef.current) {
         setTimeout(() => {
           closeMenu()
         }, 100)
@@ -250,7 +301,7 @@ export function useTTSMentionMenu(
   }, [state.isOpen, closeMenu])
 
   useEffect(() => {
-    if (!editor || !state.isOpen || !state.range) {
+    if (!editor || !state.isOpen || !state.range || state.mode !== 'trigger') {
       return
     }
 
@@ -279,7 +330,7 @@ export function useTTSMentionMenu(
       editor.off('transaction', syncMenuVisibility)
       editor.off('selectionUpdate', syncMenuVisibility)
     }
-  }, [closeMenu, editor, state.isOpen, state.range])
+  }, [closeMenu, editor, state.isOpen, state.mode, state.range])
 
   return {
     ...state,
@@ -289,6 +340,7 @@ export function useTTSMentionMenu(
     setQuery,
     closeMenu,
     openMenu,
+    openEditMenu,
     recentVoices,
     selectRecentVoice,
   }

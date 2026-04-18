@@ -235,12 +235,18 @@
         "trash": "Trash",
         "new script": "New Script"
     },
+    "welcome": {
+        "plugin voices": "Plugins are now integrated, supporting mixed dubbing with multiple roles across multiple providers."
+    },
     "editor": {
         "empty": {
             "title": "Get Started",
             "mention": "Type @ to select a character or voice",
             "selection": "Select text to set detailed parameters",
             "drag": "Supports drag & drop of txt, docx, md files"
+        },
+        "drop": {
+            "title": "Release to import the file"
         }
     },
     "history": {
@@ -259,6 +265,7 @@
         "batch actions": "Batch Actions",
         "play fail": "Audio playback failed",
         "playback progress": "Playback progress",
-        "permanent delete fail": "Delete failed, please try again"
+        "permanent delete fail": "Delete failed, please try again",
+        "voice summary multiple": "{{first}}/{{second}} and {{count}} voices"
     }
 }

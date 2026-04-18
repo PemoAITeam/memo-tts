@@ -37,7 +37,6 @@ export const EditorCard = Node.create({
                 this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, attrs: { id: uuid } }).focus().run()
                 const jsonData = this.editor.getJSON();
                 const duplicateId = hasDuplicateId(jsonData.content!)
-                console.log(duplicateId)
                 if (duplicateId) {
                     const splitItems: any = [];
                     jsonData.content?.forEach((item: any) => {
@@ -48,7 +47,6 @@ export const EditorCard = Node.create({
                             }
                         }
                     });
-                    console.log(splitItems)
                     if (!splitItems[0].content) {
                         splitItems[0].attrs.id = generateUUID()
                     } else {
@@ -60,12 +58,6 @@ export const EditorCard = Node.create({
                     }
                     this.editor.commands.setContent(jsonData, true)
                 }
-                return true
-            },
-            'Control-V': () => {
-                navigator.clipboard.readText().then(text => {
-                    this.editor.chain().insertContentAt(this.editor.state.selection.head, { type: this.type.name, content: [{ type: 'text', text: text.trim() }] }).focus().run()
-                })
                 return true
             },
         }

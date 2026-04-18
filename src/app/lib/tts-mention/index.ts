@@ -36,6 +36,7 @@ export {
   getMenuItems,
   getLoadingMenuItems,
   getNextMenuPath,
+  buildMenuPathFromSelectedVoiceConfig,
   buildSelectedVoiceConfig,
 } from './data'
 

@@ -1,4 +1,4 @@
-import { forwardRef, type ForwardedRef } from 'react'
+import { forwardRef, useCallback, useLayoutEffect, useRef, useState, type ForwardedRef } from 'react'
 import {
   TbAdjustmentsHorizontal,
   TbBox,
@@ -24,6 +24,13 @@ interface TTSBubbleMenuProps {
   fields: TTSSegmentFieldControl[]
   onFieldChange: (fieldKey: string, value: number | string | null) => void
   onClear: () => void
+}
+
+const MENU_VIEWPORT_MARGIN = 10
+const MENU_SELECTION_GAP = 8
+const FALLBACK_MENU_SIZE = {
+  width: 240,
+  height: 40,
 }
 
 function getFieldIcon(role?: string) {
@@ -60,6 +67,10 @@ function getFieldValueLabel(field: TTSSegmentFieldControl) {
   return String(field.value)
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(value, max))
+}
+
 export const TTSBubbleMenu = forwardRef<HTMLDivElement, TTSBubbleMenuProps>(
   (
     {
@@ -71,17 +82,79 @@ export const TTSBubbleMenu = forwardRef<HTMLDivElement, TTSBubbleMenuProps>(
     },
     ref: ForwardedRef<HTMLDivElement>
   ) => {
+    const menuRef = useRef<HTMLDivElement | null>(null)
+    const [menuSize, setMenuSize] = useState(FALLBACK_MENU_SIZE)
+
+    const setMenuRef = useCallback((node: HTMLDivElement | null) => {
+      menuRef.current = node
+
+      if (typeof ref === 'function') {
+        ref(node)
+      } else if (ref) {
+        ref.current = node
+      }
+    }, [ref])
+
+    useLayoutEffect(() => {
+      if (!isOpen) {
+        return
+      }
+
+      const node = menuRef.current
+      if (!node) {
+        return
+      }
+
+      const updateMenuSize = () => {
+        const rect = node.getBoundingClientRect()
+        const nextSize = {
+          width: rect.width || FALLBACK_MENU_SIZE.width,
+          height: rect.height || FALLBACK_MENU_SIZE.height,
+        }
+
+        setMenuSize((prev) => (
+          prev.width === nextSize.width && prev.height === nextSize.height
+            ? prev
+            : nextSize
+        ))
+      }
+
+      updateMenuSize()
+
+      const resizeObserver = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(updateMenuSize)
+        : null
+
+      resizeObserver?.observe(node)
+      window.addEventListener('resize', updateMenuSize)
+
+      return () => {
+        resizeObserver?.disconnect()
+        window.removeEventListener('resize', updateMenuSize)
+      }
+    }, [isOpen, fields.length])
+
     if (!isOpen || !fields.length) return null
 
     const hasSettings = fields.some((field) => field.value !== null && field.value !== undefined && field.value !== '')
+    const left = clamp(
+      position.x - menuSize.width / 2,
+      MENU_VIEWPORT_MARGIN,
+      window.innerWidth - menuSize.width - MENU_VIEWPORT_MARGIN
+    )
+    const top = clamp(
+      position.y - menuSize.height - MENU_SELECTION_GAP,
+      MENU_VIEWPORT_MARGIN,
+      window.innerHeight - menuSize.height - MENU_VIEWPORT_MARGIN
+    )
 
     return (
       <div
-        ref={ref}
+        ref={setMenuRef}
         className="fixed z-[9999] tts-bubble-menu"
         style={{
-          left: Math.min(position.x - 120, window.innerWidth - 360),
-          top: Math.max(position.y - 50, 10),
+          left,
+          top,
         }}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}

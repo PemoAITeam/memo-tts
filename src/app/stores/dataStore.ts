@@ -270,13 +270,13 @@ class DataStore {
 
       this.synthesizing = true;
 
-      const result = await window.AIM.tts.mergeTemo(cloneDeep(params), data.uuid, {
+      const mergeExtra = {
         editorData: cloneDeep(normalizedEditorData),
         type: this.TTSType,
         ttsOptions: cloneDeep(data.selection),
-      });
+      };
+      const result = await window.AIM.tts.mergeTemo(cloneDeep(params), data.uuid, mergeExtra);
 
-      console.log(result);
       return result;
     } catch (error) {
       toast({

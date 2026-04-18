@@ -8,6 +8,7 @@ if (!window.AIM) {
     methods: [
       "getSetting",
       "openDialog",
+      "file.checkFileExist",
       "plugin.readLocalPlugins",
       "plugin.saveConfiguration",
       "plugin.getProviders",

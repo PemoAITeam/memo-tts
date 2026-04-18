@@ -235,6 +235,9 @@
         "trash": "휴지통",
         "new script": "새 스크립트"
     },
+    "welcome": {
+        "plugin voices": "플러그인이 연동되어 여러 서비스 제공업체의 다양한 역할을 혼합 더빙할 수 있습니다."
+    },
     "editor": {
         "empty": {
             "title": "시작하기",

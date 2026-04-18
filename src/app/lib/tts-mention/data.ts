@@ -285,6 +285,48 @@ export function getNextMenuPath(path: MenuPath, item: TTSMenuItem): MenuPath | u
   return undefined
 }
 
+export function buildMenuPathFromSelectedVoiceConfig(config?: SelectedVoiceConfig | null): MenuPath | undefined {
+  if (!config?.provider) {
+    return undefined
+  }
+
+  const path: MenuPath = {
+    provider: config.provider,
+  }
+  const resolvedConfig = config.config
+
+  ;(['language', 'scene', 'model'] as PathRole[]).forEach((role) => {
+    const field = getFieldByScopes(config.provider, role, ['segment', 'card', 'global'])
+    const fallbackValue = role === 'language'
+      ? config.lang
+      : role === 'scene'
+        ? config.scene
+        : config.model
+    const resolvedValue = field && resolvedConfig && typeof resolvedConfig === 'object'
+      ? resolvedConfig[field.key]
+      : undefined
+    const value = resolvedValue ?? fallbackValue
+
+    if (value == null || value === '') {
+      return
+    }
+
+    if (role === 'language') {
+      path.language = String(value)
+      return
+    }
+
+    if (role === 'scene') {
+      path.scene = String(value)
+      return
+    }
+
+    path.model = String(value)
+  })
+
+  return path
+}
+
 export function buildSelectedVoiceConfig(path: MenuPath, item: TTSMenuItem): SelectedVoiceConfig | undefined {
   if (item.type !== 'voice' || item.disabled) {
     return undefined

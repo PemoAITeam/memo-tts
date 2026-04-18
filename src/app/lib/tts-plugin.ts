@@ -963,6 +963,117 @@ export function parseStoredTTSSelection(value: any): TTSSelection | undefined {
   return buildLegacyTTSSelection(value);
 }
 
+function normalizeVoiceLabel(value: unknown): string | undefined {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const label = String(value).trim();
+    return label || undefined;
+  }
+
+  if (typeof value !== "object") {
+    return undefined;
+  }
+
+  const source = value as Record<string, any>;
+  const candidates = [
+    source.displayLabel,
+    source.voiceLocalName,
+    source.label,
+    source.voice?.label,
+    source.voice?.properties?.LocalName,
+    source.voice?.properties?.DisplayName,
+    source.voiceName,
+    source.voice?.shortName,
+    source.voice,
+    source.voiceType,
+    source.model,
+  ];
+
+  for (const candidate of candidates) {
+    const label = normalizeVoiceLabel(candidate);
+    if (label) {
+      return label;
+    }
+  }
+
+  if (source.config && typeof source.config === "object") {
+    return normalizeVoiceLabel(source.config);
+  }
+
+  return undefined;
+}
+
+function pushUniqueVoiceLabel(labels: string[], value: unknown) {
+  const label = normalizeVoiceLabel(value);
+  if (!label || labels.includes(label)) {
+    return;
+  }
+
+  labels.push(label);
+}
+
+function parseMentionVoiceConfig(config: unknown): Record<string, any> | null {
+  if (!config) {
+    return null;
+  }
+
+  if (typeof config === "string") {
+    try {
+      return JSON.parse(config) as Record<string, any>;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof config === "object") {
+    return config as Record<string, any>;
+  }
+
+  return null;
+}
+
+function collectVoiceLabelsFromEditorNode(node: any, labels: string[]) {
+  if (!node || typeof node !== "object") {
+    return;
+  }
+
+  if (node.type === "editorCard") {
+    pushUniqueVoiceLabel(labels, node.attrs?.voice);
+  }
+
+  if (node.type === "ttsMention") {
+    pushUniqueVoiceLabel(labels, node.attrs?.label);
+    pushUniqueVoiceLabel(labels, parseMentionVoiceConfig(node.attrs?.config));
+  }
+
+  if (Array.isArray(node.content)) {
+    node.content.forEach((child: any) => collectVoiceLabelsFromEditorNode(child, labels));
+  }
+}
+
+export function getTemoVoiceLabels(source: {
+  ttsOptions?: unknown;
+  editorData?: unknown;
+  voiceLocalName?: unknown;
+}) {
+  const labels: string[] = [];
+  const selection = parseStoredTTSSelection(source.ttsOptions);
+  const editorContent = Array.isArray(source.editorData)
+    ? source.editorData
+    : Array.isArray((source.editorData as Record<string, any> | undefined)?.content)
+      ? (source.editorData as Record<string, any>).content
+      : [];
+
+  pushUniqueVoiceLabel(labels, selection?.displayLabel);
+  pushUniqueVoiceLabel(labels, source.voiceLocalName);
+  editorContent.forEach((item: any) => collectVoiceLabelsFromEditorNode(item, labels));
+
+  return labels;
+}
+
 function matchesTTSSelectionCandidate(
   candidate: { provider?: string | null; pluginId?: string | null; legacy?: boolean },
   selection?: Pick<TTSSelection, "provider" | "pluginId"> & Partial<Pick<TTSSelection, "legacy">>

@@ -235,6 +235,9 @@
         "trash": "Papierkorb",
         "new script": "Neues Skript"
     },
+    "welcome": {
+        "plugin voices": "Plugins sind jetzt integriert und unterstützen gemischte Vertonung mit mehreren Rollen über mehrere Anbieter hinweg."
+    },
     "editor": {
         "empty": {
             "title": "Loslegen",

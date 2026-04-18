@@ -22,30 +22,73 @@ import {
 import CircularProgressBar from '@/app/components/business/progress'
 import HomePage from '@/app/pages/home/home'
 import type { TemoData, TemoFileList } from '@/app/interface'
+import { getTemoVoiceLabels } from '@/app/lib/tts-plugin'
 import { getTextFragment } from '@/app/lib/utils'
 import type DataStore from '@/app/stores/dataStore'
 import type AppStore from '@/app/stores/appStore'
+import type SettingStore from '@/app/stores/settingStore'
 import { useTranslation } from 'react-i18next'
 
 interface RouterPageProps {
   dataStore?: DataStore
   appStore?: AppStore
+  settingStore?: SettingStore
 }
 
-const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore }: RouterPageProps) => {
+const HISTORY_MULTI_VOICE_SUMMARY: Record<string, (labels: string[]) => string> = {
+  en: (labels) => `${labels[0]}/${labels[1]} and ${labels.length} voices`,
+  zh: (labels) => `${labels[0]}/${labels[1]}等${labels.length}个角色`,
+  zh_tw: (labels) => `${labels[0]}/${labels[1]}等${labels.length}個角色`,
+  ja: (labels) => `${labels[0]}/${labels[1]}など${labels.length}役`,
+  ko: (labels) => `${labels[0]}/${labels[1]} 외 ${labels.length}개 역할`,
+  es: (labels) => `${labels[0]}/${labels[1]} y ${labels.length} voces`,
+  de: (labels) => `${labels[0]}/${labels[1]} und ${labels.length} Stimmen`,
+  it: (labels) => `${labels[0]}/${labels[1]} e ${labels.length} voci`,
+}
+
+function normalizeUILanguage(language?: string) {
+  const normalizedLanguage = String(language || 'en').toLowerCase().replace('-', '_')
+  if (normalizedLanguage.startsWith('zh_tw') || normalizedLanguage.startsWith('zh_hk')) {
+    return 'zh_tw'
+  }
+  if (normalizedLanguage.startsWith('zh')) {
+    return 'zh'
+  }
+
+  return normalizedLanguage.split('_')[0]
+}
+
+const WELCOME_VERSION = '1.7.0'
+const WELCOME_VERSION_STORAGE_KEY = 'memo-tts-welcome-version'
+
+const Routers = inject('dataStore', 'appStore', 'settingStore')(observer(({ dataStore, appStore, settingStore }: RouterPageProps) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { temoData = [] } = dataStore || {}
   const [isDownload, setIsDownload] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [downloadTargetId, setDownloadTargetId] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false)
   const [pendingDeleteItems, setPendingDeleteItems] = useState<TemoData[]>([])
   const selectedHistoryId = location.pathname.startsWith('/home/')
     ? decodeURIComponent(location.pathname.split('/')[2] || '')
     : ''
+  const currentLanguage = normalizeUILanguage(i18n.resolvedLanguage || i18n.language)
+
+  useEffect(() => {
+    if (!settingStore?.i18nInit) {
+      return
+    }
+
+    if (localStorage.getItem(WELCOME_VERSION_STORAGE_KEY) === WELCOME_VERSION) {
+      return
+    }
+
+    setWelcomeDialogOpen(true)
+  }, [settingStore?.i18nInit])
 
   useEffect(() => {
     appStore?.setTemoId(selectedHistoryId || 'home')
@@ -87,6 +130,29 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
     navigate(`/home/${item.uuid}`, autoplay
       ? { state: { autoplayId: item.uuid, autoplayToken: Date.now() } }
       : undefined)
+  }
+
+  const getHistoryVoiceSummary = (item: TemoData) => {
+    const labels = getTemoVoiceLabels(item)
+
+    if (!labels.length) {
+      return t('tts.no role', { defaultValue: 'No role' })
+    }
+
+    if (labels.length === 1) {
+      return labels[0]
+    }
+
+    if (labels.length === 2) {
+      return `${labels[0]}/${labels[1]}`
+    }
+
+    return t('history.voice summary multiple', {
+      first: labels[0],
+      second: labels[1],
+      count: labels.length,
+      defaultValue: (HISTORY_MULTI_VOICE_SUMMARY[currentLanguage] || HISTORY_MULTI_VOICE_SUMMARY.en)(labels),
+    })
   }
 
   const showSaveVideoDialog = async (title: string, data: TemoData[]) => {
@@ -242,6 +308,11 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
     }
   }
 
+  const confirmWelcome = () => {
+    localStorage.setItem(WELCOME_VERSION_STORAGE_KEY, WELCOME_VERSION)
+    setWelcomeDialogOpen(false)
+  }
+
   return (
     <>
       <div className='flex h-full'>
@@ -259,7 +330,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
           <div className='flex-1 min-h-0 pl-3 py-3 temo-no-draggable'>
             {!!temoData.length && (
               <ScrollArea className='h-full pr-2'>
-                <div className='flex flex-col gap-2'>
+                <div className='flex flex-col gap-2 w-[290px] '>
                   {temoData.map((item) => (
                     <div
                       key={item.uuid}
@@ -280,7 +351,7 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
                       <div className='flex-1 min-w-0'>
                         <div className='font-medium truncate'>{item.title}</div>
                         <div className='flex gap-2 mt-1 text-xs text-muted-foreground whitespace-nowrap overflow-hidden'>
-                          <span>{item.voiceLocalName}</span>
+                          <span>{getHistoryVoiceSummary(item)}</span>
                           <span>{item.duration}</span>
                         </div>
                       </div>
@@ -344,6 +415,30 @@ const Routers = inject('dataStore', 'appStore')(observer(({ dataStore, appStore 
             <AlertDialogCancel>{t('history.cancel')}</AlertDialogCancel>
             <AlertDialogAction className='bg-red-600 hover:bg-red-600/90' onClick={confirmDelete}>
               {t('history.permanent delete confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={welcomeDialogOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setWelcomeDialogOpen(true)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle></AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('welcome.plugin voices', {
+                defaultValue: '已经接入插件，支持多个服务商的多种角色混合配音。',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={confirmWelcome}>
+              {t('app.sure', { defaultValue: '确定' })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

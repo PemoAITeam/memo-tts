@@ -107,6 +107,7 @@ const HistoryAudioPlayer = ({ src, autoplayToken, className }: HistoryAudioPlaye
 
     audio.pause()
     audio.currentTime = 0
+    audio.load()
     setIsPlaying(false)
     setCurrentTime(0)
     setDuration(0)

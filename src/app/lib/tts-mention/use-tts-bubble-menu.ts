@@ -35,6 +35,71 @@ interface SavedSelection {
   to: number
 }
 
+const RADIX_DROPDOWN_SELECTOR = '[data-radix-popper-content-wrapper], [role="menu"]'
+
+function isNodeTarget(target: EventTarget | null): target is Node {
+  return !!target && typeof (target as Node).nodeType === 'number'
+}
+
+function isElementTarget(target: EventTarget | null): target is Element {
+  return !!target && typeof (target as Element).closest === 'function'
+}
+
+function getFallbackSelectionPosition(editor: Editor, from: number, to: number) {
+  const start = editor.view.coordsAtPos(from)
+  const end = editor.view.coordsAtPos(to)
+  const left = Math.min(start.left, end.left)
+  const right = Math.max(start.right, end.right, start.left, end.left)
+
+  return {
+    x: (left + right) / 2,
+    y: Math.min(start.top, end.top),
+  }
+}
+
+function getMiddleSelectionPosition(editor: Editor, from: number, to: number) {
+  try {
+    const ownerDocument = editor.view.dom.ownerDocument
+    const range = ownerDocument.createRange()
+    const start = editor.view.domAtPos(from)
+    const end = editor.view.domAtPos(to)
+
+    range.setStart(start.node, start.offset)
+    range.setEnd(end.node, end.offset)
+
+    const rects = Array.from(range.getClientRects())
+      .filter((rect) => rect.width > 0 && rect.height > 0)
+
+    range.detach?.()
+
+    if (!rects.length) {
+      return getFallbackSelectionPosition(editor, from, to)
+    }
+
+    const totalWidth = rects.reduce((total, rect) => total + rect.width, 0)
+    let remainingWidth = totalWidth / 2
+
+    for (const rect of rects) {
+      if (remainingWidth <= rect.width) {
+        return {
+          x: rect.left + remainingWidth,
+          y: rect.top,
+        }
+      }
+
+      remainingWidth -= rect.width
+    }
+
+    const lastRect = rects[rects.length - 1]
+    return {
+      x: lastRect.left + lastRect.width / 2,
+      y: lastRect.top,
+    }
+  } catch {
+    return getFallbackSelectionPosition(editor, from, to)
+  }
+}
+
 function stableSerializeConfig(value: unknown): string {
   if (value === null || value === undefined) {
     return ''
@@ -125,6 +190,7 @@ export function useTTSBubbleMenu(
 
   const menuRef = useRef<HTMLDivElement>(null)
   const savedSelectionRef = useRef<SavedSelection | null>(null)
+  const suppressSelectionCloseUntilRef = useRef(0)
 
   const getProviderContext = useCallback(() => {
     if (!activeProvider) {
@@ -297,13 +363,7 @@ export function useTTSBubbleMenu(
     if (!editor) return { x: 0, y: 0 }
 
     const { from, to } = editor.state.selection
-    const start = editor.view.coordsAtPos(from)
-    const end = editor.view.coordsAtPos(to)
-
-    return {
-      x: (start.left + end.right) / 2,
-      y: Math.min(start.top, end.top) - 10,
-    }
+    return getMiddleSelectionPosition(editor, from, to)
   }, [editor])
 
   const isValidSelection = useCallback((): boolean => {
@@ -352,6 +412,7 @@ export function useTTSBubbleMenu(
         }
       })
     } else {
+      savedSelectionRef.current = null
       setState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
     }
   }, [calculatePosition, editor, getCurrentConfig, getCurrentSelectionContextConfig, isValidSelection])
@@ -427,6 +488,7 @@ export function useTTSBubbleMenu(
   }, [editor, withSavedSelection])
 
   const closeMenu = useCallback(() => {
+    savedSelectionRef.current = null
     setState((prev) => ({ ...prev, isOpen: false }))
   }, [])
 
@@ -445,6 +507,64 @@ export function useTTSBubbleMenu(
       editor.off('update', handleSelectionUpdate)
     }
   }, [editor, updateMenuState])
+
+  useEffect(() => {
+    if (!editor || !state.isOpen) {
+      return
+    }
+
+    const ownerDocument = editor.view.dom.ownerDocument
+    const isMenuInteractionTarget = (target: EventTarget | null) => {
+      if (isNodeTarget(target) && menuRef.current?.contains(target)) {
+        return true
+      }
+
+      return isElementTarget(target) && !!target.closest(RADIX_DROPDOWN_SELECTOR)
+    }
+
+    const shouldNativeSelectionKeepMenu = () => {
+      const selection = ownerDocument.getSelection()
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        return false
+      }
+
+      return editor.view.dom.contains(selection.anchorNode) || editor.view.dom.contains(selection.focusNode)
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (isMenuInteractionTarget(event.target)) {
+        suppressSelectionCloseUntilRef.current = Date.now() + 400
+        return
+      }
+
+      if (isNodeTarget(event.target) && !editor.view.dom.contains(event.target)) {
+        closeMenu()
+        return
+      }
+
+      window.setTimeout(updateMenuState, 0)
+    }
+
+    const handleSelectionChange = () => {
+      window.setTimeout(() => {
+        if (Date.now() < suppressSelectionCloseUntilRef.current) {
+          return
+        }
+
+        if (!isValidSelection() || !shouldNativeSelectionKeepMenu()) {
+          closeMenu()
+        }
+      }, 0)
+    }
+
+    ownerDocument.addEventListener('mousedown', handleMouseDown, true)
+    ownerDocument.addEventListener('selectionchange', handleSelectionChange)
+
+    return () => {
+      ownerDocument.removeEventListener('mousedown', handleMouseDown, true)
+      ownerDocument.removeEventListener('selectionchange', handleSelectionChange)
+    }
+  }, [closeMenu, editor, isValidSelection, state.isOpen, updateMenuState])
 
   return {
     ...state,

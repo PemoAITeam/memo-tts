@@ -1,67 +1,67 @@
-import { Extension } from "@tiptap/react"
-import { Plugin } from '@tiptap/pm/state'
+import { Extension } from "@tiptap/react";
+import { Plugin } from "@tiptap/pm/state";
+
+import { createEditorDocumentFromParagraphs, splitTextIntoParagraphs } from "@/app/lib/editor-import";
 
 export const EventHandler = Extension.create({
-    name: 'eventHandler',
-    addProseMirrorPlugins() {
-        return [
-            new Plugin({  //自定义一个ProseMirror 插件
-                props: {
-                    handleDOMEvents: {
-                        // drop: (view, event: Event) => {
-                        //     isDroppedFromProseMirror = dragSourceElement === view.dom.parentElement
-                        //     dropEvent = event as DragEvent
+  name: "eventHandler",
+  addProseMirrorPlugins() {
+    const editor = this.editor;
 
-                        //     return false
-                        // },
+    return [
+      new Plugin({
+        props: {
+          handleDOMEvents: {
+            paste: (_view, event: Event) => {
+              const text = (event as ClipboardEvent).clipboardData?.getData("text/plain");
+              if (typeof text !== "string") {
+                return false;
+              }
 
-                        paste: (view, event: Event) => {
-                            // 阻止默认粘贴行为
-                            event.preventDefault();
-                            const text = (event as ClipboardEvent).clipboardData?.getData('text');
-                            if (text) {
-                                // 按换行拆分文本
-                                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-                                const { state, dispatch } = view;
-                                const { from } = state.selection;
-                                const tr = state.tr;
+              const paragraphs = splitTextIntoParagraphs(text);
+              event.preventDefault();
 
-                                // 获取当前选中的节点
-                                const $from = state.selection.$from;
-                                const parentNode = $from.parent;
-                                const isEmptyEditorCard = parentNode.type.name === 'editorCard' && parentNode.content.size === 0;
+              if (!paragraphs.length) {
+                return true;
+              }
 
-                                if (lines.length > 1) {
-                                    let startIndex = 0;
-                                    let insertPos = from;
-                                    if (isEmptyEditorCard) {
-                                        // 第一行插入到当前空的 editor-card
-                                        tr.insertText(lines[0], insertPos);
-                                        insertPos += lines[0].length;
-                                        startIndex = 1;
-                                    }
-                                    // 剩下的每一行新建 editor-card
-                                    for (let i = startIndex; i < lines.length; i++) {
-                                        const node = state.schema.nodes['editorCard'].create(
-                                            {},
-                                            state.schema.text(lines[i])
-                                        );
-                                        tr.insert(insertPos, node);
-                                        insertPos += node.nodeSize;
-                                    }
-                                    dispatch(tr);
-                                } else {
-                                    // 单行，按原逻辑插入
-                                    const transaction = state.tr.insertText(text, state.selection.from, state.selection.to);
-                                    dispatch(transaction);
-                                }
-                            }
-                            return false;
-                        },
-                    },
+              const range = {
+                from: editor.state.selection.from,
+                to: editor.state.selection.to,
+              };
+              const isEmptyEditor = editor.state.doc.childCount === 1
+                && editor.state.doc.firstChild?.type.name === "editorCard"
+                && editor.state.doc.firstChild.content.size === 0;
 
-                },
-            }),
-        ]
-    },
-})
+              if (paragraphs.length === 1) {
+                editor
+                  .chain()
+                  .insertContentAt(range, paragraphs[0])
+                  .focus()
+                  .run();
+
+                return true;
+              }
+
+              const nextDocument = createEditorDocumentFromParagraphs(paragraphs);
+
+              if (isEmptyEditor) {
+                editor.commands.setContent(nextDocument, true);
+                editor.commands.focus("end");
+                return true;
+              }
+
+              editor
+                .chain()
+                .insertContentAt(range, nextDocument.content || [])
+                .focus()
+                .run();
+
+              return true;
+            },
+          },
+        },
+      }),
+    ];
+  },
+});

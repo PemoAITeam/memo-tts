@@ -8,6 +8,19 @@ import { findTTSProviderMeta, getTTSProviderMetaList, type TTSProviderMeta } fro
 
 import { settingStore } from "./";
 
+const normalizePluginVersion = (version: unknown) => {
+  if (typeof version === "string") {
+    const trimmedVersion = version.trim();
+    return trimmedVersion || undefined;
+  }
+
+  if (typeof version === "number" && Number.isFinite(version)) {
+    return String(version);
+  }
+
+  return undefined;
+};
+
 export interface MemoPluginsRefresh {
   type: "memo:plugins:refresh";
   data: PluginReturnType;
@@ -223,6 +236,7 @@ class PluginStore {
     if (e && e.ipcData) {
       const msg = e.ipcData as MemoPluginsRefresh;
       if (msg.type === "memo:plugins:refresh") {
+        this.needUpdateCount = this.checkPluginsVersion(msg.data);
         this.memoPlugins = msg.data;
         this.setPluginI18n();
       }
@@ -234,9 +248,18 @@ class PluginStore {
     const { installedPlugins = {}, onlinePlugins: { versions = {} } = {} } = memoPlugins;
 
     Object.keys(installedPlugins).forEach((pluginId) => {
-      if ((compareVersions(installedPlugins[pluginId].version, versions[pluginId]) < 0)) {
-        count++;
+      const installedVersion = normalizePluginVersion(installedPlugins[pluginId]?.version);
+      const onlineVersion = normalizePluginVersion(versions[pluginId]);
+
+      if (!installedVersion || !onlineVersion) {
+        return;
       }
+
+      try {
+        if (compareVersions(installedVersion, onlineVersion) < 0) {
+          count++;
+        }
+      } catch {}
     });
 
     return count;

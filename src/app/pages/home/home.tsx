@@ -40,6 +40,8 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
   const [provider, setProvider] = useState('')
   const [curEditorData, setCurEditorData] = useState<any>()
   const [editorRef, setEditorRef] = useState<Editor>()
+  const [mediaReloadVersions, setMediaReloadVersions] = useState<Record<string, number>>({})
+  const [mediaReadyVersions, setMediaReadyVersions] = useState<Record<string, number>>({})
 
   const { currentTTSProgress, currentTTSUUID, mergeTemo, synthesizing } = dataStore!
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -48,18 +50,28 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
   const selectedHistoryItem = id ? dataStore?.temoData.find((item) => item.uuid === id) : undefined
   const currentFile = selectedHistoryItem ? updateTemoData(selectedHistoryItem) : undefined
   const storedSelection = currentFile ? parseStoredTTSSelection(currentFile.ttsOptions) : undefined
+  const currentFileUuid = currentFile?.uuid
+  const currentFileEditorData = currentFile?.editorData
+  const storedSelectionProvider = storedSelection?.provider
+  const draftEditorData = currentFileUuid ? undefined : dataStore?.editorData
+  const ttsProviders = pluginStore?.ttsProviders
   const activeProvider = provider || pluginStore?.provider || storedSelection?.provider || ''
   const autoplayState = location.state as { autoplayId?: string; autoplayToken?: number } | null
   const autoplayToken = autoplayState && currentFile && autoplayState.autoplayId === currentFile.uuid
     ? autoplayState.autoplayToken
     : undefined
+  const mediaReloadVersion = currentFile ? mediaReloadVersions[currentFile.uuid] || 0 : 0
+  const mediaReadyVersion = currentFile ? mediaReadyVersions[currentFile.uuid] || 0 : 0
+  const previewMediaSrc = currentFile?.fileUrl && mediaReadyVersion === mediaReloadVersion
+    ? getLocalFileUrl(currentFile.fileUrl)
+    : ''
 
   useEffect(() => {
-    if (currentFile) {
-      setCurEditorData(currentFile.editorData)
+    if (currentFileUuid) {
+      setCurEditorData(currentFileEditorData)
 
-      if (storedSelection?.provider) {
-        const providerMeta = pluginStore?.findTTSProviderByValue(storedSelection.provider)
+      if (storedSelectionProvider) {
+        const providerMeta = pluginStore?.findTTSProviderByValue(storedSelectionProvider)
         if (providerMeta) {
           setProvider(providerMeta.provider)
           if (pluginStore?.provider !== providerMeta.provider) {
@@ -70,8 +82,88 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
       return
     }
 
-    setCurEditorData(dataStore?.editorData || '')
-  }, [currentFile, dataStore?.editorData, pluginStore, storedSelection?.provider])
+    setCurEditorData(draftEditorData || '')
+  }, [currentFileEditorData, currentFileUuid, draftEditorData, pluginStore, storedSelectionProvider, ttsProviders])
+
+  useEffect(() => {
+    if (!currentFile?.fileUrl) {
+      return
+    }
+
+    let cancelled = false
+    let timer: number | undefined
+    const checkFileExist = window.AIM?.file?.checkFileExist
+    const nextVersion = mediaReloadVersion
+
+    const markReady = () => {
+      if (cancelled) {
+        return
+      }
+
+      setMediaReadyVersions((versions) => {
+        if (versions[currentFile.uuid] === nextVersion) {
+          return versions
+        }
+
+        return {
+          ...versions,
+          [currentFile.uuid]: nextVersion,
+        }
+      })
+    }
+
+    if (!checkFileExist) {
+      markReady()
+      return () => {
+        cancelled = true
+      }
+    }
+
+    const pollFile = async (attempt = 0) => {
+      try {
+        const exists = await checkFileExist(currentFile.fileUrl!)
+
+        if (cancelled) {
+          return
+        }
+
+        if (exists) {
+          markReady()
+          return
+        }
+      } catch (_error) {
+        if (cancelled) {
+          return
+        }
+      }
+
+      if (attempt >= 20) {
+        markReady()
+        return
+      }
+
+      timer = window.setTimeout(() => {
+        void pollFile(attempt + 1)
+      }, 300)
+    }
+
+    void pollFile()
+
+    return () => {
+      cancelled = true
+      if (timer) {
+        window.clearTimeout(timer)
+      }
+    }
+  }, [currentFile?.fileUrl, currentFile?.uuid, mediaReloadVersion])
+
+  useEffect(() => {
+    if (currentFile?.type !== 'video' || !previewMediaSrc) {
+      return
+    }
+
+    videoRef.current?.load()
+  }, [currentFile?.type, previewMediaSrc])
 
   useEffect(() => {
     if (currentFile?.type !== 'video' || !autoplayToken) {
@@ -204,10 +296,12 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
     }
 
     try {
+      const editorJSON = editorRef.getJSON()
+
       const result = await mergeTemo({
         selection,
         uuid: currentFile?.uuid || generateUUID(),
-        editorData: editorRef.getJSON(),
+        editorData: editorJSON,
       })
 
       if (result) {
@@ -220,6 +314,10 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
 
         dataStore?.upsertTemoData(nextResult)
         appStore?.setTemoId(nextResult.uuid)
+        setMediaReloadVersions((versions) => ({
+          ...versions,
+          [nextResult.uuid]: (versions[nextResult.uuid] || 0) + 1,
+        }))
 
         if (!currentFile) {
           editorRef.commands.clearContent()
@@ -256,24 +354,28 @@ const HomePage = inject('dataStore', 'appStore', 'pluginStore')(observer(({
               synthesisProgress={currentTTSProgress}
               synthesisDisabled={synthesizing || !canSynthesize}
               synthesisBusy={synthesizing}
+              showEmptyGuide={!currentFile}
+              persistDraft={!currentFile}
             />
 
-            {currentFile?.fileUrl && (
+            {currentFile?.fileUrl && previewMediaSrc && (
               <div className='mr-3 mt-4'>
                 {currentFile.type === 'video'
                   ? (
                     <div className='overflow-hidden rounded-[1.5rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--background))_0%,hsl(var(--background))_55%,hsl(var(--muted)/0.8)_100%)] p-2 shadow-[0_12px_40px_-18px_rgba(15,23,42,0.28)]'>
                       <video
+                        key={`${currentFile.uuid}-${mediaReadyVersion}`}
                         ref={videoRef}
                         className='w-full max-h-64 rounded-[1rem] bg-black'
                         controls
-                        src={getLocalFileUrl(currentFile.fileUrl)}
+                        src={previewMediaSrc}
                       />
                     </div>
                   )
                   : (
                     <HistoryAudioPlayer
-                      src={getLocalFileUrl(currentFile.fileUrl)}
+                      key={`${currentFile.uuid}-${mediaReadyVersion}`}
+                      src={previewMediaSrc}
                       autoplayToken={autoplayToken}
                     />
                   )}

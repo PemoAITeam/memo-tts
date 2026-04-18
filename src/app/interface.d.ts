@@ -14,6 +14,9 @@ interface AIMBridge {
   openDialog: (...args: any[]) => Promise<any>;
   handleMessage: (handler: (...args: any[]) => void, key: string) => void;
   removeHandler: (key: string) => void;
+  file?: {
+    checkFileExist?: (path: string) => Promise<boolean>;
+  };
   plugin: {
     readLocalPlugins: () => Promise<any>;
     saveConfiguration: (pluginId: string, formData: Record<string, any>) => Promise<any>;

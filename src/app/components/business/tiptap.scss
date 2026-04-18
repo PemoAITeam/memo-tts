@@ -15,4 +15,39 @@
 
 #drop-area {
   height: calc(100vh - 3rem);
+  min-height: 16rem;
+  border-radius: 1rem;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+
+  &.is-dragging {
+    background:
+      linear-gradient(135deg, hsl(var(--primary) / 0.08), transparent 58%),
+      hsl(var(--primary) / 0.05);
+    box-shadow:
+      inset 0 0 0 2px hsl(var(--primary) / 0.35),
+      0 18px 40px -30px hsl(var(--primary) / 0.45);
+  }
+}
+
+.drop-indicator__panel {
+  width: min(100%, 28rem);
+  padding: 1.25rem 1.5rem;
+  border: 1px dashed hsl(var(--primary) / 0.45);
+  border-radius: 1rem;
+  background: hsl(var(--background) / 0.92);
+  box-shadow: 0 24px 60px -36px rgb(15 23 42 / 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.drop-indicator__title {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.drop-indicator__description {
+  margin: 0.35rem 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9rem;
 }

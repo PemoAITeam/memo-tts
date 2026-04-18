@@ -235,12 +235,18 @@
         "trash": "Papelera",
         "new script": "Nuevo guion"
     },
+    "welcome": {
+        "plugin voices": "Los plugins ya están integrados y admiten doblaje mixto con múltiples roles de varios proveedores."
+    },
     "editor": {
         "empty": {
             "title": "Comenzar",
             "mention": "Escribe @ para seleccionar un personaje o voz",
             "selection": "Selecciona texto para configurar parámetros detallados",
             "drag": "Soporta arrastrar y soltar archivos txt, docx, md"
+        },
+        "drop": {
+            "title": "Suelta para importar el archivo"
         }
     },
     "history": {
